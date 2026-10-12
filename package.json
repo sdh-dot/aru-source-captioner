@@ -1,0 +1,25 @@
+{
+  "name": "aru-source-captioner",
+  "version": "0.1.2",
+  "private": true,
+  "description": "A browser extension for image source attribution and icon management on Ruliweb.",
+  "license": "MIT",
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "scripts": {
+    "build": "node tools/build.mjs",
+    "verify": "node tools/verify.mjs",
+    "test": "node tools/test.mjs",
+    "test:historical": "node tools/test-historical.mjs",
+    "lint:firefox": "addons-linter firefox --output text",
+    "package:firefox": "node tools/package.mjs firefox",
+    "lint:firefox:strict": "addons-linter firefox --output text --warnings-as-errors",
+    "package:chromium": "node tools/package.mjs whale"
+  },
+  "devDependencies": {
+    "addons-linter": "10.14.0",
+    "jquery": "3.7.1",
+    "jsdom": "26.1.0"
+  }
+}

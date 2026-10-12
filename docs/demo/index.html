@@ -1,0 +1,15 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>아루 아이콘 · 공개 빌드 UI</title><style>body{background:#faf7f2;color:#30252b;font:16px system-ui;margin:24px}button{padding:10px;font:inherit}</style></head><body><h1>공개 빌드 UI 확인</h1><p>합성 아이콘을 공급한 실제 선택기 코드입니다. 실제 사이트·로그인·작성 내용은 사용하지 않습니다.</p><button id="open">아이콘 선택</button><p id="result" role="status">실제 작성기에 삽입하지 않습니다.</p>
+<script src="../source/ruliweb-icons/core.js"></script><script src="../source/ruliweb-icons/metadata.js"></script><script src="../source/ruliweb-icons/attribute-tags.js"></script><script src="../source/ruliweb-icons/catalog.js"></script><script src="../source/ruliweb-icons/design-system.js"></script><script src="../source/ruliweb-icons/library-search.js"></script><script src="../source/ruliweb-icons/composer-adapter.js"></script><script src="../source/ruliweb-icons/ui-preferences.js"></script><script src="../source/ruliweb-icons/picker.js"></script>
+<script>
+window.chrome={runtime:{getURL:file=>new URL('../../whale/'+file,location.href).href}};
+if(new URLSearchParams(location.search).get('theme')==='dark')document.body.style.backgroundColor='#21181e';
+const A=window.AruIcons;let picker;
+// Local fixture only: allow our self-authored SVG data media in the injected model.
+// This override is not packaged in the extension or run on Ruliweb pages.
+const originalMediaUrl=A.Metadata.mediaUrl;A.Metadata={...A.Metadata,mediaUrl:value=>location.hostname==='127.0.0.1'&&value.startsWith(location.origin+'/docs/demo/media/')?value:originalMediaUrl(value)};
+const media=i=>new URL('media/sample-'+(i%5)+'.png?icon='+i,location.href).href;
+function open(){picker?.destroy();const pack={kind:'NORMAL',articleId:6000,title:'합성 샘플팩',tags:[],categories:[],sources:[{sourceId:'sample',articleId:6000,title:'합성 샘플팩'}],icons:Array.from({length:100},(_,i)=>({id:'sample:'+i,name:'샘플 '+(i+1),url:media(i),mediaKind:'image',tagIds:[],categoryIds:[],keywords:[],sourceId:'sample',origin:{articleId:6000,originalIndex:i},imageMetadata:{id:'sample-'+i,tags:['샘플',i%2?'미소':'인사']}}))};
+ const engine=new A.LibrarySearchEngine();const ref={articleId:6000,boardId:'98',source:'direct',title:'합성 샘플팩',url:'https://bbs.ruliweb.com/community/board/98/read/6000'};engine.setEntries([ref]);engine.remember(ref,pack);engine.setState({scope:'current',currentKey:'98:6000'});
+ picker=A.createPicker({librarySearch:engine,catalogMode:false,insertionMode:true,opener:document.querySelector('#open'),targetValid:true,uiPreferences:{read:async()=>null,write:async()=>{}},fontURL:new URL('../../whale/assets/fonts/PretendardVariable.woff2',location.href).href,onSelect:async icon=>{document.querySelector('#result').textContent=icon.name+'의 삽입 콜백 확인 · 실제 작성기 변경 없음';return {message:'로컬 테스트 완료'};}});picker.setPack(pack);}
+document.querySelector('#open').onclick=open;open();
+</script></body></html>

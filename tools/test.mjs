@@ -1,0 +1,3 @@
+import fs from 'node:fs';import path from 'node:path';import {spawnSync} from 'node:child_process';import {fileURLToPath} from 'node:url';
+const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');fs.mkdirSync(path.join(root,'docs/results'),{recursive:true});
+const result=spawnSync(process.execPath,['--test',...['tests/publication.test.cjs','tests/filename.test.cjs','docs/tests/phase2b3/engine.test.cjs','docs/tests/generator-r2/search.test.cjs','docs/tests/bundle-generator/model.test.cjs']],{cwd:root,stdio:'inherit'});process.exitCode=result.status??1;

@@ -1,0 +1,175 @@
+{
+  "manifest_version": 3,
+  "name": "Aru Source Captioner",
+  "version": "0.1.2",
+  "description": "루리웹 글쓰기 페이지에서 이미지 메타데이터의 출처 URL을 읽어 자동으로 출처 캡션을 삽입합니다.",
+  "permissions": [
+    "storage",
+    "downloads",
+    "nativeMessaging",
+    "contextMenus"
+  ],
+  "host_permissions": [
+    "https://bbs.ruliweb.com/community/board/300143/*",
+    "https://bbs.ruliweb.com/community/board/*/read/*",
+    "https://m.ruliweb.com/community/board/300143/*",
+    "https://m.ruliweb.com/community/board/*/read/*",
+    "https://i1.ruliweb.com/*",
+    "https://i2.ruliweb.com/*",
+    "https://i3.ruliweb.com/*",
+    "https://bbs.ruliweb.com/community/board/*/write*",
+    "https://bbs.ruliweb.com/community/board/*/modify*",
+    "https://m.ruliweb.com/community/board/*/write*",
+    "https://m.ruliweb.com/community/board/*/modify*"
+  ],
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "action": {
+    "default_title": "Aru Source Captioner",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "background": {
+    "scripts": [
+      "background.js",
+      "features/ruliweb-icons/background.bundle.js",
+      "features/body-download/background.bundle.js"
+    ]
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://bbs.ruliweb.com/community/board/300143/*",
+        "https://bbs.ruliweb.com/community/board/*/read/*",
+        "https://m.ruliweb.com/community/board/300143/*",
+        "https://m.ruliweb.com/community/board/*/read/*"
+      ],
+      "js": [
+        "features/ruliweb-icons/composer-bridge.js"
+      ],
+      "run_at": "document_idle",
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "https://bbs.ruliweb.com/community/board/300143/*",
+        "https://bbs.ruliweb.com/community/board/*/read/*",
+        "https://m.ruliweb.com/community/board/300143/*",
+        "https://m.ruliweb.com/community/board/*/read/*"
+      ],
+      "js": [
+        "lib/exifr.full.umd.js",
+        "content.js",
+        "features/ruliweb-icons/content.bundle.js"
+      ],
+      "css": [
+        "styles.css"
+      ],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://bbs.ruliweb.com/community/board/98/read/*",
+        "https://m.ruliweb.com/community/board/98/read/*"
+      ],
+      "js": [
+        "features/body-download/content.bundle.js"
+      ],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://bbs.ruliweb.com/community/board/*/write*",
+        "https://bbs.ruliweb.com/community/board/*/modify*",
+        "https://m.ruliweb.com/community/board/*/write*",
+        "https://m.ruliweb.com/community/board/*/modify*"
+      ],
+      "js": [
+        "features/icon-metadata/bridge.bundle.js"
+      ],
+      "run_at": "document_idle",
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "https://bbs.ruliweb.com/community/board/*/write*",
+        "https://bbs.ruliweb.com/community/board/*/modify*",
+        "https://m.ruliweb.com/community/board/*/write*",
+        "https://m.ruliweb.com/community/board/*/modify*"
+      ],
+      "js": [
+        "features/icon-metadata/content.bundle.js"
+      ],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://bbs.ruliweb.com/community/board/98/write*",
+        "https://bbs.ruliweb.com/community/board/98/modify*",
+        "https://m.ruliweb.com/community/board/98/write*",
+        "https://m.ruliweb.com/community/board/98/modify*"
+      ],
+      "js": [
+        "features/bundle-generator/bridge.bundle.js"
+      ],
+      "run_at": "document_idle",
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "https://bbs.ruliweb.com/community/board/98/write*",
+        "https://bbs.ruliweb.com/community/board/98/modify*",
+        "https://m.ruliweb.com/community/board/98/write*",
+        "https://m.ruliweb.com/community/board/98/modify*"
+      ],
+      "js": [
+        "features/bundle-generator/content.bundle.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ],
+  "options_ui": {
+    "page": "options.html",
+    "open_in_tab": true
+  },
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "aru-source-captioner-firefox@sdh-dot.github.io",
+      "strict_min_version": "140.0",
+      "data_collection_permissions": {
+        "required": [
+          "none"
+        ]
+      }
+    },
+    "gecko_android": {
+      "strict_min_version": "142.0"
+    }
+  },
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "assets/fonts/PretendardVariable.woff2",
+        "assets/icons/aru-main-64.png",
+        "assets/icons/editor-select-20.png",
+        "assets/icons/editor-bundle-20.png",
+        "assets/icons/editor-tags-20.png",
+        "assets/icons/modal-select-256.png",
+        "assets/icons/modal-bundle-256.png",
+        "assets/icons/modal-tags-256.png"
+      ],
+      "matches": [
+        "https://bbs.ruliweb.com/*",
+        "https://m.ruliweb.com/*"
+      ]
+    }
+  ]
+}

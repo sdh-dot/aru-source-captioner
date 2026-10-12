@@ -1,0 +1,26 @@
+name: 버그 제보
+description: 재현 가능한 오류를 알려 주세요.
+title: "[버그] "
+body:
+  - type: markdown
+    attributes:
+      value: "댓글·작성 내용, 로그인 정보, 쿠키, 토큰, 전체 Console 로그는 첨부하지 마세요. 취약점은 SECURITY.md의 비공개 제보 절차를 사용해 주세요."
+  - type: input
+    id: environment
+    attributes:
+      label: 환경
+      placeholder: "Windows / Firefox 140 / 확장 0.1.2"
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: 재현 절차
+      description: 기대 결과와 실제 결과를 함께 적어 주세요.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: 추가 자료
+      description: 개인정보를 가린 화면이나 최소 오류 코드만 첨부해 주세요.

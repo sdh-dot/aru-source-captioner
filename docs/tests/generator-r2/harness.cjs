@@ -1,0 +1,11 @@
+'use strict';
+const fs=require('node:fs'),path=require('node:path');const old=require('../bundle-generator/harness.cjs');
+function basic(){const h=old.basic();h.w.eval(fs.readFileSync(path.join(old.version,'docs/source/bundle-generator/search.js'),'utf8'));return h;}
+function searchHTML({query='블루아카',page=1,ids=[5039,5015],flex=true,next=true,origin='https://bbs.ruliweb.com'}={}){
+ // Synthetic test structure based on observed classes/parameters; not live results.
+ const row=id=>`<${flex?'div class="flex_item article_wrapper border_box"':'tr class="table_body"'}>${flex?'': '<td>'}<a class="thumbnail" style="background-image:url(https://i1.ruliweb.com/thumb/${id}.avif),url(https://i1.ruliweb.com/thumb/${id}.webp)" href="${origin}/community/board/98/read/${id}"></a><a class="subject_link deco" href="${origin}/community/board/98/read/${id}?search_type=subject">블루아카 ${id}</a>${flex?'':'</td>'}</${flex?'div':'tr'}>`;
+ return `<div id="board_list"><input name="board_id" value="98"><input name="board_url" value="${origin}/community/board/98"><div name="board_search"><select name="search_type"><option value="subject">제목</option></select><input name="search_key" value="${query}"></div><table class="board_list_table"><tr class="table_body notice inside"><td><a class="subject_link" href="${origin}/community/board/98/read/1917">공지</a></td></tr>${flex?'':ids.map(row).join('')}</table>${flex?ids.map(row).join(''):''}<div class="paging_wrapper"><span class="active">${page}</span>${next?'<a href="'+origin+'/community/board/98?search_type=subject&search_key='+encodeURIComponent(query)+'&page='+(page+1)+'">다음</a>':''}</div></div>`;
+}
+function fragment(h,html){const t=h.doc.createElement('template');t.innerHTML=html;return t.content;}
+function open(h,{reader,searcher}={}){let saved;const p=new h.B.Panel({document:h.w.document,client:h.bundleClient,token:h.bundleToken,reader:reader||{pending:new Map(),read:async u=>old.sample(Number(u.match(/\d+$/)[0])),cancel(){},destroy(){}},searcher:searcher||{search:async(q,page)=>({query:q,page,items:[],hasNext:false,hasPrevious:page>1}),cancel(){},destroy(){}},browser:{saveDraft:async d=>{saved=d.snapshot();},loadDraft:async()=>h.B.Draft.restore(saved)}});h.bundlePanel=p;return p;}
+module.exports={...old,basic,fragment,searchHTML,open};

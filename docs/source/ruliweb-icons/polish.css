@@ -1,0 +1,105 @@
+/* RC1 presentation only. Virtual card dimensions remain owned by picker.js. */
+:host{--aru-space-1:4px;--aru-space-2:8px;--aru-space-3:12px;--aru-space-4:16px;--aru-space-5:24px;--aru-radius:8px;--aru-divider:color-mix(in srgb,var(--aru-border) 48%,var(--aru-surface));--aru-shadow:0 20px 64px #170e1938;font-size:14px;line-height:1.5}
+*{scrollbar-color:var(--aru-border) var(--aru-surface);scrollbar-width:thin}
+::selection{background:var(--aru-selected);color:var(--aru-selected-text)}
+input,textarea{caret-color:var(--aru-deep-wine)}
+button,input,select,textarea{font-family:inherit;border-radius:var(--aru-radius)}
+a{color:var(--aru-deep-wine);text-underline-offset:3px}
+button{font-weight:600;transition:background-color 150ms ease-out,color 150ms ease-out}
+button:disabled{opacity:.55;cursor:default}
+button:hover:enabled{background:var(--aru-soft)}
+button.primary:hover:enabled,button.apply:hover:enabled,.aru-entry-button[data-priority="primary"]:hover:enabled{background:var(--aru-deep-wine);color:var(--aru-surface)}
+:host([data-aru-theme="dark"]) button.primary:hover:enabled,:host([data-aru-theme="dark"]) button.apply:hover:enabled,:host([data-aru-theme="dark"]) .aru-entry-button[data-priority="primary"]:hover:enabled{background:var(--aru-soft-gold);color:var(--aru-primary-text)}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,a:focus-visible,summary:focus-visible,[tabindex="0"]:focus-visible{outline:2px solid var(--aru-deep-wine);outline-offset:2px}
+.search-box:focus-within{outline:2px solid var(--aru-deep-wine);outline-offset:2px;box-shadow:none}
+.dialog,.dialog[data-modal-size="max"]{border:0;border-radius:16px;box-shadow:var(--aru-shadow)}
+.dialog .header,.dialog header{padding:16px 20px;border-color:var(--aru-divider);background:var(--aru-surface)}
+.dialog h1,.dialog h2,.dialog header strong{font-weight:700;letter-spacing:-.02em;text-wrap:balance}
+.dialog .header-title h1,.dialog .header h2,.dialog header strong{font-size:18px}
+.dialog .brand{width:32px;height:32px;flex-basis:32px;border-radius:8px;font-size:21px}
+.dialog .pack-line{font-size:12px;gap:8px}
+.dialog .badge{font-size:12px;padding:0;background:transparent;color:var(--aru-muted);border-radius:0}
+.dialog .pack-kind,.dialog .selection-label .badge,.dialog .metrics{display:none}
+.dialog .view-controls{padding:6px 20px;border-color:var(--aru-divider);gap:12px}
+.dialog .mode-label{font-size:12px;gap:6px}
+.dialog .quiet,.dialog .view-controls select,.dialog .mode-label select{border-color:var(--aru-divider);border-radius:8px}
+.dialog .view-controls button,.dialog .view-controls select,.dialog .mode-label select{min-height:34px}
+.dialog .bundle-view .body,.dialog.bundle-view .body{gap:8px;padding:12px 16px}
+.dialog .main{border:0;border-radius:0;background:var(--aru-surface)}
+.dialog .selection{border:0;border-left:1px solid var(--aru-divider);border-radius:0;background:var(--aru-surface)}
+.dialog .selection-label{font-size:12px;color:var(--aru-muted)}
+.dialog .selection-art{background:var(--aru-soft);border-radius:12px}
+.dialog .selection-detail,.dialog .selection-url,.dialog .phase-note,.dialog .selection-note,.dialog .preview-status{font-size:12px;line-height:1.5}
+.dialog .selection-name{font-size:16px;font-weight:700}
+.dialog .selection-tags .small-tag{font-size:12px;background:transparent;padding:0;color:var(--aru-muted)}
+.dialog .primary,.dialog .apply{border:0;border-radius:8px;min-height:40px;font-size:14px;font-weight:700}
+.dialog .search-area{border-color:var(--aru-divider)}
+.dialog .search-box{background:var(--aru-surface);border-color:var(--aru-border);border-radius:8px;height:44px}
+.dialog .search-input{font-size:14px}
+.dialog .search-symbol{display:flex;width:18px;height:18px;margin:0 12px;font-size:0;flex-shrink:0}
+.dialog .close,.dialog .clear-search{display:inline-flex;align-items:center;justify-content:center;background:var(--aru-surface);color:var(--aru-text)}
+.dialog svg.aru-ui-icon{width:18px;height:18px;flex-shrink:0;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;fill:none;pointer-events:none}
+.dialog .tag-button{border:1px solid transparent;background:var(--aru-soft);color:var(--aru-muted);font-size:12px;font-weight:500;border-radius:6px;min-height:30px;padding:3px 9px}
+.dialog .tag-button[aria-pressed="true"]{background:var(--aru-selected);color:var(--aru-selected-text);border-color:var(--aru-gold);font-weight:700}
+.dialog .chips{gap:4px}
+.dialog .help,.dialog .summary,.dialog .note,.dialog .hint,.dialog .info,.dialog .change-count{font-size:12px;line-height:1.5;color:var(--aru-muted)}
+.dialog .help{margin-top:6px}
+.dialog .library-status:empty,.dialog .live:empty,.dialog .status:empty{display:none}
+.dialog .toolbar{padding:6px 12px}
+.dialog .text-button{font-size:12px;min-height:32px}
+.dialog .icon-card{border:1px solid transparent;border-radius:8px;background:var(--aru-surface)}
+.dialog .icon-card:hover:not([aria-pressed="true"]){border-color:transparent;background:var(--aru-soft)}
+.dialog .icon-card[aria-pressed="true"]{border:2px solid var(--aru-gold);background:var(--aru-selected);box-shadow:none}
+.dialog .icon-card[aria-pressed="true"]::after{content:"";width:5px;height:9px;border:solid var(--aru-selected-text);border-width:0 2px 2px 0;transform:rotate(45deg);right:7px;top:5px}
+.dialog .icon-name,.dialog .icon-tags{font-size:11px;line-height:14px}
+.dialog .card-preview{font-size:11px;line-height:16px;border:0;background:transparent;color:var(--aru-deep-wine);border-radius:4px}
+.dialog[data-icon-size="small"] .icon-name,.dialog[data-icon-size="small"] .icon-tags{font-size:10.5px;line-height:12px}
+.dialog .status-panel{border:0;border-top:1px solid var(--aru-divider);border-radius:0;background:transparent;padding:8px 0}
+.dialog .progress,.dialog .live{font-size:12px;line-height:1.5}
+.dialog .footer,.dialog footer{font-size:12px;border-color:var(--aru-divider);background:var(--aru-surface);padding:10px 20px}
+.dialog .catalog{border:0;border-radius:12px;box-shadow:none;padding:16px 20px;background:var(--aru-surface)}
+.dialog .catalog-row{border:0;border-bottom:1px solid var(--aru-divider);border-radius:0;background:var(--aru-surface)}
+.dialog .catalog-row[aria-current="true"]{background:var(--aru-selected);color:var(--aru-selected-text);border-radius:8px}
+.dialog .catalog-row[aria-current="true"]::after{content:"";width:7px;height:12px;border:solid currentColor;border-width:0 2px 2px 0;transform:rotate(45deg);margin:0 8px}
+.dialog .catalog-detail strong{font-size:14px;font-weight:600}
+.dialog .catalog-detail small{font-size:12px}
+.dialog .catalog-row>span:last-child{font-size:12px;color:var(--aru-muted)}
+.dialog .catalog-thumbnail{background:var(--aru-soft);color:var(--aru-muted);font-size:12px;border-radius:8px}
+.dialog .catalog-direct{border-top:1px solid var(--aru-divider);padding-top:12px}
+.dialog .catalog-load-status{color:var(--aru-muted);font-size:12px}
+.dialog .pack-toast{border:0;border-radius:8px;box-shadow:0 4px 16px #170e1924;font-size:12px}
+/* Tag editor and bundle generator share the same controls and flat lists. */
+.dialog .viewport{border:0;border-radius:0;background:var(--aru-surface)}
+.dialog .card{background:var(--aru-surface);border:1px solid transparent;border-radius:8px}
+.dialog .card[aria-pressed="true"]{background:var(--aru-selected);color:var(--aru-selected-text);box-shadow:none;border:2px solid var(--aru-gold)}
+.dialog .card .check{width:16px;height:16px;border:1px solid var(--aru-muted);font-size:0!important;background:var(--aru-surface)!important}
+.dialog .card[aria-pressed="true"] .check{border-color:var(--aru-gold);background:var(--aru-selected)!important}
+.dialog .card[aria-pressed="true"] .check::after{content:"";position:absolute;width:5px;height:9px;left:4px;top:1px;border:solid var(--aru-selected-text);border-width:0 2px 2px 0;transform:rotate(45deg)}
+.dialog .fixed button,.dialog .chips button{border-color:var(--aru-divider);background:var(--aru-soft);color:var(--aru-text);font-weight:500}
+.dialog .fixed button[aria-pressed="true"],.dialog .chips button[aria-pressed="true"]{background:var(--aru-selected);border-color:var(--aru-gold);color:var(--aru-selected-text);font-weight:700}
+.dialog .row{border:0;border-bottom:1px solid var(--aru-divider);border-radius:0;background:var(--aru-surface);margin:0;padding:12px 0}
+.dialog .row.drag-over{outline:2px solid var(--aru-deep-wine);outline-offset:-2px}
+.dialog .row-head strong{font-size:14px;font-weight:600}
+.dialog .actions{flex-wrap:wrap}
+.dialog .preview{border:0;border-top:1px solid var(--aru-divider);border-radius:0;background:var(--aru-surface);padding:16px 0}
+.dialog .status{background:transparent;padding:8px 0;border-radius:0;color:var(--aru-muted);font-size:12px}
+.dialog .status.error,.dialog .target-error,.dialog .error{background:var(--aru-danger-background);color:var(--aru-danger);padding:10px 12px;border-radius:8px;font-size:13px}
+.dialog .article-search{border:0;border-top:1px solid var(--aru-divider);border-bottom:1px solid var(--aru-divider);border-radius:0;padding:16px 0;margin:20px 0}
+.dialog .article-search h3{font-size:14px;font-weight:700;margin:0 0 8px}
+.dialog .search-row{border:0;border-bottom:1px solid var(--aru-divider);border-radius:0;margin:0;background:var(--aru-surface);padding:10px 8px}
+.dialog .search-row.selected{background:var(--aru-selected);color:var(--aru-selected-text);border-radius:8px}
+.dialog .search-row .thumbnail{background:var(--aru-soft)}
+.dialog .search-row small,.dialog .apply-reason{font-size:12px;color:var(--aru-muted)}
+.dialog .search-row input{accent-color:var(--aru-deep-wine)}
+.dialog .search-row:focus-visible{outline-color:var(--aru-deep-wine)}
+.dialog input:not([type="checkbox"]),.dialog textarea,.dialog select{background:var(--aru-surface);color:var(--aru-text);border-color:var(--aru-border)}
+.dialog input:not([type="checkbox"]){min-height:40px}
+.dialog .search-input{min-height:0!important}
+.aru-entry-button{border-radius:6px;min-height:34px;font-size:13px;box-shadow:none}
+.aru-entry-button:hover:enabled{box-shadow:none;background:var(--aru-soft)}
+@media(max-width:750px){.dialog .selection{border-left:0;border-top:1px solid var(--aru-divider)}.dialog .mode-label{font-size:11px}.dialog .header,.dialog header{padding:10px 12px}.dialog .view-controls{padding:4px 12px;gap:6px}.dialog .footer,.dialog footer{padding:8px 12px}.dialog .catalog{padding:12px}.dialog .bundle-view .body,.dialog.bundle-view .body{padding:8px}.dialog .help{font-size:11px}.dialog .search-box{height:44px}}
+@media(max-width:500px){.dialog .header-actions{justify-content:flex-start}.dialog .header-title{flex-basis:calc(100% - 52px)}.dialog .catalog-detail strong{font-size:13px}.dialog .catalog-detail small{font-size:11px}.dialog .catalog-row{gap:8px}.dialog .catalog-row>span:last-child{font-size:11px}.dialog .selection-detail,.dialog .preview-status{font-size:11px}.dialog .lookup button{flex:1}.dialog .actions{gap:4px}.dialog .actions button{min-height:34px}.dialog .search-toolbar input{min-width:100px}.dialog .primary,.dialog .apply{font-size:13px}}
+@media(max-height:600px){.dialog .header,.dialog header{padding:6px 12px}.dialog .view-controls{padding:4px 12px}.dialog .phase-note,.dialog .metrics{display:none}}
+@media(pointer:coarse){.dialog button:not(.card-choose),.dialog select,.aru-entry-button{min-height:44px}.dialog .close,.dialog .clear-search{min-width:44px}.dialog .card-preview{min-height:44px}.dialog .tag-button{padding:4px 10px}.dialog .card-choose{touch-action:pan-y}}
+@media(prefers-reduced-motion:reduce){button{transition:none}.aru-entry-button:active:enabled{transform:none}}
+@media(forced-colors:active){.dialog .icon-card[aria-pressed="true"],.dialog .card[aria-pressed="true"],.dialog .catalog-row[aria-current="true"],.dialog .tag-button[aria-pressed="true"]{outline:2px solid Highlight;outline-offset:-2px}.dialog svg{forced-color-adjust:auto}}

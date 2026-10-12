@@ -1,0 +1,172 @@
+{
+  "provenance": "Summary of the user's aru-bundle-r2-search-readonly-v1 JSON received in this task; not an agent browser capture or raw HTML response",
+  "query": "블루아카",
+  "url": "https://bbs.ruliweb.com/community/board/98?search_type=subject&search_key=%EB%B8%94%EB%A3%A8%EC%95%84%EC%B9%B4",
+  "titleOption": {
+    "name": "search_type",
+    "value": "subject",
+    "label": "제목"
+  },
+  "keyName": "search_key",
+  "rowClass": "flex_item article_wrapper border_box",
+  "titleClass": "subject_link deco",
+  "thumbnailClass": "thumbnail col_12",
+  "noticeExcluded": {
+    "articleId": 1917,
+    "rowClass": "table_body notice inside"
+  },
+  "selectedExamples": [
+    {
+      "articleId": 5044,
+      "title": "블루아카) 통합 아이콘팩",
+      "thumbnail": "https://i1.ruliweb.com/thumb/26/10/11/1a1272b829313dd43.avif"
+    },
+    {
+      "articleId": 5043,
+      "title": "블루아카) 통합 아이콘팩 05",
+      "thumbnail": "https://i1.ruliweb.com/thumb/26/10/11/1a12722f1c713dd43.avif"
+    },
+    {
+      "articleId": 5042,
+      "title": "블루아카) 통합 아이콘팩 04",
+      "thumbnail": "https://i3.ruliweb.com/thumb/26/10/11/1a12720c93a13dd43.avif"
+    },
+    {
+      "articleId": 5041,
+      "title": "블루아카) 통합 아이콘팩 03",
+      "thumbnail": "https://i1.ruliweb.com/thumb/26/10/11/1a1271c5a8e13dd43.avif"
+    },
+    {
+      "articleId": 5040,
+      "title": "블루아카) 통합 아이콘팩 02",
+      "thumbnail": "https://i2.ruliweb.com/thumb/26/10/11/1a1271ab14b13dd43.avif"
+    },
+    {
+      "articleId": 5039,
+      "title": "블루아카) 통합 아이콘팩 01",
+      "thumbnail": "https://i1.ruliweb.com/thumb/26/10/11/1a126b3366e13dd43.avif"
+    },
+    {
+      "articleId": 5015,
+      "title": "블루아카) 백업용 여러캐릭터콘17 (S4998)",
+      "thumbnail": null
+    },
+    {
+      "articleId": 5014,
+      "title": "블루아카) 백업용 여러캐릭터콘16 (S4998)",
+      "thumbnail": null
+    },
+    {
+      "articleId": 5013,
+      "title": "블루아카) 백업용 여러캐릭터콘15 (S4998)",
+      "thumbnail": null
+    },
+    {
+      "articleId": 5012,
+      "title": "블루아카) 백업용 여러캐릭터콘14 (S4998)",
+      "thumbnail": null
+    },
+    {
+      "articleId": 5011,
+      "title": "블루아카) 백업용 여러캐릭터콘13 (S4998)",
+      "thumbnail": null
+    },
+    {
+      "articleId": 5010,
+      "title": "블루아카) 백업용 여러캐릭터콘12 (S4998)",
+      "thumbnail": null
+    },
+    {
+      "articleId": 5009,
+      "title": "블루아카) 백업용 여러캐릭터콘11 (S4998)",
+      "thumbnail": null
+    },
+    {
+      "articleId": 5008,
+      "title": "블루아카) 백업용 여러캐릭터콘10 (S4998)",
+      "thumbnail": null
+    },
+    {
+      "articleId": 5007,
+      "title": "블루아카) 백업용 여러캐릭터콘9 (S4998)",
+      "thumbnail": null
+    },
+    {
+      "articleId": 5006,
+      "title": "블루아카) 백업용 여러캐릭터콘8 (S4998)",
+      "thumbnail": null
+    },
+    {
+      "articleId": 5005,
+      "title": "블루아카) 백업용 여러캐릭터콘7 (S4998)",
+      "thumbnail": null
+    },
+    {
+      "articleId": 5004,
+      "title": "블루아카) 백업용 여러캐릭터콘6 (S4998)",
+      "thumbnail": null
+    },
+    {
+      "articleId": 5003,
+      "title": "블루아카) 백업용 여러캐릭터콘5 (S4998)",
+      "thumbnail": null
+    },
+    {
+      "articleId": 5002,
+      "title": "블루아카) 백업용 여러캐릭터콘4 (S4998)",
+      "thumbnail": null
+    },
+    {
+      "articleId": 5001,
+      "title": "블루아카) 백업용 여러캐릭터콘3 (S4998)",
+      "thumbnail": null
+    },
+    {
+      "articleId": 5000,
+      "title": "블루아카) 백업용 여러캐릭터콘2 (S4998)",
+      "thumbnail": null
+    },
+    {
+      "articleId": 4999,
+      "title": "블루아카) 백업용 여러캐릭터콘1 (S4998)",
+      "thumbnail": null
+    },
+    {
+      "articleId": 4998,
+      "title": "블루아카) 백업용 여러캐릭터콘 (M)",
+      "thumbnail": "https://i3.ruliweb.com/thumb/26/10/09/1a11d06e32653ed31.avif"
+    },
+    {
+      "articleId": 4920,
+      "title": "블루아카) 스미카콘 돚거",
+      "thumbnail": "https://i1.ruliweb.com/thumb/26/09/27/1a0e0f82a30533147.avif"
+    },
+    {
+      "articleId": 4905,
+      "title": "블루아카)얀데레, 집착 콘",
+      "thumbnail": "https://i3.ruliweb.com/thumb/26/08/16/1a00ae342035a4f6e.avif"
+    },
+    {
+      "articleId": 4891,
+      "title": "블루아카) 칼학콘알파 짭밋다 돚거",
+      "thumbnail": "https://i2.ruliweb.com/thumb/26/08/26/1a03d355bfe554280.avif"
+    },
+    {
+      "articleId": 4884,
+      "title": "블루아카 만마전콘 돚거",
+      "thumbnail": "https://i3.ruliweb.com/thumb/25/01/26/194a2215bfe533147.avif"
+    }
+  ],
+  "normalTitleRows": 28,
+  "pagesObserved": [
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9
+  ],
+  "limitations": "Root board_id/board_url fields and search-response HTML were not in the user diagnostic; guards derive from separately inspected public board HTML and board_list.js. Actual native search HTML from board98 and installed r2 network/media decoding were not verified."
+}

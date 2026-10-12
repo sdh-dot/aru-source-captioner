@@ -1,0 +1,5 @@
+* text=auto eol=lf
+*.png binary
+*.woff2 binary
+firefox/lib/exifr.full.umd.js -text
+whale/lib/exifr.full.umd.js -text
