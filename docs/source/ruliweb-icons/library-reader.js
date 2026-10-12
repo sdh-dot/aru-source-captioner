@@ -9,7 +9,7 @@
     async getCached(ref,{signal}={}){
       this.check(signal);for(const source of ref.sources||[ref.source||'direct'])for(const kind of ['BUNDLE','NORMAL']){
         const cached=await this.browser.requestCache('get',this.args(ref,kind,source));this.check(signal);const pack=cached?.snapshot?.pack;
-        if(pack?.icons?.length)return {pack,acquiredAt:cached.acquiredAt||0,stale:cached.stale===true||cached.snapshot?.sourceCheck?.status==='partial'||(pack.kind==='BUNDLE'&&(pack.attributeReaderVersion!==2||pack.mediaReaderVersion!==1))};
+        if(pack?.icons?.length)return {pack,acquiredAt:cached.acquiredAt||0,stale:cached.stale===true||cached.snapshot?.sourceCheck?.status==='partial'||cached.snapshot?.sourceCheck?.states?.some(s=>s.metadataReadError||s.tagErrors||s.ambiguousMetadata)||(pack.kind==='BUNDLE'&&(pack.attributeReaderVersion!==2||pack.mediaReaderVersion!==1))};
       }return null;
     }
     async invalidate(ref,{signal}={}){for(const source of ref.sources||[ref.source||'direct'])for(const kind of ['NORMAL','BUNDLE']){this.check(signal);await this.browser.requestCache('invalidate',this.args(ref,kind,source));}}
