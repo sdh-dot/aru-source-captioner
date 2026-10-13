@@ -62,7 +62,7 @@
       this.running=true;
       let count=0, lastOffset=-1;
       const read=()=>this.options.read();
-      const report=(s,status,message)=>this.options.onProgress?.({...s,status,loaded:s.rawCount,total:s.declaredTotal,uniqueCount:s.icons.length,requests:count,message,busy:status==='loading'});
+      const report=(s,status,message)=>this.options.onProgress?.({...s,status,phase:'native',processed:s.rawCount,loaded:s.rawCount,total:s.declaredTotal,uniqueCount:s.icons.length,requests:count,message,busy:status==='loading'});
       try {
         let s=read();
         if (!s.ready) throw Object.assign(new Error('정상 아이콘 목록을 찾을 수 없습니다. 원래 선택기를 다시 열어 주세요.'),{code:'NATIVE_UNAVAILABLE'});
@@ -279,8 +279,9 @@
       let html='';
       if(response.body?.getReader) {
         const reader=response.body.getReader(),decoder=new TextDecoder();let bytes=0;
-        try {while(true){const r=await reader.read();if(r.done)break;bytes+=r.value.byteLength;if(bytes>maxBytes){await reader.cancel();throw new Error('공개 글 응답 크기 상한을 넘었습니다.');}html+=decoder.decode(r.value,{stream:true});}html+=decoder.decode();}finally{reader.releaseLock();}
+        try {while(true){const r=await reader.read();if(controller.signal.aborted){await reader.cancel();throw stopped();}if(r.done)break;bytes+=r.value.byteLength;if(bytes>maxBytes){await reader.cancel();throw new Error('공개 글 응답 크기 상한을 넘었습니다.');}html+=decoder.decode(r.value,{stream:true});}html+=decoder.decode();}finally{reader.releaseLock();}
       } else {html=await response.text();if(new TextEncoder().encode(html).length>maxBytes)throw new Error('공개 글 응답 크기 상한을 넘었습니다.');}
+      if(controller.signal.aborted)throw stopped();
       const doc=new DOMParser().parseFromString(html,'text/html');
       if(!doc.querySelector('.view_content[itemprop="articleBody"],.view_content article'))throw Object.assign(new Error('글 본문을 확인할 수 없습니다. 정상 탭에서 해당 글을 열어 주세요.'),{code:'READ_UNAVAILABLE'});
       return doc;
@@ -289,14 +290,29 @@
   }
   async function verifyReferences(result,{signal,onProgress,readDocument=getPublicDocument,intervalMs=300}={}) {
     const slaves=result.v1Slaves||[];
-    const states=[];let verified=0;
+    const states=[];let verified=0,processed=0;
+    // Index once instead of rescanning the full BUNDLE for each source article.
+    // The carrier's page/index order and every URL stay unchanged.
+    const iconsByReference=new Map(),repeatCounts=new Map(),readSources=new Map();
+    for(const icon of result.pack.icons){const key=icon.ref?.page+':'+icon.origin?.articleId;
+      if(!iconsByReference.has(key))iconsByReference.set(key,[]);iconsByReference.get(key).push(icon);}
+    for(const slave of slaves)repeatCounts.set(slave.articleId,(repeatCounts.get(slave.articleId)||0)+1);
+    const progress=(phase,message,status='loading')=>onProgress?.({status,phase,processed,total:result.pack.icons.length,loaded:result.pack.icons.length,
+      verifiedCount:verified,declaredCount:result.pack.icons.length,referencesProcessed:states.length,referencesTotal:slaves.length,
+      message,states:[...states],busy:status==='loading'});
+    const check=()=>{if(signal?.aborted)throw stopped();};
     for(const slave of slaves) {
-      if(signal?.aborted)throw stopped();
-      await delay(intervalMs,signal);
+      check();progress('references','원본 글 '+slave.articleId+'을 확인하고 있어요.');
+      // Keep the existing interval for actual reads; cached duplicate references
+      // perform no request and need no additional network pacing delay.
+      if(!readSources.has(slave.articleId))await delay(intervalMs,signal);
       try {
-        const doc=await readDocument(slave.articleId,{signal});
+        let observed=readSources.get(slave.articleId);
+        if(!observed){
+        const doc=await readDocument(slave.articleId,{signal});check();
         const body=doc.querySelector('.view_content[itemprop="articleBody"],.view_content article');
         if(!body)throw new Error('원본 본문 없음');
+        progress('tags','원본 아이콘과 태그를 읽고 있어요.');
         let articleRead=null,attributeError=null;
         try{articleRead=readArticlePack(doc,slave.articleId,'','98');}catch(error){attributeError=error.code||'ATTRIBUTES_UNAVAILABLE';}
         // Reuse the collector's normalization, including data-src and relative
@@ -308,17 +324,22 @@
           const raw=node.getAttribute('src')||node.getAttribute('data-src')||node.getAttribute('href');
           if(!raw)continue;try{const absolute=new URL(raw,readPath(slave.articleId,'https://bbs.ruliweb.com','98')).href;if(safeMedia(absolute))urls.add(absolute);}catch(_){/* Invalid observed URL stays unconfirmed. */}
         }
+        const byUrl=new Map(),mediaByUrl=new Map((articleRead?.pack.icons||[]).map(icon=>[icon.url,icon]));
+        for(const item of articleRead?.imageAttributesByUrl||[]){if(!byUrl.has(item.url))byUrl.set(item.url,[]);byUrl.get(item.url).push(item);}
+        observed={doc,articleRead,attributeError,urls,byUrl,mediaByUrl};
+        // Keep parsed DOMs only for articles actually referenced more than once.
+        if(repeatCounts.get(slave.articleId)>1)readSources.set(slave.articleId,observed);
+        }
+        check();const {doc,articleRead,attributeError,urls,byUrl,mediaByUrl}=observed;
         const matched=slave.images.filter(url=>urls.has(url)).length;
-        verified+=matched;
+        verified+=matched;processed+=slave.images.length;
         // Enrich only exact, unambiguous occurrences. The carrier still owns
         // URL, order, refs, categories, tagIds and all source identities.
         let tagged=0,ambiguous=0,tagErrors=0,metadataReadError=attributeError;
         try {
-          const metadata=articleRead,byUrl=new Map(),mediaByUrl=new Map(metadata.pack.icons.map(icon=>[icon.url,icon]));
+          const metadata=articleRead;
           tagErrors=metadata.counts.tagErrors;
-          for(const item of metadata.imageAttributesByUrl){if(!byUrl.has(item.url))byUrl.set(item.url,[]);byUrl.get(item.url).push(item);}
-          for(const icon of result.pack.icons){
-            if(icon.ref?.page!==slave.page || icon.origin?.articleId!==slave.articleId)continue;
+          for(const icon of iconsByReference.get(slave.page+':'+slave.articleId)||[]){
             const entries=byUrl.get(icon.url)||[];
             if(entries.length>1){ambiguous++;continue;}
             const attrs=entries[0];if(!attrs)continue;
@@ -331,20 +352,27 @@
         } catch(error) {metadataReadError=error.code||'ATTRIBUTES_UNAVAILABLE';}
         const title=doc.querySelector('.subject_text,.subject,.view_content h1')?.textContent?.trim().slice(0,120)||'글 '+slave.articleId;
         const source=result.pack.sources.find(s=>s.articleId===slave.articleId);if(source)source.title=title;
+        // Public CDN URL paths and carrier positions suffice for mismatch
+        // diagnostics. Query strings are deliberately omitted from diagnostics.
+        const missing=[];for(let index=0;index<slave.images.length;index++)if(!urls.has(slave.images[index])){
+          if(missing.length===5)break;const url=new URL(slave.images[index]);missing.push({index,url:url.origin+url.pathname});}
         states.push({articleId:slave.articleId,page:slave.page,status:matched===slave.images.length?'verified':'url-unconfirmed',declared:slave.images.length,matched,
-          tagged,ambiguousMetadata:ambiguous,tagErrors,metadataReadError});
+          tagged,ambiguousMetadata:ambiguous,tagErrors,metadataReadError,
+          metadataStatus:metadataReadError||tagErrors||ambiguous?'partial':articleRead?.counts.metadata.mediaTagAttributes?'complete':'none',
+          missingCount:slave.images.length-matched,missing});
       } catch(error) {
-        if(error.code==='ABORTED')throw error;
+        if(error.code==='ABORTED'||signal?.aborted)throw stopped();
         states.push({articleId:slave.articleId,page:slave.page,status:'unavailable',message:error.message});
         if(error.code==='ACCESS_DENIED'||error.code==='TIMEOUT') {
-          onProgress?.({status:'partial',verifiedCount:verified,declaredCount:result.pack.icons.length,states:[...states],message:error.message});
-          return {states,verifiedCount:verified,status:'partial',stoppedByRestriction:true};
+          progress('references',error.message,'partial');
+          return {states,verifiedCount:verified,processedCount:processed,status:'partial',stoppedByRestriction:true};
         }
       }
-      onProgress?.({status:'loading',verifiedCount:verified,declaredCount:result.pack.icons.length,loaded:result.pack.icons.length,total:result.pack.icons.length,message:'참조 '+states.length+'/'+slaves.length+'개 확인 중',states:[...states],busy:true});
+      progress('references','원본 '+states.length+'/'+slaves.length+'개를 확인했어요.');
     }
-    const complete=states.every(x=>x.status==='verified');
-    return {states,verifiedCount:verified,status:complete?'complete':'partial'};
+    // A URL match does not establish that tags decoded or had an unambiguous owner.
+    const complete=states.every(x=>x.status==='verified'&&x.metadataStatus!=='partial');
+    return {states,verifiedCount:verified,processedCount:processed,referencesProcessed:states.length,referencesTotal:slaves.length,status:complete?'complete':'partial'};
   }
   function prepareInsertion(icon, context) {
     const variants=icon.variants||icon.media?.variants||[];

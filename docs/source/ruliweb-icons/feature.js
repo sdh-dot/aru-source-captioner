@@ -93,14 +93,25 @@
       this.packSelection=null;this.stopCollection();
       if(this.current===task.context)Object.assign(task.context,task.before);
     }
-    async chooseArticle(value,boardId='98') {
-      if(!this.current||!this.picker)return {ok:false};
-      this.cancelPackSelection();
-      const ref=API.CatalogSources?(typeof value==='object'?{...value,...API.CatalogSources.parseRef(value.url)}:{...API.CatalogSources.parseRef(value,boardId),source:'direct'}):{articleId:API.ComposerAdapter.parseArticle(value),boardId:'98'};
+    chooseArticle(value,boardId='98') {
+      if(!this.current||!this.picker)return Promise.resolve({ok:false});
+      // A repeated tap on the same loading entry joins its existing task. A
+      // different entry still cancels the old request and restores its context.
+      let ref;
+      try {
+        ref=API.CatalogSources?(typeof value==='object'?{...value,...API.CatalogSources.parseRef(value.url)}:{...API.CatalogSources.parseRef(value,boardId),source:'direct'}):{articleId:API.ComposerAdapter.parseArticle(value),boardId:'98'};
+      } catch(error) {return Promise.reject(error);}
       ref.key=ref.key||'direct:'+ref.boardId+':'+ref.articleId;
+      const key=String(ref.boardId)+':'+ref.articleId;
+      if(this.packSelection?.key===key&&this.packSelection.context===this.current)return this.packSelection.promise;
+      this.cancelPackSelection();
       const context=this.current,picker=this.picker;
       const before=Object.fromEntries(['articleId','boardId','catalogRef','title','document','panel','sourceQuery'].map(k=>[k,context[k]]));
-      const task={context,before};this.packSelection=task;
+      const task={key,context,before};this.packSelection=task;
+      task.promise=this.loadChosenArticle(ref,task,picker);return task.promise;
+    }
+    async loadChosenArticle(ref,task,picker) {
+      const {context,before}=task;
       if(this.librarySearch){if(ref.source==='direct')this.libraryDirect?.set(String(ref.boardId)+':'+ref.articleId,ref);this.librarySearch.setEntries([...this.librarySearch.entries.values(),ref]);}
       if(ref.source==='direct')picker.setCatalog?.([...API.CatalogSources.developerPacks(),...API.CatalogSources.favorites(context.nativePanel),...this.libraryDirect.values()]);
       this.stopCollection();Object.assign(context,{articleId:ref.articleId,boardId:ref.boardId,catalogRef:ref,title:ref.title||'글 '+ref.articleId,document:null,panel:null,sourceQuery:''});
@@ -143,7 +154,7 @@
           if(context.target?.kind==='post')this.document.querySelector('#iconImage')?.click();
           else context.target?.anchor?.click();
         },
-        onStop:()=>this.stopCollection(),onRetry:()=>this.collect(true,true),onRefresh:()=>this.collect(true),
+        onStop:()=>{if(this.packSelection)this.cancelPackSelection();else this.stopCollection();},onRetry:()=>this.collect(true,true),onRefresh:()=>this.collect(true),
         onSelect:context.target?icon=>this.insertSelection(icon,context):icon=>{const prepared=this.site.prepareInsertion(icon,{panel:context.panel,kind:context.panel?.closest('#editor_common_write_wrapper')?'post':'comment'});this.preparedSelection=prepared;return {message:prepared.message};}});
       this.document.body.append(this.picker.element);
       if(context.target) {
@@ -180,7 +191,15 @@
       this.generation++;this.controller?.abort();this.controller=null;
       this.picker?.setProgress({status:'stopped',message:'수집을 중지했습니다. 재시도로 이어서 수집할 수 있습니다.',busy:false});
     }
-    async collect(refresh,manualNative=false,transactional=false) {
+    collect(refresh,manualNative=false,transactional=false) {
+      if(!this.enabled||!this.current||!this.picker)return Promise.resolve();
+      const key=JSON.stringify([this.current.boardId,this.current.articleId,!!refresh,!!manualNative,!!transactional]);
+      if(this.collectionTask?.context===this.current&&this.collectionTask.key===key&&this.controller&&!this.controller.signal.aborted)return this.collectionTask.promise;
+      const task={key,context:this.current};this.collectionTask=task;
+      task.promise=this.runCollection(refresh,manualNative,transactional).finally(()=>{if(this.collectionTask===task)this.collectionTask=null;});
+      return task.promise;
+    }
+    async runCollection(refresh,manualNative=false,transactional=false) {
       if(!this.enabled||!this.current||!this.picker)return;
       this.controller?.abort();const controller=new AbortController();this.controller=controller;
       const signal=controller.signal,token=++this.generation,context=this.current,picker=this.picker;
@@ -188,12 +207,13 @@
       const ensure=()=>{if(!current())throw Object.assign(new Error('수집 중지'),{code:'ABORTED'});};
       const diagnostics=new Map();
       const log=(stage,data)=>{
-        if(!current())return;const key=JSON.stringify(data);if(diagnostics.get(stage)===key)return;diagnostics.set(stage,key);
+        if(!current()||this.options?.debug!==true)return;const key=JSON.stringify(data);if(diagnostics.get(stage)===key)return;diagnostics.set(stage,key);
         global.console?.info?.('[Aru Icons]',{stage,articleId:context.articleId,...data});
       };
-      let pendingPack=null,pendingData=null;
+      let pendingPack=null,pendingData=null,latestProgress=null;
+      const progress=info=>{latestProgress={...info};picker.setProgress(info);};
       const commit=(pack,data={})=>{
-        if(this.librarySearch&&context.articleId){const ref=context.catalogRef||{boardId:context.boardId||'98',articleId:context.articleId,title:context.title,source:'direct'};this.librarySearch.remember(ref,pack,{stale:data.stale===true||(pack.kind==='BUNDLE'&&(pack.attributeReaderVersion!==2||pack.mediaReaderVersion!==1))});this.librarySearch.setState({currentKey:String(ref.boardId)+':'+ref.articleId});}
+        if(this.librarySearch&&context.articleId){const ref=context.catalogRef||{boardId:context.boardId||'98',articleId:context.articleId,title:context.title,source:'direct'};this.librarySearch.remember(ref,pack,{stale:data.stale===true||(pack.kind==='NORMAL'&&pack.bodyCounts?.tagErrors>0)||(pack.kind==='BUNDLE'&&(pack.attributeReaderVersion!==2||pack.mediaReaderVersion!==1))});this.librarySearch.setState({currentKey:String(ref.boardId)+':'+ref.articleId});}
         picker.setCurrentSource?.(String(context.boardId)+':'+context.articleId);picker.setPack(pack);
         if(context.catalogRef)picker.setCatalogPack?.(context.catalogRef,pack);
         const view=picker.getSnapshot?.();
@@ -210,7 +230,7 @@
         budget.count++;return this.site.getPublicDocument(id,{...opts,signal});
       };
       try {
-        picker.clearError();picker.setProgress({status:'loading',message:'선택한 공개 아이콘 글을 확인합니다.',busy:true});
+        picker.clearError();progress({status:'loading',phase:'cache',processed:null,total:null,message:'저장된 팩을 확인하고 있어요.',busy:true});
         if(refresh) {try{for(const kind of context.catalogRef?['BUNDLE','NORMAL']:['NORMAL'])await this.browser.requestCache('invalidate',cacheFor(kind));}catch(_){cacheWarning();}ensure();}
         else {
           try {
@@ -222,12 +242,12 @@
             // Read entries have the current DOM: an old native/body NORMAL cache must not
             // mask missing/changed metadata or perpetuate an empty list.
             const readCurrent=normal && !context.panel;
-            const readAttributes=cachedPack?.kind==='BUNDLE' && (cachedPack.attributeReaderVersion!==2 || cachedPack.mediaReaderVersion!==1 || cached.stale===true || cached.snapshot?.sourceCheck?.status==='partial');
+            const readAttributes=cachedPack?.kind==='BUNDLE' && (cachedPack.attributeReaderVersion!==2 || cachedPack.mediaReaderVersion!==1 || cached.stale===true || cached.snapshot?.sourceCheck?.status==='partial'||cached.snapshot?.sourceCheck?.states?.some(s=>s.metadataReadError||s.tagErrors||s.ambiguousMetadata));
             log('cache',{hit:!!cachedPack,kind:cachedPack?.kind || null,icons:cachedPack?.icons?.length ?? 0,
               action:empty?'ignore-empty-normal':bodyForNative?'ignore-body-for-native':readCurrent?'read-current-normal-body':readAttributes?'read-bundle-attributes':cachedPack?'reuse':'miss'});
             if(cachedPack && !empty && !bodyForNative && !readCurrent && !readAttributes) {
               publish(cachedPack,{from:'cache',stale:cached.stale===true});
-              picker.setProgress({status:'cached',message:'캐시 표시 · 취득 '+new Date(cached.acquiredAt).toLocaleString()+(cached.stale?' · 오래됨':'')+' · 원본 다시 읽기로 갱신',fetchedAt:cached.acquiredAt,busy:false});
+              progress({status:'cached',phase:'ready',processed:cachedPack.icons.length,loaded:cachedPack.icons.length,total:cachedPack.icons.length,message:'저장된 팩을 불러왔어요.'+(cached.stale?' 최신 정보는 새로고침으로 확인해 주세요.':''),fetchedAt:cached.acquiredAt,busy:false});
               // Cache cannot establish current native availability or current source verification.
               if(transactional){ensure();commit(pendingPack,pendingData);}return {ok:true,pack:cachedPack};
             }
@@ -235,12 +255,14 @@
         }
         let resolved,doc;
         try {
+          progress({status:'loading',phase:'article',processed:null,total:null,message:'아이콘 게시글을 읽고 있어요.',busy:true});
           doc=(!refresh&&context.document) || await readPublic(context.articleId,{forceRead:refresh,boardId:context.boardId||'98'});ensure();
           const body=doc.querySelector('.view_content[itemprop="articleBody"],.view_content article');
+          progress({status:'loading',phase:'metadata',processed:null,total:null,message:'팩 정보를 확인하고 있어요.',busy:true});
           resolved=(context.boardId&&context.boardId!=='98')?{kind:'NORMAL',pack:null,warnings:[],rawMetadata:null}:await API.Metadata.parseDocument(body||doc,{articleId:context.articleId,boardId:98});ensure();
         } catch(error) {
           ensure();if(transactional)throw error;picker.setError('['+(error.code||'READ_FAILED')+'] '+error.message+' 정상 탭에서 대표 글을 열거나 원래 선택기로 돌아갈 수 있습니다.');
-          if(error.code==='ACCESS_DENIED') {picker.setProgress({status:'partial',message:'접근 제한으로 중지했습니다. 자동 재요청은 하지 않습니다.',busy:false});return;}
+          if(error.code==='ACCESS_DENIED') {progress({status:'partial',message:'접근 제한으로 중지했습니다. 자동 재요청은 하지 않습니다.',busy:false});return;}
           resolved={kind:'NORMAL',pack:null,warnings:[],rawMetadata:null};
         }
         log('pack-type',{kind:resolved.kind,metadataVersion:resolved.metadataVersion ?? null,metadataIcons:resolved.pack?.icons?.length ?? 0,
@@ -249,40 +271,46 @@
         let pack=resolved.pack,sourceCheck=null;
         if(!pack) {
           if(!context.panel){
-            if(!doc){picker.setProgress({status:'partial',message:'공개 본문을 읽지 못했습니다. 정상 탭에서 다시 열거나 원본 다시 읽기를 사용해 주세요.',busy:false});return;}
+            if(!doc){progress({status:'partial',message:'공개 본문을 읽지 못했습니다. 정상 탭에서 다시 열거나 원본 다시 읽기를 사용해 주세요.',busy:false});return;}
+            progress({status:'loading',phase:'tags',processed:null,total:null,message:'아이콘과 태그를 읽고 있어요.',busy:true});
             const collected=this.site.readArticlePack(doc,context.articleId,context.title,context.boardId||'98',{diagnostics:this.options?.debug===true});ensure();pack=collected.pack;
             log('body-collect',{selector:collected.selector,...collected.counts});publish(pack,{from:'article-body'});
             picker.setMetadataDiagnostics?.(collected.metadataDiagnostics);
-            picker.setProgress({status:!pack.icons.length || collected.counts.excluded?'partial':'complete',loaded:pack.icons.length,total:pack.icons.length,
+            progress({status:!pack.icons.length || collected.counts.excluded || collected.counts.tagErrors?'partial':'complete',phase:'ready',processed:pack.icons.length,loaded:pack.icons.length,total:pack.icons.length,
               message:'NORMAL 본문 URL 수집 · 대상 '+collected.counts.candidates+'개 · 제외 '+collected.counts.excluded+'개 · 중복 '+collected.counts.duplicates+'개. '+(!pack.icons.length?'지원하는 본문 미디어가 없습니다. ':'')+(collected.counts.tagErrors?'태그를 읽지 못한 이미지 '+collected.counts.tagErrors+'개는 태그 없이 표시합니다.':''),busy:false});
           } else {
+          progress({status:'loading',phase:'native',processed:null,total:null,message:'사이트 아이콘 목록이 준비되기를 기다리고 있어요.',busy:true});
           const start=Date.now();let s=this.site.snapshot(context.panel,context.articleId);
           while(!s.ready&&Date.now()-start<10000){await this.site.delay(100,signal);ensure();s=this.site.snapshot(context.panel,context.articleId);}
           ensure();pack=this.site.normalPack(s,context.articleId,context.title);publish(pack,{from:'native-panel',raw:s.rawCount});
           if(this.options.autoLoad!==false||manualNative) {
             const session=new this.site.NativeLoadSession({articleId:context.articleId,read:()=>this.site.snapshot(context.panel,context.articleId),click:b=>b.click(),isCurrent:current,
-              onProgress:p=>{if(!current())return;publish(this.site.normalPack(p,context.articleId,context.title),{from:'native-panel',raw:p.rawCount});picker.setProgress(p);}});
+              onProgress:p=>{if(!current())return;publish(this.site.normalPack(p,context.articleId,context.title),{from:'native-panel',raw:p.rawCount});progress(p);}});
             const final=await session.run(signal);ensure();pack=this.site.normalPack(final,context.articleId,context.title);
-          } else picker.setProgress({status:s.done?'complete':'partial',loaded:s.rawCount,total:s.declaredTotal,message:'자동 추가 수집 꺼짐 · 원래 버튼 사용 후 설정에서 자동 수집을 켤 수 있습니다.',busy:false});
+          } else progress({status:s.done?'complete':'partial',loaded:s.rawCount,total:s.declaredTotal,message:'자동 추가 수집 꺼짐 · 원래 버튼 사용 후 설정에서 자동 수집을 켤 수 있습니다.',busy:false});
           }
         } else {
           publish(pack,{from:'metadata'});
           if(resolved.v1Slaves?.length) {
-            sourceCheck=await this.site.verifyReferences(resolved,{signal,readDocument:(id,opts)=>readPublic(id,{...opts,boardId:'98',forceRead:refresh}),onProgress:p=>{if(current())picker.setProgress(p);}});ensure();
+            sourceCheck=await this.site.verifyReferences(resolved,{signal,readDocument:(id,opts)=>readPublic(id,{...opts,boardId:'98',forceRead:refresh}),onProgress:p=>{if(current())progress(p);}});ensure();
             // A new pack identity rebuilds the catalog's previously computed index too.
             pack={...pack,attributeReaderVersion:2,mediaReaderVersion:1};
-            publish(pack,{from:'metadata',stale:sourceCheck.status!=='complete'});picker.setProgress({...sourceCheck,loaded:pack.icons.length,total:pack.icons.length,declaredCount:pack.icons.length,message:'선언 '+pack.icons.length+'개 · 원본 정확 URL 확인 '+sourceCheck.verifiedCount+'개. '+(sourceCheck.status==='partial'?'일부 참조는 확인하지 못했습니다.':'참조 글 확인 완료.'),busy:false});
-            if(sourceCheck.states.some(s=>s.status!=='verified'))picker.setError(sourceCheck.states.filter(s=>s.status!=='verified').map(s=>'글 '+s.articleId+': '+(s.message||'URL 대응 미확인')).join(' / '));
-          } else picker.setProgress({status:'complete',loaded:pack.icons.length,total:pack.icons.length,message:'공개 메타데이터 판독 완료 · 서버 삽입은 검증 대기',busy:false});
+            publish(pack,{from:'metadata',stale:sourceCheck.status!=='complete'});progress({...sourceCheck,phase:'ready',processed:sourceCheck.processedCount??sourceCheck.verifiedCount,loaded:pack.icons.length,total:pack.icons.length,declaredCount:pack.icons.length,message:sourceCheck.status==='partial'?'일부 원본 정보(URL·태그)를 확인하지 못했어요. 아래 안내를 확인해 주세요.':'원본 아이콘과 태그를 확인했어요.',busy:false});
+            const problems=sourceCheck.states.filter(s=>s.status!=='verified'||s.metadataStatus==='partial');
+            if(problems.length)picker.setError(problems.map(s=>'글 '+s.articleId+': '+(s.message||[s.status!=='verified'?'원본 URL '+s.matched+'/'+s.declared+'개 확인 · 나머지 URL 대응 미확인':'',s.metadataStatus==='partial'?'일부 태그를 읽지 못했어요. 새로고침하거나 원본 태그를 확인해 주세요.':''].filter(Boolean).join(' '))).join(' / '));
+          } else progress({status:'complete',phase:'ready',processed:pack.icons.length,loaded:pack.icons.length,total:pack.icons.length,message:'팩 정보를 읽었어요.',busy:false});
         }
         ensure();
         if(pack.kind==='NORMAL' && !pack.icons.length){log('cache-write',{action:'skip-empty-normal',icons:0});if(transactional)throw Object.assign(new Error('이 게시글에는 표시할 수 있는 아이콘이 없습니다.'),{code:'PACK_EMPTY'});return;}
         // Existing v1 partial source verification remains a warning, not a new pack rejection policy.
+        const completedProgress={...latestProgress,phase:'ready',processed:sourceCheck?.processedCount??pack.icons.length,loaded:pack.icons.length,total:pack.icons.length,busy:false};
+        progress({...completedProgress,status:'loading',phase:'storage',message:'다음에 사용할 팩을 저장하고 있어요.',busy:true});
         try{await this.browser.requestCache('put',{...cacheFor(pack.kind),snapshot:{pack,kind:resolved.kind,sourceCheck},rawMetadata:resolved.rawMetadata});}catch(_){cacheWarning();}
+        ensure();progress(completedProgress);
         ensure();if(transactional&&pendingPack)commit(pendingPack,pendingData);return {ok:true,pack};
       } catch(error) {
         if(!current())return {ok:false,cancelled:true};
-        picker.setError('['+(error.code||'READ_FAILED')+'] '+error.message);picker.setProgress({status:error.code==='ABORTED'?'stopped':'error',message:error.message,busy:false});
+        picker.setError('['+(error.code||'READ_FAILED')+'] '+error.message);progress({status:error.code==='ABORTED'?'stopped':'error',message:error.message,busy:false});
         return {ok:false,error:{code:error.code||'READ_FAILED',message:error.message}};
       }
     }

@@ -9,7 +9,7 @@
     async getCached(ref,{signal}={}){
       this.check(signal);for(const source of ref.sources||[ref.source||'direct'])for(const kind of ['BUNDLE','NORMAL']){
         const cached=await this.browser.requestCache('get',this.args(ref,kind,source));this.check(signal);const pack=cached?.snapshot?.pack;
-        if(pack?.icons?.length)return {pack,acquiredAt:cached.acquiredAt||0,stale:cached.stale===true||cached.snapshot?.sourceCheck?.status==='partial'||(pack.kind==='BUNDLE'&&(pack.attributeReaderVersion!==2||pack.mediaReaderVersion!==1))};
+        if(pack?.icons?.length)return {pack,acquiredAt:cached.acquiredAt||0,stale:cached.stale===true||(pack.kind==='NORMAL'&&pack.bodyCounts?.tagErrors>0)||cached.snapshot?.sourceCheck?.status==='partial'||cached.snapshot?.sourceCheck?.states?.some(s=>s.metadataReadError||s.tagErrors||s.ambiguousMetadata)||(pack.kind==='BUNDLE'&&(pack.attributeReaderVersion!==2||pack.mediaReaderVersion!==1))};
       }return null;
     }
     async invalidate(ref,{signal}={}){for(const source of ref.sources||[ref.source||'direct'])for(const kind of ['NORMAL','BUNDLE']){this.check(signal);await this.browser.requestCache('invalidate',this.args(ref,kind,source));}}
@@ -26,7 +26,7 @@
       if(!pack)pack=this.site.readArticlePack(doc,ref.articleId,observedTitle||ref.title,String(ref.boardId)).pack;
       this.check(signal);if(!pack.icons?.length)throw fail('EMPTY_PACK','읽을 수 있는 아이콘이 없습니다.');
       try{await this.browser.requestCache('put',{...this.args(ref,pack.kind),snapshot:{pack},rawMetadata:parsed.rawMetadata});}catch(error){this.check(signal);/* Cache unavailable: still return the actual public model. */}
-      return {pack};
+      return {pack,stale:pack.kind==='NORMAL'&&pack.bodyCounts?.tagErrors>0};
     }
   }
   A.LibraryPackReader=LibraryPackReader;
