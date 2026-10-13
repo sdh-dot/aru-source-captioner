@@ -2,6 +2,9 @@
 
 ## 미출시 — Android Firefox 모바일·로딩 개선 개발본
 
+- GitHub 통합 후 NORMAL 태그 읽기 실패도 partial로 유지하고 캐시·전체 팩 검색의 재시도 상태를 보존. 성공적인 재읽기 후에만 complete로 전환.
+- 후속 회귀 5개 추가: 총 84개 공개 테스트. [이번 통합 검증](docs/ANDROID-INTEGRATION.md), [미해결 항목](docs/KNOWN-ISSUES.md).
+
 2026-10-13. RC3 / 0.1.2 기준의 별도 `fix/android-firefox-loading-ux` 브랜치. 스토어 제출본과 공개 main은 유지합니다.
 
 - 모바일의 최초 실행·팩 목록·팩 선택 완료에서 검색 자동 포커스 방지.

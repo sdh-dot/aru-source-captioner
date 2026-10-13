@@ -74,9 +74,9 @@
         if(!refresh)await parallel(refs,async([id,ref])=>{let cached;try{cached=await this.reader.getCached(ref,{signal});}catch(error){if(error.code==='ABORTED'||signal.aborted)throw abort();}ensure();if(cached?.pack){if(!this.packs.has(id)||cached.acquiredAt>this.packs.get(id).acquiredAt)this.remember(ref,cached.pack,cached);this.progress.cached++;emit();}});
         const pending=refs.filter(([id])=>refresh||!this.packs.has(id)||this.packs.get(id).stale);
         await parallel(pending,async([id,ref])=>{try{ensure();if(refresh)await this.reader.invalidate(ref,{signal});ensure();
-          const loaded=await this.reader.load(ref,{signal,forceRead:refresh});ensure();this.remember(ref,loaded.pack||loaded,{acquiredAt:Date.now(),stale:false});this.progress.loaded++;emit();
+          const loaded=await this.reader.load(ref,{signal,forceRead:refresh});ensure();this.remember(ref,loaded.pack||loaded,{acquiredAt:Date.now(),stale:loaded.stale===true});this.progress.loaded++;emit();
         }catch(error){if(error.code==='ABORTED'||signal.aborted)throw abort();ensure();this.progress.failed++;this.progress.errors.push({packKey:id,code:error.code||'READ_FAILED'});emit();}});
-        ensure();this.progress.status=this.progress.failed?'partial':'complete';emit();return this.search();}
+        ensure();this.progress.status=this.progress.failed||refs.some(([id])=>this.packs.get(id)?.stale)?'partial':'complete';emit();return this.search();}
       catch(error){if(error.code!=='ABORTED')throw error;if(revision===this.revision){this.progress.status='cancelled';this.cache.clear();}return {cancelled:true};}
       finally{if(this.controller===controller)this.controller=null;}
     }

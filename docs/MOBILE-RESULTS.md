@@ -1,5 +1,7 @@
 # Android Firefox 모바일·로딩 개선 개발 결과
 
+> 아래는 ZIP에 포함된 이전 작업 기록이다. GitHub 통합 후 재검증(84개 테스트, 역사적 191/96)과 추가 수정은 [ANDROID-INTEGRATION.md](ANDROID-INTEGRATION.md)를 기준으로 한다.
+
 2026-10-13. 기준은 공개 RC3 / 0.1.2 스냅샷 `1164afc3745d6af47e4e3fc750540963226f8355`다. `fix/android-firefox-loading-ux` 별도 브랜치와 `browser-extension/android-firefox-loading-ux` 작업 트리에서 개발했다. 기존 제출본, 이전 버전, 공개 main 및 상위 저장소 이력은 변경하지 않았다. Manifest 버전/ID/권한은 그대로이며 정식 출시나 Android 지원 완료를 선언한 빌드가 아니다.
 
 ## 확인된 원인과 수정

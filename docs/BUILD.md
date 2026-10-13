@@ -1,5 +1,7 @@
 # 재현 가능한 빌드
 
+Android 개발 브랜치는 `git clone --branch fix/android-firefox-loading-ux https://github.com/sdh-dot/aru-source-captioner.git`로 **새 폴더**에 받는다. 기존 작업 폴더를 덮어쓰지 않는다. Node 24에서 아래 명령을 실행하며 추가 전역 npm 모듈은 기본 검증에 필요하지 않다. 이번 재검증 버전은 Node 24.20.0 / npm 11.19.0이다. [통합 기록](ANDROID-INTEGRATION.md), [모바일 수동 절차](MOBILE-MANUAL-TESTING.md)를 함께 확인한다.
+
 Windows PowerShell, Linux, macOS에서 Node.js 24 / npm을 사용합니다. 검증에 사용한 정확한 버전은 VALIDATION.md에 기록합니다. Python·개인 폴더·이전 버전 ZIP·전역 npm 모듈·API 키가 필요하지 않습니다.
 
 ```sh

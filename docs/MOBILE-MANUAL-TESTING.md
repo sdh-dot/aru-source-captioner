@@ -4,8 +4,8 @@
 
 ## 로드 경로
 
-- Firefox: `browser-extension/android-firefox-loading-ux/firefox/manifest.json`
-- Chrome/Edge/Whale: `browser-extension/android-firefox-loading-ux/whale`
+- Firefox: 저장소 루트 기준 `firefox/manifest.json`
+- Chrome/Edge/Whale: 저장소 루트 기준 `whale/`
 - 패키지: 같은 작업 트리의 `dist/firefox/`, `dist/whale/`. 서명된 Android 배포본이 아니다.
 
 PC Firefox는 별도 테스트 프로필에서 `about:debugging#/runtime/this-firefox`의 임시 부가 기능 로드로 Manifest를 선택한다. Chromium은 별도 테스트 프로필의 확장 개발자 모드에서 압축해제 폴더를 로드한다. 실제 설치본을 교체하는 작업은 사용자가 선택해 수행한다.
@@ -52,3 +52,24 @@ web-ext run -t firefox-android --source-dir firefox
 실제 기기에서 선택기 실행부터 첫 목록/전체 태그 준비까지 시간을 기록한다. 네트워크 속도, 팩 번호, 캐시 유무, 화면/키보드 상태를 함께 남긴다. 검색만으로 원본 재요청이 생기는지 확인한다. 오류 로그는 공개 글 번호와 오류 코드만 전달하고 인증 헤더나 전체 네트워크 내보내기는 보내지 않는다.
 
 현재 실기기 결과는 모두 **사용자 수동 검증 필요**다.
+
+## 이번 후속 수정 재현
+
+1. 읽을 수 있는 이미지 URL은 정상이고 `data-aru-tags`만 잘못 인코딩된 합성 NORMAL 팩으로 자동 테스트를 실행한다: `node --test tests/loading-reader.test.cjs`.
+2. 태그 읽기 실패 후에도 이미지는 남고 완료가 아닌 partial이어야 한다. 전체 팩 검색에서도 부분 상태여야 한다.
+3. 같은 원본의 태그가 정상으로 수정된 뒤 다시 읽으면 실제 태그가 검색되고 complete로 바뀌어야 한다. 태그가 애초에 없는 정상 자료는 오류로 분류하지 않는다.
+4. 실제 원본을 사용자 허락 없이 수정하지 않는다. 실기기에서는 실패가 있는 본인의 테스트 자료와 정상 자료를 비교한다.
+
+## 기기 준비와 기록 양식
+
+별도 테스트 기기/에뮬레이터에 Firefox를 준비하고 Android USB 디버깅 및 Firefox의 USB 원격 디버깅을 켠다. PC에 Android Platform Tools/ADB와 web-ext가 준비된 상태에서 `adb devices`로 기기를 확인하고 위 web-ext 명령을 실행한다. 필요하면 `--adb-device` 및 `--firefox-apk`로 실제 대상을 지정한다. Android 임시 로드는 주 프로필에 들어가므로 기존 설치와 같은 ID를 가진 개발본으로 일반 사용 프로필을 교체하지 않는다. 절차 근거: [Mozilla 개발 안내](https://extensionworkshop.com/documentation/develop/developing-extensions-for-firefox-for-android/).
+
+| 환경 | 기록할 값 |
+|---|---|
+| 빌드 | Git commit, 확장 0.1.2 개발본 |
+| 기기 | Android/Firefox 버전, 화면 방향 |
+| 자료 | 팩/원본 게시글 ID, 캐시 사용 또는 새로고침 |
+| 동작 | 최초 초점 / 태그 스크롤 / 설정 / 로딩 / 취소 / 재시도 / 삽입 각각 통과·실패·미검증 |
+| 결과 | 공개 오류 코드, 태그 속성/디코딩 개수, 불일치 위치. 인증·작성 내용 제외 |
+
+PC Firefox와 Whale도 같은 빈 댓글·답글·Summernote에서 GIF/WEBP/MP4, 즐겨찾기, 필터, 기존 설정/데이터 유지, 삽입·undo를 각각 검사한다. `MANUAL-TESTING.md`의 기존 절차를 유지한다.

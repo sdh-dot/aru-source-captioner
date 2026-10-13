@@ -1491,9 +1491,9 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
         if(!refresh)await parallel(refs,async([id,ref])=>{let cached;try{cached=await this.reader.getCached(ref,{signal});}catch(error){if(error.code==='ABORTED'||signal.aborted)throw abort();}ensure();if(cached?.pack){if(!this.packs.has(id)||cached.acquiredAt>this.packs.get(id).acquiredAt)this.remember(ref,cached.pack,cached);this.progress.cached++;emit();}});
         const pending=refs.filter(([id])=>refresh||!this.packs.has(id)||this.packs.get(id).stale);
         await parallel(pending,async([id,ref])=>{try{ensure();if(refresh)await this.reader.invalidate(ref,{signal});ensure();
-          const loaded=await this.reader.load(ref,{signal,forceRead:refresh});ensure();this.remember(ref,loaded.pack||loaded,{acquiredAt:Date.now(),stale:false});this.progress.loaded++;emit();
+          const loaded=await this.reader.load(ref,{signal,forceRead:refresh});ensure();this.remember(ref,loaded.pack||loaded,{acquiredAt:Date.now(),stale:loaded.stale===true});this.progress.loaded++;emit();
         }catch(error){if(error.code==='ABORTED'||signal.aborted)throw abort();ensure();this.progress.failed++;this.progress.errors.push({packKey:id,code:error.code||'READ_FAILED'});emit();}});
-        ensure();this.progress.status=this.progress.failed?'partial':'complete';emit();return this.search();}
+        ensure();this.progress.status=this.progress.failed||refs.some(([id])=>this.packs.get(id)?.stale)?'partial':'complete';emit();return this.search();}
       catch(error){if(error.code!=='ABORTED')throw error;if(revision===this.revision){this.progress.status='cancelled';this.cache.clear();}return {cancelled:true};}
       finally{if(this.controller===controller)this.controller=null;}
     }
@@ -1516,7 +1516,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
     async getCached(ref,{signal}={}){
       this.check(signal);for(const source of ref.sources||[ref.source||'direct'])for(const kind of ['BUNDLE','NORMAL']){
         const cached=await this.browser.requestCache('get',this.args(ref,kind,source));this.check(signal);const pack=cached?.snapshot?.pack;
-        if(pack?.icons?.length)return {pack,acquiredAt:cached.acquiredAt||0,stale:cached.stale===true||cached.snapshot?.sourceCheck?.status==='partial'||cached.snapshot?.sourceCheck?.states?.some(s=>s.metadataReadError||s.tagErrors||s.ambiguousMetadata)||(pack.kind==='BUNDLE'&&(pack.attributeReaderVersion!==2||pack.mediaReaderVersion!==1))};
+        if(pack?.icons?.length)return {pack,acquiredAt:cached.acquiredAt||0,stale:cached.stale===true||(pack.kind==='NORMAL'&&pack.bodyCounts?.tagErrors>0)||cached.snapshot?.sourceCheck?.status==='partial'||cached.snapshot?.sourceCheck?.states?.some(s=>s.metadataReadError||s.tagErrors||s.ambiguousMetadata)||(pack.kind==='BUNDLE'&&(pack.attributeReaderVersion!==2||pack.mediaReaderVersion!==1))};
       }return null;
     }
     async invalidate(ref,{signal}={}){for(const source of ref.sources||[ref.source||'direct'])for(const kind of ['NORMAL','BUNDLE']){this.check(signal);await this.browser.requestCache('invalidate',this.args(ref,kind,source));}}
@@ -1533,7 +1533,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
       if(!pack)pack=this.site.readArticlePack(doc,ref.articleId,observedTitle||ref.title,String(ref.boardId)).pack;
       this.check(signal);if(!pack.icons?.length)throw fail('EMPTY_PACK','읽을 수 있는 아이콘이 없습니다.');
       try{await this.browser.requestCache('put',{...this.args(ref,pack.kind),snapshot:{pack},rawMetadata:parsed.rawMetadata});}catch(error){this.check(signal);/* Cache unavailable: still return the actual public model. */}
-      return {pack};
+      return {pack,stale:pack.kind==='NORMAL'&&pack.bodyCounts?.tagErrors>0};
     }
   }
   A.LibraryPackReader=LibraryPackReader;
@@ -2964,7 +2964,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
       let pendingPack=null,pendingData=null,latestProgress=null;
       const progress=info=>{latestProgress={...info};picker.setProgress(info);};
       const commit=(pack,data={})=>{
-        if(this.librarySearch&&context.articleId){const ref=context.catalogRef||{boardId:context.boardId||'98',articleId:context.articleId,title:context.title,source:'direct'};this.librarySearch.remember(ref,pack,{stale:data.stale===true||(pack.kind==='BUNDLE'&&(pack.attributeReaderVersion!==2||pack.mediaReaderVersion!==1))});this.librarySearch.setState({currentKey:String(ref.boardId)+':'+ref.articleId});}
+        if(this.librarySearch&&context.articleId){const ref=context.catalogRef||{boardId:context.boardId||'98',articleId:context.articleId,title:context.title,source:'direct'};this.librarySearch.remember(ref,pack,{stale:data.stale===true||(pack.kind==='NORMAL'&&pack.bodyCounts?.tagErrors>0)||(pack.kind==='BUNDLE'&&(pack.attributeReaderVersion!==2||pack.mediaReaderVersion!==1))});this.librarySearch.setState({currentKey:String(ref.boardId)+':'+ref.articleId});}
         picker.setCurrentSource?.(String(context.boardId)+':'+context.articleId);picker.setPack(pack);
         if(context.catalogRef)picker.setCatalogPack?.(context.catalogRef,pack);
         const view=picker.getSnapshot?.();
@@ -3027,7 +3027,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
             const collected=this.site.readArticlePack(doc,context.articleId,context.title,context.boardId||'98',{diagnostics:this.options?.debug===true});ensure();pack=collected.pack;
             log('body-collect',{selector:collected.selector,...collected.counts});publish(pack,{from:'article-body'});
             picker.setMetadataDiagnostics?.(collected.metadataDiagnostics);
-            progress({status:!pack.icons.length || collected.counts.excluded?'partial':'complete',phase:'ready',processed:pack.icons.length,loaded:pack.icons.length,total:pack.icons.length,
+            progress({status:!pack.icons.length || collected.counts.excluded || collected.counts.tagErrors?'partial':'complete',phase:'ready',processed:pack.icons.length,loaded:pack.icons.length,total:pack.icons.length,
               message:'NORMAL 본문 URL 수집 · 대상 '+collected.counts.candidates+'개 · 제외 '+collected.counts.excluded+'개 · 중복 '+collected.counts.duplicates+'개. '+(!pack.icons.length?'지원하는 본문 미디어가 없습니다. ':'')+(collected.counts.tagErrors?'태그를 읽지 못한 이미지 '+collected.counts.tagErrors+'개는 태그 없이 표시합니다.':''),busy:false});
           } else {
           progress({status:'loading',phase:'native',processed:null,total:null,message:'사이트 아이콘 목록이 준비되기를 기다리고 있어요.',busy:true});

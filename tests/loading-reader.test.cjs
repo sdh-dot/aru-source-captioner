@@ -41,3 +41,46 @@ test('close aborts real fetch signal and no closed picker receives late source d
  const feature=new h.A.IconFeature({document:h.w.document,site,createPicker:()=>picker,browser:{requestCache:async()=>null}});feature.enabled=true;await feature.open({articleId:null,boardId:'98',catalogMode:true});const task=feature.chooseArticle('5039');await h.wait(5);feature.stopSession(true);assert.equal(signal.aborted,true);release();await task;assert.equal(published,0);
  }finally{h.destroy();}
 });
+test('NORMAL tag decode failure remains partial after storage and retains usable media',async()=>{
+ const h=setup();try{const progress=[],writes=[],packs=[];
+ const doc=source(h,['https://i1.ruliweb.com/ori/normal.webp']);doc.querySelector('img').setAttribute('data-aru-tags','aru-tags:v1:%broken');
+ const picker={element:h.w.document.createElement('div'),destroy(){},setCatalog(){},setPack:p=>packs.push(p),setProgress:p=>progress.push(p),clearError(){},setError(){},completeCatalogSelection(){}};
+ const feature=new h.A.IconFeature({document:h.w.document,site:{...h.A.SiteAdapter,getPublicDocument:async()=>doc},createPicker:()=>picker,browser:{requestCache:async(action,data)=>{if(action==='put')writes.push(data);return null;}}});
+ feature.enabled=true;await feature.open({articleId:null,boardId:'98',catalogMode:true});const result=await feature.chooseArticle('3867');
+ assert.equal(result.ok,true);assert.equal(packs.at(-1).icons.length,1);assert.equal(writes.at(-1).snapshot.pack.bodyCounts.tagErrors,1);
+ assert.equal(progress.at(-1).busy,false);assert.equal(progress.at(-1).status,'partial');feature.destroy();
+ }finally{h.destroy();}
+});
+test('library retries cached NORMAL tag errors without invalidating unrelated storage',async()=>{
+ const h=setup();try{h.w.eval(fs.readFileSync(path.join(__dirname,'../docs/source/ruliweb-icons/library-reader.js'),'utf8'));
+ const doc=source(h,['https://i1.ruliweb.com/ori/normal.webp']);doc.querySelector('img').setAttribute('data-aru-tags','aru-tags:v1:%broken');
+ const pack=h.A.SiteAdapter.readArticlePack(doc,3867).pack,actions=[];
+ const reader=new h.A.LibraryPackReader({isActive:()=>true,browser:{requestCache:async(action)=>{actions.push(action);return {snapshot:{pack},acquiredAt:100};}}});
+ const cached=await reader.getCached({boardId:'98',articleId:3867,source:'direct'});assert.equal(cached.stale,true);assert.equal(cached.pack,pack);assert.deepEqual(actions,['get']);
+ }finally{h.destroy();}
+});
+test('article 3867 uses the same identity on desktop/mobile and never guesses a different media URL',async()=>{
+ const h=setup();try{
+ for(const origin of ['https://bbs.ruliweb.com','https://m.ruliweb.com'])assert.equal(h.A.SiteAdapter.readPath('3867',origin),origin+'/community/board/98/read/3867');
+ const f=await fixture(h);f.parsed.v1Slaves[0].articleId=3867;for(const icon of f.parsed.pack.icons)icon.origin.articleId=3867;
+ const before=f.parsed.pack.icons.map(i=>i.url),reads=[];
+ const result=await h.A.SiteAdapter.verifyReferences(f.parsed,{intervalMs:0,readDocument:async id=>{reads.push(id);return source(h,f.urls.map(url=>url.replace('/ori/','/thumb/')));}});
+ assert.deepEqual(reads,[3867]);assert.equal(result.status,'partial');assert.equal(result.verifiedCount,0);assert.equal(result.states[0].missingCount,8);assert.equal(result.states[0].missing.length,5);
+ assert.deepEqual(plain(f.parsed.pack.icons.map(i=>i.url)),plain(before));
+ }finally{h.destroy();}
+});
+test('public reader rejects redirects and board lists instead of treating them as the requested article',async()=>{
+ const h=setup();try{const origin='https://m.ruliweb.com',url=origin+'/community/board/98/read/3867';
+ await assert.rejects(h.A.SiteAdapter.getPublicDocument(3867,{origin,forceRead:true,fetchFn:async()=>({ok:true,redirected:true,url:url.replace('3867','5039')})}),e=>e.code==='READ_REDIRECT');
+ await assert.rejects(h.A.SiteAdapter.getPublicDocument(3867,{origin,forceRead:true,fetchFn:async()=>({ok:true,url,headers:{get:()=>null},text:async()=>'<main>게시판 목록</main>'})}),e=>e.code==='READ_UNAVAILABLE');
+ }finally{h.destroy();}
+});
+test('library search keeps newly read tag failures partial and becomes complete after a successful retry',async()=>{
+ const h=setup();try{for(const name of ['library-search','library-reader'])h.w.eval(fs.readFileSync(path.join(__dirname,'../docs/source/ruliweb-icons',name+'.js'),'utf8'));
+ const doc=source(h,['https://i1.ruliweb.com/ori/normal.webp']);doc.querySelector('img').setAttribute('data-aru-tags','aru-tags:v1:%broken');let reads=0;
+ const reader=new h.A.LibraryPackReader({isActive:()=>true,site:{...h.A.SiteAdapter,getPublicDocument:async()=>{reads++;return doc;}},browser:{requestCache:async()=>null}});
+ const engine=new h.A.LibrarySearchEngine({reader});engine.setEntries([{boardId:'98',articleId:3867,source:'direct'}]);engine.setState({scope:'all'});
+ const partial=await engine.collect();assert.equal(partial.count,1);assert.equal(partial.partial,true);assert.equal(partial.progress.status,'partial');
+ doc.querySelector('img').setAttribute('data-aru-tags',h.encode(['미소']));const complete=await engine.collect();assert.equal(reads,2);assert.equal(complete.partial,false);assert.equal(complete.progress.status,'complete');engine.destroy();
+ }finally{h.destroy();}
+});
