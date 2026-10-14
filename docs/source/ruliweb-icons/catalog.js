@@ -95,7 +95,7 @@
     constructor({container,onChoose,onDirect,onCancel}) {
       this.catalog=new Catalog();this.onChoose=onChoose;this.onDirect=onDirect;this.events=new AbortController();this.media=new MediaBudget(4);this.frame=0;this.closed=false;this.busy=false;this.operation=0;this.failures=new Map();
       const doc=container.ownerDocument,el=(tag,text)=>{const n=doc.createElement(tag);if(text)n.textContent=text;return n;};this.el=el;
-      this.node=el('section');this.node.className='catalog';this.node.setAttribute('role','dialog');this.node.setAttribute('aria-modal','true');this.node.setAttribute('aria-label','아이콘 리스트');
+      this.node=el('section');this.node.className='catalog';this.node.tabIndex=-1;this.node.setAttribute('role','dialog');this.node.setAttribute('aria-modal','true');this.node.setAttribute('aria-label','아이콘 리스트');
       const heading=el('h2','아이콘 리스트'),cancel=el('button','목록 닫기');cancel.type='button';cancel.className='quiet';cancel.id='catalog-cancel';
       const head=el('div');head.className='catalog-heading';head.append(heading,cancel);
       const controls=el('div');controls.className='catalog-controls';this.scope=el('select');this.scope.setAttribute('aria-label','팩 검색 범위');
@@ -104,12 +104,16 @@
       controls.append(this.scope,this.input);this.notice=el('p');this.notice.className='help';this.notice.setAttribute('role','status');
       this.nativeStatus=el('p');this.nativeStatus.className='help';
       this.loadStatus=el('p');this.loadStatus.className='catalog-load-status';this.loadStatus.tabIndex=-1;this.loadStatus.setAttribute('role','status');this.loadStatus.setAttribute('aria-live','polite');this.loadStatus.textContent='사용할 팩을 선택하세요.';
+      this.loadingArt=el('img');this.loadingArt.className='catalog-loading-art';this.loadingArt.alt='';this.loadingArt.setAttribute('aria-hidden','true');this.loadingArt.hidden=true;
+      const artURL=A.DesignSystem?.assetURL?.('assets/icons/aru-main-64.png');if(artURL)this.loadingArt.src=artURL;
+      this.loadingArt.addEventListener('error',()=>{this.artFailed=true;this.loadingArt.hidden=true;},{once:true});this.artAvailable=!!artURL;
+      this.progress=el('progress');this.progress.className='catalog-progress';this.progress.setAttribute('aria-label','아이콘 정보 처리량');this.progress.hidden=true;
       this.retry=el('button','다시 시도');this.retry.type='button';this.retry.hidden=true;this.retry.id='catalog-retry';
       this.viewport=el('div');this.viewport.className='catalog-viewport';this.viewport.tabIndex=0;this.viewport.setAttribute('aria-label','팩 목록 스크롤');this.content=el('div');this.content.className='catalog-content';this.viewport.append(this.content);
       const direct=el('form');direct.className='catalog-direct';this.url=el('input');this.url.setAttribute('aria-label','공개 게시글 URL 또는 번호');this.url.placeholder='공개 게시글 URL 또는 글 번호';
       this.board=el('input');this.board.value='98';this.board.inputMode='numeric';this.board.setAttribute('aria-label','직접 조회 게시판 번호');this.board.style.cssText='width:85px;min-width:70px;flex:0 0 85px';
       this.submit=el('button','직접 조회');this.submit.type='submit';direct.append(this.url,this.board,this.submit);
-      this.node.append(head,controls,this.notice,this.nativeStatus,this.loadStatus,this.retry,this.viewport,direct);container.append(this.node);
+      this.cancel=cancel;this.node.append(head,controls,this.notice,this.nativeStatus,this.loadingArt,this.loadStatus,this.progress,this.retry,this.viewport,direct);container.append(this.node);
       const listen=(n,t,fn)=>n.addEventListener(t,fn,{signal:this.events.signal});
       listen(cancel,'click',()=>onCancel?.());listen(this.input,'input',()=>this.render());listen(this.scope,'change',()=>this.render());
       listen(this.viewport,'scroll',()=>{if(!this.frame)this.frame=requestAnimationFrame(()=>{this.frame=0;this.renderRows();});});
@@ -123,9 +127,19 @@
         if(result?.ok!==true)throw Object.assign(new Error(result?.error?.message||'아이콘팩을 불러오지 못했습니다.'),{code:result?.error?.code||'READ_FAILED'});
         if(ref)this.failures.delete(refKey(ref));this.loadStatus.textContent='아이콘팩을 불러왔어요.';
       } catch(err) {if(this.closed||token!==this.operation)return;const code=err.code||'READ_FAILED';this.errorCode=code;this.loadStatus.textContent=(code==='ACCESS_DENIED'?'접근할 수 없는 게시글이에요. ':code==='ARTICLE_URL_INVALID'||code==='ARTICLE_PATH_NOT_ALLOWED'?'게시글 주소를 확인해 주세요. ':'팩을 불러오지 못했어요. ')+err.message+' 다른 팩을 선택하거나 다시 시도해 주세요.';this.retry.hidden=false;this.retry.focus({preventScroll:true});if(ref)this.failures.set(refKey(ref),code);}
-      finally {if(!this.closed&&token===this.operation){this.busy=false;this.pending=null;this.node.setAttribute('aria-busy','false');this.submit.disabled=false;this.renderRows();}}
+      finally {if(!this.closed&&token===this.operation){this.busy=false;this.pending=null;this.setProgress({busy:false});this.node.setAttribute('aria-busy','false');this.submit.disabled=false;this.renderRows();}}
     }
-    cancelPending(){this.operation++;this.busy=false;this.pending=null;this.node.setAttribute('aria-busy','false');this.submit.disabled=false;this.renderRows();}
+    setProgress(info={}){
+      if(this.closed)return;const busy=info.busy===undefined?info.status==='loading':!!info.busy;
+      this.progress.hidden=!busy;this.loadingArt.hidden=!busy||!this.artAvailable||this.artFailed;
+      this.cancel.textContent=busy&&!['cache','storage'].includes(info.phase)?'중지하고 목록 닫기':'목록 닫기';
+      this.cancel.title=['cache','storage'].includes(info.phase)?'이미 시작한 캐시 작업은 마무리되며 목록에는 반영하지 않습니다.':'목록을 닫고 진행 중인 원본 수집을 중지합니다.';
+      if(busy&&info.message){const n=Number.isFinite(info.processed)?info.processed:null,total=Number.isFinite(info.total)&&info.total>0?info.total:null;
+        this.loadStatus.textContent=info.message+(n===null?'':' · '+n.toLocaleString('ko-KR')+(total===null?'개 처리':' / '+total.toLocaleString('ko-KR')+'개 처리'));
+        if(n!==null&&total!==null){this.progress.max=total;this.progress.value=Math.min(total,Math.max(0,n));}else{this.progress.removeAttribute('value');this.progress.removeAttribute('max');}
+      }
+    }
+    cancelPending(){this.operation++;this.busy=false;this.pending=null;this.setProgress({busy:false});this.node.setAttribute('aria-busy','false');this.submit.disabled=false;this.renderRows();}
     setEntries(entries,message='',packs=null){
       this.catalog.setEntries(entries.map(ref=>({...ref,knownIconCount:packs?.get(refKey(ref))?.pack?.icons.length??ref.knownIconCount})));
       const cached=this.catalog.entries.filter(ref=>packs?.has(refKey(ref))),indexed=cached.slice(-MAX_INDEXED);

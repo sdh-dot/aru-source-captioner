@@ -1,6 +1,6 @@
 {
   "name": "aru-source-captioner",
-  "version": "0.1.2",
+  "version": "1.0.4",
   "private": true,
   "description": "A browser extension for image source attribution and icon management on Ruliweb.",
   "license": "MIT",

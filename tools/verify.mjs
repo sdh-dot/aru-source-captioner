@@ -9,6 +9,6 @@ for(const browser of ['firefox','whale']){
  const exifr=fs.readFileSync(path.join(folder,'lib/exifr.full.umd.js'));
  if(crypto.createHash('sha256').update(exifr).digest('hex')!==JSON.parse(fs.readFileSync(path.join(root,'docs/vendor-integrity.json'),'utf8')).exifr.browserSHA256[browser])issues.push(browser+': exifr hash changed');
 }
-const common=['ruliweb-icons/content.bundle.js','ruliweb-icons/background.bundle.js','ruliweb-icons/composer-bridge.js','icon-metadata/content.bundle.js','icon-metadata/bridge.bundle.js','bundle-generator/content.bundle.js','bundle-generator/bridge.bundle.js'];
+const common=['ruliweb-icons/content.bundle.js','ruliweb-icons/background.bundle.js','ruliweb-icons/composer-bridge.js','icon-metadata/content.bundle.js','icon-metadata/bridge.bundle.js','bundle-generator/content.bundle.js','bundle-generator/bridge.bundle.js','upload-attribution/core.js','upload-attribution/ui.js'];
 for(const file of common)if(!fs.readFileSync(path.join(root,'firefox/features',file)).equals(fs.readFileSync(path.join(root,'whale/features',file))))issues.push('Browser feature mismatch: '+file);
 console.log(JSON.stringify({manifestReferences:issues.filter(x=>x.includes('missing')).length===0,issues},null,2));if(issues.length)process.exitCode=1;

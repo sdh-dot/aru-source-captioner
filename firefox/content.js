@@ -4,7 +4,7 @@
 // - 사용자가 input[type=file]에서 이미지를 선택하면 exifr로 EXIF/XMP/IPTC/UserComment를 파싱.
 // - 메타데이터에서 우선순위 6단계로 출처 URL을 추출.
 // - 루리웹 글쓰기 에디터가 <p><img alt="..."> 형태로 이미지를 삽입하면 MutationObserver가 감지.
-// - File.name === img.alt(또는 img.title) 매칭 (FIFO).
+// - 업로드 순서와 무관한 정확 파일명/속성 검증. 중복·불명확한 대응은 자동 기재하지 않는다.
 // - 안전한 URL이면 부모 <p> 바로 다음에 출처 캡션 <p>를 DOM API로 삽입.
 //
 // Phase 1 정책(16개 + DOM 관찰 8항)은 docs/phase1-design.md 단일 출처를 따른다.
@@ -14,7 +14,7 @@
 //   - eval / new Function 사용 금지.
 //   - "출처 없음" placeholder 절대 삽입 금지.
 //   - 페이지 상단의 출처 입력란은 절대 건드리지 않는다.
-//   - File.name === img.alt(또는 img.title) 정확 비교만 사용 (img.src는 매칭에 사용하지 않는다).
+//   - 파일별 대응 또는 가능한 모든 출처의 일치를 확인한다. img.src나 업로드 순서로 추측하지 않는다.
 //   - URL이 없거나 unsafe면 본문에 아무것도 삽입하지 않는다.
 
 (function bootstrap() {
@@ -51,70 +51,14 @@
   const BOOT_OBSERVER_TIMEOUT_MS = 60000;
   const WALK_MAX_DEPTH = 10;
 
-  // 사용자가 이번 세션에서 첨부한 파일들의 메타데이터 추출 결과.
-  // 같은 파일명이 여러 번 첨부되면 FIFO로 소비.
-  const pendingByFileName = new Map();
-
-  // 이번 세션에서 이미 처리한 파일의 식별자 Set.
-  // name + size + lastModified 조합으로 동일 파일의 중복 처리를 방지한다.
-  const processedFileKeys = new Set();
-  // 현재 비동기 처리 중인 파일 key — async 경합으로 두 핸들러가 동시에 같은 key를 보는 것을 방지.
-  const pendingFileKeys = new Set();
-  // 이벤트 객체 단위 중복 실행 방지 — document capture + input 직접 listener가 공존하는 경우 대비.
+  let uploadAttribution = null;
   const handledFileEvents = new WeakSet();
 
-  function makeFileKey(file) {
-    return `${file.name}|${file.size}|${file.lastModified}`;
-  }
-
-  // 파일 내용의 SHA-256 fingerprint를 계산해 로그로 출력한다.
-  // 파일명만 바뀐 것인지(같은 SHA) 아니면 내용도 다른지(다른 SHA) 판별하는 진단 도구.
-  // non-blocking: 호출자가 await 하지 않아도 된다.
-  async function debugFileSha256(file) {
-    try {
-      const buffer = await file.arrayBuffer();
-      const hashBuffer = await crypto.subtle.digest("SHA-256", buffer);
-      const hashHex = Array.from(new Uint8Array(hashBuffer))
-        .map((b) => b.toString(16).padStart(2, "0"))
-        .join("");
-      console.log("[Aru][DBG][SHA256]", {
-        name: file.name,
-        size: file.size,
-        sha256: hashHex,
-      });
-      return hashHex;
-    } catch (err) {
-      console.warn("[Aru][DBG][SHA256] failed:", { name: file.name, err: String(err) });
-      return null;
-    }
-  }
-
-  // 모바일 자동 삽입 환경 판별.
-  // Android UA, coarse pointer, 좁은 화면 중 하나라도 해당하면 모바일로 간주한다.
-  // 판별 실패(throw)는 항상 false로 fall back한다.
   function isMobileAutoInsertEnvironment() {
     try {
-      const ua = typeof navigator !== "undefined" ? (navigator.userAgent || "") : "";
-      const isAndroid = /Android/i.test(ua);
-      const isCoarsePointer =
-        typeof window !== "undefined" &&
-        typeof window.matchMedia === "function" &&
-        window.matchMedia("(pointer: coarse)").matches;
-      const isNarrow = typeof window !== "undefined" && window.innerWidth < 768;
-      const result = isAndroid || (isCoarsePointer && isNarrow);
-      console.log("[Aru][DBG] isMobileAutoInsertEnvironment", {
-        ua: ua.slice(0, 100),
-        isAndroid,
-        isCoarsePointer,
-        isNarrow,
-        innerWidth: typeof window !== "undefined" ? window.innerWidth : "N/A",
-        result,
-      });
-      return result;
-    } catch (e) {
-      console.warn("[Aru][DBG] isMobileAutoInsertEnvironment threw", e);
-      return false;
-    }
+      return /Android/i.test(navigator.userAgent || "") ||
+        (window.innerWidth < 768 && window.matchMedia?.("(pointer: coarse)").matches === true);
+    } catch (_) { return false; }
   }
 
   // ---------------- 옵션 로드 (Phase 2A 재사용) ----------------
@@ -200,134 +144,28 @@
 
   // ---------------- 파일 입력 감지 ----------------
 
+  function publishUploadStatus(snapshot) {
+    const value = JSON.stringify(snapshot);
+    if (document.documentElement.dataset.aruUploadDiagnostic !== value) {
+      document.documentElement.dataset.aruUploadDiagnostic = value;
+    }
+  }
+
   function attachFileInputListeners(config) {
     document.addEventListener("change", async (ev) => {
-      // 동일 event 객체를 두 번 처리하지 않는다 (capture listener 중복 등 방어).
-      if (handledFileEvents.has(ev)) {
-        console.debug("[Aru Source Captioner] skip duplicate file event { source: document-capture }");
-        return;
-      }
-      handledFileEvents.add(ev);
-
       const target = ev.target;
-      if (!(target instanceof HTMLInputElement)) return;
-      if (target.type !== "file") return;
-      if (!target.files || target.files.length === 0) return;
-
-      // [DBG][RAW_FILE_INPUT]: file input에서 가장 먼저 찍는 원시 파일 정보.
-      // Android Firefox가 파일명을 이미 변조했는지 확인하는 진단 로그.
-      for (const f of target.files) {
-        console.log("[Aru][DBG][RAW_FILE_INPUT]", {
-          name: f.name,
-          type: f.type,
-          size: f.size,
-          lastModified: f.lastModified,
-          lastModifiedISO: new Date(f.lastModified).toISOString(),
-        });
-      }
-
-      const images = Array.from(target.files).filter((f) =>
-        f && typeof f.type === "string" && f.type.startsWith("image/")
-      );
-      if (images.length === 0) return;
-
-      // config는 parse 시점에는 사용하지 않는다. raw URL을 record에 저장하고
-      // insert 시점(insertCaptionIfNeeded)에서 sanitizeSourceUrl(rawUrl, config)로 검증한다.
-      await handleSelectedImageFiles(images);
+      if (!(target instanceof HTMLInputElement) || target.type !== "file" || !target.files?.length) return;
+      if (handledFileEvents.has(ev)) return;
+      handledFileEvents.add(ev);
+      const images = Array.from(target.files).filter(file => file?.type?.startsWith("image/"));
+      if (!images.length) return;
+      await handleSelectedImageFiles(images, target);
     }, true);
   }
 
-  async function handleSelectedImageFiles(files) {
-    // 루프 밖에서 한 번만 판별 — 로그 중복 방지 + parseSourceFromFile에 allowLooseFallback 전달
-    const isMobile = isMobileAutoInsertEnvironment();
-    for (const file of files) {
-      const key = makeFileKey(file);
-      if (processedFileKeys.has(key)) {
-        console.debug("[Aru Source Captioner] skip processed file", { key });
-        continue;
-      }
-      if (pendingFileKeys.has(key)) {
-        console.debug("[Aru Source Captioner] skip pending file", { key });
-        continue;
-      }
-      processedFileKeys.add(key);
-      pendingFileKeys.add(key);
-      try {
-        // SHA-256 fingerprint — 이름만 바뀐 것인지, 내용도 다른지 판별 (fire-and-forget)
-        debugFileSha256(file).catch(() => {});
-
-        let sourceInfo;
-        try {
-          // Android mobile: 파일명이 임시명으로 변조되어 있으므로 loose 숫자 fallback을 금지한다.
-          // strict(pixiv_/illust_ prefix 또는 _pN suffix)와 EXIF/XMP metadata만 허용.
-          sourceInfo = await parseSourceFromFile(file, { allowLooseFilenameFallback: !isMobile });
-        } catch (err) {
-          console.debug("[Aru Source Captioner] parse failed for", file.name, err);
-          sourceInfo = { status: "error", url: null, reason: "parse_threw" };
-        }
-        addPendingRecord(file, sourceInfo);
-
-        // 모바일 글쓰기 페이지: 파일 선택 시점에 즉시 출처 삽입.
-        // 삽입 성공 시 pending record를 즉시 소비해 MutationObserver 경로의 중복 삽입을 막는다.
-        // 데스크톱은 MutationObserver가 <img> 감지 후 삽입하므로 이 분기를 실행하지 않는다.
-        // isReadPage()===true는 hookCommentFileInput()이 처리하므로 제외.
-        console.log("[Aru][DBG] handleSelectedImageFiles: file done", {
-          fileName: file.name,
-          sourceStatus: sourceInfo?.status,
-          sourceUrl: sourceInfo?.url,
-          sourceReason: sourceInfo?.reason,
-          isReadPage: isReadPage(),
-          isMobile,
-        });
-        if (
-          isMobile &&
-          !isReadPage() &&
-          sourceInfo !== null &&
-          sourceInfo !== undefined &&
-          sourceInfo.status === "ok" &&
-          sourceInfo.url
-        ) {
-          const inserted = await tryMobileWriteInsert(sourceInfo.url, file.name);
-          if (inserted) {
-            // pending record를 소비해 observer가 같은 파일의 <img>를 감지해도 2차 삽입하지 않도록 한다.
-            consumePendingRecordByFileName(file.name);
-          }
-        }
-      } finally {
-        pendingFileKeys.delete(key);
-      }
-    }
-  }
-
-  function addPendingRecord(file, sourceInfo) {
-    const fileName = file.name;
-    const record = {
-      fileName,
-      fileSize: file.size,
-      lastModified: file.lastModified,
-      sourceInfo,
-      consumed: false,
-      createdAt: Date.now()
-    };
-    let arr = pendingByFileName.get(fileName);
-    if (!arr) {
-      arr = [];
-      pendingByFileName.set(fileName, arr);
-    }
-    arr.push(record);
-  }
-
-  function consumePendingRecordByFileName(fileName) {
-    if (typeof fileName !== "string" || fileName.length === 0) return null;
-    const arr = pendingByFileName.get(fileName);
-    if (!arr) return null;
-    for (const record of arr) {
-      if (!record.consumed) {
-        record.consumed = true;
-        return record;
-      }
-    }
-    return null;
+  async function handleSelectedImageFiles(files, input) {
+    if (uploadAttribution) await uploadAttribution.select(files, input);
+    else publishUploadStatus({state:"editor-unavailable",selected:files.length});
   }
 
   // ---------------- PNG AruArchive iTXt 직접 파서 (D2) ----------------
@@ -903,112 +741,24 @@
 
   // ---------------- DOM 감시 ----------------
 
-  function findEditorRoot() {
-    for (const sel of EDITOR_ROOT_SELECTORS) {
-      const el = document.querySelector(sel);
-      if (el instanceof HTMLElement) return el;
-    }
-    return null;
-  }
-
   function startEditorObserver(config) {
-    let root = findEditorRoot();
-    if (root) {
-      return attachMainObserver(root, config);
-    }
-
-    // 에디터가 동적으로 추가되는 경우 — body 임시 감시 후 발견 시 본격 observer로 전환
-    const bootObs = new MutationObserver(() => {
-      const candidate = findEditorRoot();
-      if (candidate) {
-        bootObs.disconnect();
-        attachMainObserver(candidate, config);
-      }
+    const Controller = globalThis.AruSourceAttribution?.Controller;
+    if (!Controller) return null; // No unverified/FIFO fallback when the module is unavailable.
+    uploadAttribution = new Controller({
+      document,
+      parse: file => parseSourceFromFile(file, {allowLooseFilenameFallback: !isMobileAutoInsertEnvironment()}),
+      sanitize: url => sanitizeSourceUrl(url, config),
+      caption: createSourceCaption,
+      anchor: findImageParagraph,
+      existing: hasExistingSourceCaption,
+      onStatus: publishUploadStatus
     });
-    bootObs.observe(document.body, { childList: true, subtree: true });
-
-    setTimeout(() => {
-      // 시간 내 못 찾으면 boot observer 정리. 본격 observer는 attach 안 됨.
-      // disconnect는 멱등하고 throw하지 않으므로 try/catch 없이 호출한다.
-      bootObs.disconnect();
-    }, BOOT_OBSERVER_TIMEOUT_MS);
-
-    return null;
-  }
-
-  function attachMainObserver(root, config) {
-    const obs = new MutationObserver((mutations) => {
-      for (const mut of mutations) {
-        if (mut.type !== "childList") continue;
-        for (const node of mut.addedNodes) {
-          handleAddedNode(node, config);
-        }
-      }
-    });
-    obs.observe(root, { childList: true, subtree: true });
-    return obs;
-  }
-
-  function handleAddedNode(node, config) {
-    if (!(node instanceof HTMLElement)) return;
-    if (node instanceof HTMLImageElement) {
-      insertCaptionIfNeeded(node, config);
-      return;
-    }
-    if (typeof node.querySelectorAll === "function") {
-      const imgs = node.querySelectorAll("img");
-      for (const img of imgs) {
-        insertCaptionIfNeeded(img, config);
-      }
-    }
-  }
-
-  // ---------------- 캡션 삽입 ----------------
-
-  function insertCaptionIfNeeded(img, config) {
-    if (!(img instanceof HTMLImageElement)) return false;
-    if (img.dataset.aruSourceCaptioned === "1") return false;
-
-    if (hasExistingSourceCaption(img)) {
-      // 사용자가 이미 직접 작성한 출처 캡션이 있으면 마커만 찍고 skip.
-      img.dataset.aruSourceCaptioned = "1";
-      return false;
-    }
-
-    const fileName = img.alt || img.title;
-    if (typeof fileName !== "string" || fileName.length === 0) return false;
-
-    const record = consumePendingRecordByFileName(fileName);
-    if (!record) return false;
-    if (!record.sourceInfo || record.sourceInfo.status !== "ok") return false;
-
-    const safeUrl = sanitizeSourceUrl(record.sourceInfo.url, config);
-    if (!safeUrl) return false;
-
-    const caption = createSourceCaption(safeUrl);
-    const anchor = findImageParagraph(img);
-
-    try {
-      anchor.after(caption);
-    } catch (err) {
-      console.debug("[Aru Source Captioner] insert failed:", err);
-      return false;
-    }
-
-    img.dataset.aruSourceCaptioned = "1";
-    return true;
+    window.addEventListener("pagehide", () => uploadAttribution?.destroy(), {once:true});
+    return uploadAttribution;
   }
 
   function findImageParagraph(img) {
-    const p = img.closest("p");
-    console.log("[Aru][DBG] findImageParagraph", {
-      imgAlt: img.alt,
-      foundP: !!p,
-      parentTag: img.parentElement ? img.parentElement.tagName : null,
-      parentClass: img.parentElement ? (img.parentElement.className || "").slice(0, 60) : null,
-      grandparentTag: img.parentElement?.parentElement ? img.parentElement.parentElement.tagName : null,
-    });
-    return p || img;
+    return img.closest("p") || img;
   }
 
   function hasExistingSourceCaption(img) {
@@ -1042,252 +792,6 @@
 
     p.appendChild(a);
     return p;
-  }
-
-  // ---------------- 모바일 글쓰기 직접 삽입 ----------------
-  //
-  // 데스크톱 글쓰기 페이지는 에디터에 <img alt="파일명">이 삽입되면
-  // MutationObserver가 캡션을 삽입한다. 모바일 Ruliweb은 에디터 구조가 달라
-  // img.alt 매칭이 작동하지 않는 경우가 많다. 모바일에서는 파일 선택 시점에
-  // 즉시 textarea/contenteditable을 찾아 출처 캡션을 직접 삽입한다.
-  //
-  // 우선순위:
-  //   1. 기존 EDITOR_ROOT_SELECTORS (CKEditor/Froala contenteditable)
-  //   2. 화면에 보이는 textarea 중 댓글·답글 이름 패턴이 아닌 것
-  //
-  // 찾지 못하면 예외 throw 없이 console.warn만 남기고 no-op.
-
-  const WRITE_TEXTAREA_EXCLUDE_PATTERN = /comment|reply|re_comment/i;
-
-  function findMobileWriteArea() {
-    // 1순위: 기존 editor selector (contenteditable, CKEditor, Froala)
-    for (const sel of EDITOR_ROOT_SELECTORS) {
-      const el = document.querySelector(sel);
-      if (el instanceof HTMLElement) {
-        const imgs = el.querySelectorAll("img");
-        console.log("[Aru][DBG] findMobileWriteArea: matched editor selector", {
-          selector: sel,
-          tagName: el.tagName,
-          id: el.id,
-          className: (el.className || "").slice(0, 80),
-          isContentEditable: el.isContentEditable,
-          childElementCount: el.childElementCount,
-          imgCount: imgs.length,
-          imgAlts: Array.from(imgs).map((i) => i.alt),
-        });
-        return el;
-      }
-    }
-    // 2순위: 화면에 보이는 textarea 중 댓글 계열 제외
-    const textareas = document.querySelectorAll("textarea");
-    console.log("[Aru][DBG] findMobileWriteArea: no editor selector matched, scanning", textareas.length, "textarea(s)");
-    for (const ta of textareas) {
-      if (!(ta instanceof HTMLTextAreaElement)) continue;
-      if (ta.offsetParent === null) {
-        console.log("[Aru][DBG] findMobileWriteArea: textarea hidden (offsetParent=null)", { name: ta.name, id: ta.id });
-        continue;
-      }
-      const nameId = (ta.name || "") + " " + (ta.id || "");
-      if (WRITE_TEXTAREA_EXCLUDE_PATTERN.test(nameId)) {
-        console.log("[Aru][DBG] findMobileWriteArea: textarea excluded (comment/reply)", { name: ta.name, id: ta.id });
-        continue;
-      }
-      console.log("[Aru][DBG] findMobileWriteArea: matched textarea", { name: ta.name, id: ta.id });
-      return ta;
-    }
-    console.warn("[Aru][DBG] findMobileWriteArea: no write area found at all");
-    return null;
-  }
-
-  // contenteditable target 내부에 미처리 img가 나타날 때까지 대기한다.
-  // img가 생기면 true, timeoutMs 경과 후에도 없으면 false를 resolve한다.
-  // MutationObserver 기반이므로 polling loop 없이 즉시 반응한다.
-  const MOBILE_IMG_WAIT_MS = 5000;
-
-  function waitForEditorImage(target, timeoutMs) {
-    return new Promise((resolve) => {
-      const startedAt = Date.now();
-      // uncaptioned 여부가 아닌 총 img 수 증가로 판정한다.
-      // 데스크톱 MutationObserver(attachMainObserver)가 먼저 실행되어 img를 captioned로
-      // 마킹하면 uncaptioned 체크는 영원히 false가 되어 timeout fallback이 이중 삽입한다.
-      // img가 "나타났다"는 사실 자체를 검출해 tryMobileWriteInsert가 captioned 상태를
-      // 보고 gracefully skip하도록 한다.
-      const initialCount = target.querySelectorAll("img").length;
-
-      const hasNewImg = () => {
-        const total = target.querySelectorAll("img").length;
-        console.log("[Aru][DBG] waitForEditorImage: check", {
-          totalImgs: total,
-          initialCount,
-          elapsedMs: Date.now() - startedAt,
-        });
-        return total > initialCount;
-      };
-
-      // 이미 img가 있으면 즉시 resolve — obs/timer 불필요
-      if (hasNewImg()) { resolve(true); return; }
-
-      // settled 플래그: observer와 timeout이 서로를 취소하도록 한다.
-      // resolve(true) 후에 timeout warn이 찍히는 현상을 방지한다.
-      let settled = false;
-      let timeoutId = null;
-
-      const obs = new MutationObserver(() => {
-        if (settled) return;
-        if (hasNewImg()) {
-          settled = true;
-          clearTimeout(timeoutId);
-          obs.disconnect();
-          resolve(true);
-        }
-      });
-      obs.observe(target, { childList: true, subtree: true });
-
-      timeoutId = setTimeout(() => {
-        if (settled) return;
-        settled = true;
-        obs.disconnect();
-        console.warn("[Aru][DBG] waitForEditorImage: timeout after", timeoutMs, "ms");
-        resolve(false);
-      }, timeoutMs);
-    });
-  }
-
-  // 모바일 글쓰기 직접 삽입.
-  // async: contenteditable 경로에서 img가 없을 때 waitForEditorImage()로 대기한다.
-  // 반환값: true=캡션 처리함(삽입 또는 defer 완료) / false=삽입 안 함(타겟 없음·오류·중복).
-  // 호출자는 반환값이 true일 때만 pending record를 consume해 observer 중복 삽입을 방지한다.
-  async function tryMobileWriteInsert(rawUrl, fileName) {
-    console.log("[Aru][DBG] tryMobileWriteInsert called", { rawUrl, fileName });
-
-    const effectiveConfig = cachedConfig || { ...DEFAULT_OPTIONS };
-    const safeUrl = sanitizeSourceUrl(rawUrl, effectiveConfig);
-    if (!safeUrl) {
-      console.debug("[Aru Source Captioner] mobile write: URL rejected by sanitizer", { rawUrl });
-      return false;
-    }
-
-    const target = findMobileWriteArea();
-    if (!target) {
-      console.warn("[Aru Source Captioner] mobile write: no write area found — no-op");
-      return false;
-    }
-
-    console.log("[Aru][DBG] tryMobileWriteInsert: target", {
-      tagName: target.tagName,
-      id: target.id,
-      className: (target.className || "").slice(0, 80),
-      isContentEditable: target.isContentEditable,
-      isTextarea: target instanceof HTMLTextAreaElement,
-    });
-
-    // textarea 경로: insertSourceIntoCommentTextarea 재사용.
-    // 중복 감지(동일 줄 이미 존재 / maxLength 초과)는 함수 내부에서 처리한다.
-    if (target instanceof HTMLTextAreaElement) {
-      const sourceText = buildCommentSourceText(safeUrl);
-      const result = insertSourceIntoCommentTextarea(target, sourceText);
-      console.log("[Aru Source Captioner] mobile write: textarea insert result =", result);
-      return result === "ok";
-    }
-
-    // contenteditable 경로
-    if (target.isContentEditable) {
-      const existingText = (target.textContent || "").replace(/\s+/g, " ");
-      if (existingText.includes(safeUrl)) {
-        console.log("[Aru Source Captioner] mobile write: already in editor");
-        return false;
-      }
-
-      // img가 없으면 에디터가 삽입할 때까지 대기 (Android 루리웹은 파일 선택 후 비동기 업로드)
-      const initialUncaptioned = target.querySelectorAll("img:not([data-aru-source-captioned='1'])");
-      const allImgsSnapshot = target.querySelectorAll("img");
-      console.log("[Aru][DBG] tryMobileWriteInsert: contenteditable img snapshot", {
-        totalImgs: allImgsSnapshot.length,
-        uncaptionedCount: initialUncaptioned.length,
-      });
-      // 각 img의 모든 attributes 덤프 — data-original-name, data-filename 등 추가 속성 확인
-      for (const img of allImgsSnapshot) {
-        const attrs = {};
-        for (const attr of img.attributes) {
-          attrs[attr.name] = attr.value;
-        }
-        console.log("[Aru][DBG] tryMobileWriteInsert: img attrs", attrs);
-      }
-
-      if (initialUncaptioned.length === 0) {
-        console.log("[Aru][DBG] tryMobileWriteInsert: no img yet, deferring insert", { fileName });
-        const found = await waitForEditorImage(target, MOBILE_IMG_WAIT_MS);
-        console.log("[Aru][DBG] tryMobileWriteInsert: deferred result found:", found, { fileName });
-
-        if (!found) {
-          // timeout: 최후 fallback — img 없이 컨테이너 끝에 추가
-          try {
-            target.appendChild(createSourceCaption(safeUrl));
-            console.warn("[Aru][DBG] tryMobileWriteInsert: timeout fallback — container.appendChild", {
-              fileName, safeUrl,
-            });
-          } catch (err) {
-            console.debug("[Aru Source Captioner] timeout fallback insert failed:", err);
-          }
-          return true;
-        }
-      }
-
-      // img 있음 (처음부터 있었거나 대기 후 생김) — alt/title → FIFO 순으로 삽입
-      try {
-        const caption = createSourceCaption(safeUrl);
-        let placed = false;
-
-        // 1순위: img[alt/title] === fileName 매칭
-        if (typeof fileName === "string" && fileName.length > 0) {
-          const uncapturedImgs = target.querySelectorAll("img:not([data-aru-source-captioned='1'])");
-          console.log("[Aru][DBG] tryMobileWriteInsert: alt/title matching", {
-            fileName,
-            uncapturedCount: uncapturedImgs.length,
-            altValues: Array.from(uncapturedImgs).map((i) => i.alt),
-            titleValues: Array.from(uncapturedImgs).map((i) => i.title),
-          });
-          for (const img of uncapturedImgs) {
-            if (img.alt === fileName || img.title === fileName) {
-              const anchor = findImageParagraph(img);
-              anchor.after(caption);
-              img.dataset.aruSourceCaptioned = "1";
-              placed = true;
-              console.log("[Aru Source Captioner] mobile write: inserted after matched img", { fileName });
-              break;
-            }
-          }
-        }
-
-        // 2순위: 첫 번째 미처리 이미지 바로 뒤에 삽입 (FIFO)
-        if (!placed) {
-          const allUncaptioned = target.querySelectorAll("img:not([data-aru-source-captioned='1'])");
-          console.log("[Aru][DBG] tryMobileWriteInsert: FIFO fallback", {
-            uncaptionedCount: allUncaptioned.length,
-          });
-          if (allUncaptioned.length > 0) {
-            const firstImg = allUncaptioned[0];
-            const anchor = findImageParagraph(firstImg);
-            anchor.after(caption);
-            firstImg.dataset.aruSourceCaptioned = "1";
-            placed = true;
-            console.log("[Aru Source Captioner] mobile write: inserted after first uncaptioned img");
-          }
-        }
-
-        if (!placed) {
-          console.warn("[Aru][DBG] tryMobileWriteInsert: all imgs already captioned — skipped", { fileName });
-        }
-
-        return true;
-      } catch (err) {
-        console.debug("[Aru Source Captioner] mobile write: contenteditable insert failed:", err);
-        return false;
-      }
-    }
-
-    console.warn("[Aru Source Captioner] mobile write: target is neither textarea nor contenteditable — no-op");
-    return false;
   }
 
   // ---------------- 페이지 종류 감지 ----------------
