@@ -1359,13 +1359,23 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
     const cleanup=attach(shadow,{fontURL});
     const style=shadow.host.ownerDocument.createElement('style');style.textContent=entryCss;shadow.append(style);
     const button=shadow.querySelector('button');button.classList.add('aru-entry-button');button.dataset.priority=priority;button.textContent=label;button.title=tooltip;
-    const iconName={'아이콘 선택':'editor-select','아이콘 통합':'editor-bundle','아이콘 태그':'editor-tags'}[label];
-    const iconURL=iconName&&assetURL('assets/icons/'+iconName+'-20.png');
-    if(iconURL){const icon=shadow.host.ownerDocument.createElement('img');icon.className='aru-entry-icon';icon.alt='';icon.setAttribute('aria-hidden','true');icon.width=20;icon.height=20;icon.draggable=false;icon.src=iconURL;button.prepend(icon);}
+    const iconName={'아이콘 선택':'editor-select','아이콘 통합':'editor-bundle','아이콘 태그':'editor-tags','이미지 첨부':'editor-upload'}[label];
+    const icon=iconName&&assetImage(shadow.host.ownerDocument,'assets/icons/'+iconName+'-20.png',iconName,'aru-entry-icon');
+    if(icon)button.prepend(icon);
     return cleanup;
   }
+  function fallbackIcon(doc,kind,className){
+    const ns='http://www.w3.org/2000/svg',svg=doc.createElementNS(ns,'svg');svg.setAttribute('viewBox','0 0 24 24');svg.setAttribute('aria-hidden','true');svg.setAttribute('focusable','false');svg.setAttribute('class',className);svg.setAttribute('fill','none');svg.setAttribute('stroke','currentColor');svg.setAttribute('stroke-width','1.6');
+    const path=doc.createElementNS(ns,'path');path.setAttribute('d',String(kind).includes('tags')?'M3 3h8l10 10-8 8L3 11Z M7 7h.01':'M4 5h16v14H4Z M4 15l5-5 5 5 3-3 3 3');svg.append(path);return svg;
+  }
   function assetURL(file){
-    try{return (g.browser||g.chrome)?.runtime?.getURL?.(file)||null;}catch(_){return null;}
+    try{return g.browser?.runtime?.getURL?.(file)||g.chrome?.runtime?.getURL?.(file)||null;}catch(_){return null;}
+  }
+  function assetImage(doc,file,kind,className,onFallback){
+    const url=file.startsWith('assets/icons/')?assetURL('assets/icons/'+file.slice('assets/icons/'.length)):assetURL(file);
+    if(!url)return fallbackIcon(doc,kind,className);
+    const image=doc.createElement('img');image.className=className;image.alt='';image.setAttribute('aria-hidden','true');image.width=20;image.height=20;image.draggable=false;
+    image.addEventListener('error',()=>{const fallback=fallbackIcon(doc,kind,className);image.replaceWith(fallback);onFallback?.(fallback);},{once:true});image.src=url;return image;
   }
   // Shared decorative header only; no editor, picker or metadata state is touched.
   const modalHeaderCss=`
@@ -1377,7 +1387,11 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
     .dialog .aru-modal-header .header-actions{display:flex;width:auto;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:nowrap}
     .dialog .aru-modal-header .close,.dialog .aru-modal-header [data-action="close"]{display:inline-flex;align-items:center;justify-content:center;min-width:44px;min-height:44px;padding:0;flex-shrink:0}
     .dialog .aru-modal-header.aru-modal-no-art{grid-template-columns:minmax(0,1fr) auto}
-    @media(max-width:750px),(max-height:600px){.dialog .aru-modal-header{--aru-header-art:80px;gap:8px;padding:10px 12px}.dialog .aru-modal-character{margin-block:-4px}}
+    .dialog .aru-modal-no-art .aru-modal-heading{display:grid;grid-template-columns:24px minmax(0,1fr);align-items:center;column-gap:8px}
+    .dialog .aru-modal-no-art .aru-modal-character{width:24px;height:24px;margin:0;grid-row:1}
+    .dialog .aru-modal-no-art .aru-modal-heading>:not(.aru-modal-character){grid-column:2}
+    @media(max-width:750px){.dialog .aru-modal-header{--aru-header-art:56px;gap:8px;padding:10px 12px}.dialog .aru-modal-character{margin-block:-4px}}
+    @media(max-height:600px){.dialog .aru-modal-header{--aru-header-art:32px;gap:6px;padding:6px 10px}.dialog .aru-modal-character{margin:0}}
     @media(max-width:500px){.dialog .aru-modal-header .header-actions{flex-direction:column;align-items:flex-end;gap:4px}.dialog .aru-modal-header #catalog-dock{font-size:11px;padding:4px 6px}.dialog .aru-modal-description{font-size:11px}}
   `;
   function modalHeader(header,{kind,description}={}){
@@ -1390,17 +1404,15 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
     heading.classList.add('aru-modal-heading');header.classList.add('aru-modal-header');
     if(description){const note=doc.createElement('p');note.className='aru-modal-description';note.textContent=description;heading.append(note);}
     if(!shadow.querySelector('[data-aru-modal-header-style]')){const style=doc.createElement('style');style.dataset.aruModalHeaderStyle='';style.textContent=modalHeaderCss;shadow.append(style);}
-    const url=assetURL('assets/icons/'+file+'-256.png');
-    if(!url){header.classList.add('aru-modal-no-art');return;}
-    const image=doc.createElement('img');image.className='aru-modal-character';image.alt='';image.setAttribute('aria-hidden','true');image.width=128;image.height=128;image.draggable=false;image.src=url;
-    image.onerror=()=>{image.remove();header.classList.add('aru-modal-no-art');};
-    heading.after(image);
+    const compactFallback=fallback=>{header.classList.add('aru-modal-no-art');heading.prepend(fallback);};
+    const image=assetImage(doc,'assets/icons/'+file+'-256.png',kind,'aru-modal-character',compactFallback);image.setAttribute('width','128');image.setAttribute('height','128');
+    if(image.tagName.toLowerCase()==='svg')compactFallback(image);else heading.after(image);
   }
   function attach(shadow,{fontURL}={}){
     if(!shadow||shadow.querySelector('[data-aru-design-tokens]'))return ()=>{};
     const doc=shadow.host.ownerDocument,style=doc.createElement('style');style.dataset.aruDesignTokens='';style.textContent=css+polish+' .primary{background:var(--aru-primary);border-color:var(--aru-primary);color:var(--aru-primary-text)}';shadow.append(style);
     if(!fonts.has(doc)&&g.FontFace&&doc.fonts){
-      const url=fontURL||(g.browser||g.chrome)?.runtime?.getURL?.('assets/fonts/PretendardVariable.woff2');
+      const url=fontURL||assetURL('assets/fonts/PretendardVariable.woff2');
       if(url){try{const face=new g.FontFace('Aru Pretendard','url("'+url+'")',{weight:'45 920',display:'swap'});doc.fonts.add(face);
         fonts.set(doc,face.load().then(()=>true).catch(()=>false));}catch(_){fonts.set(doc,Promise.resolve(false));}}
     }
@@ -1410,7 +1422,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
     const luminance=hex=>{const rgb=hex.slice(1).match(/../g).map(n=>parseInt(n,16)/255).map(n=>n<=.04045?n/12.92:((n+.055)/1.055)**2.4);return rgb[0]*.2126+rgb[1]*.7152+rgb[2]*.0722;};
     const a=luminance(foreground),b=luminance(background);return (Math.max(a,b)+.05)/(Math.min(a,b)+.05);
   }
-  A.DesignSystem=Object.freeze({LIGHT,DARK,css:css+entryCss+polish,attach,entry,observeTheme,contrast,assetURL,modalHeader});
+  A.DesignSystem=Object.freeze({LIGHT,DARK,css:css+entryCss+polish,attach,entry,observeTheme,contrast,assetURL,assetImage,modalHeader});
 })(globalThis);
 
 
@@ -1877,7 +1889,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
       .catalog-progress{display:block;margin:8px auto}.catalog-loading-art{width:48px;height:48px;object-fit:contain;animation:aru-loading-bob 1.8s ease-in-out infinite;float:left;margin-right:12px;pointer-events:none}
       @keyframes aru-loading-bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
       .dialog.mobile-layout{min-height:0;height:var(--aru-available-height,100dvh);max-height:var(--aru-available-height,100dvh)}
-      .mobile-layout .header.aru-modal-header{--aru-header-art:36px;grid-template-columns:minmax(0,1fr) 36px auto;padding:8px 10px;gap:6px}
+      .mobile-layout .header.aru-modal-header{--aru-header-art:56px;grid-template-columns:minmax(0,1fr) 56px auto;padding:8px 10px;gap:6px}
       .mobile-layout .aru-modal-character{margin:0}.mobile-layout .aru-modal-header .header-actions{flex-direction:row;gap:4px}.mobile-layout .header-title h1{font-size:16px}.mobile-layout .pack-line{font-size:10px;gap:4px}.mobile-layout .pack-title{max-width:150px}
       .mobile-layout .body,.compact-height.mobile-layout .body{display:flex;flex-direction:column;overflow:hidden;min-height:0;padding:6px;gap:4px}
       .mobile-layout .columns,.compact-height.mobile-layout .columns{display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr) auto;flex:1;min-height:0;gap:4px}
@@ -1908,7 +1920,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
       .mobile-layout .pack-toast{bottom:auto;top:var(--aru-catalog-top,64px);font-size:11px}.mobile-layout.toast-visible .footer{padding-bottom:max(4px,env(safe-area-inset-bottom))}
       .mobile-layout .catalog{left:6px;right:6px;bottom:6px;padding:8px}.mobile-layout .catalog-controls select{max-width:90px}.mobile-layout .catalog-controls input{min-width:110px;font-size:16px}
       .mobile-layout .catalog-direct input{min-width:80px;font-size:16px}.mobile-layout .catalog-viewport{touch-action:pan-y}
-      .mobile-layout.compact-height .header{padding-block:4px}.mobile-layout.compact-height .pack-line,.mobile-layout.compact-height .footer{display:none}.mobile-layout.compact-height .aru-modal-character{width:28px;height:28px}
+      .mobile-layout.compact-height .header{padding-block:4px}.mobile-layout.compact-height .pack-line,.mobile-layout.compact-height .footer{display:none}.mobile-layout.compact-height .aru-modal-character{width:32px;height:32px}
       .mobile-layout.compact-height .search-options>summary{min-height:44px}.mobile-layout.compact-height .tag-button{min-height:44px}.mobile-layout.compact-height .chips{padding-bottom:0}
       .compact-height.mobile-layout .search-area{display:grid;grid-template-columns:minmax(0,1fr) 44px;gap:4px;position:relative}
       .compact-height.mobile-layout .search-box{grid-column:1;grid-row:1}.compact-height.mobile-layout .search-options{grid-column:2;grid-row:1;margin:0;overflow:visible;max-height:none}

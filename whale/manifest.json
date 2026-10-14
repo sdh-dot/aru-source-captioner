@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Aru Source Captioner",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "루리웹 글쓰기 페이지에서 이미지 메타데이터의 출처 URL을 읽어 자동으로 출처 캡션을 삽입합니다.",
   "permissions": [
     "storage",
@@ -55,8 +55,10 @@
       ],
       "js": [
         "lib/exifr.full.umd.js",
+        "features/upload-attribution/core.js",
         "content.js",
-        "features/ruliweb-icons/content.bundle.js"
+        "features/ruliweb-icons/content.bundle.js",
+        "features/upload-attribution/ui.js"
       ],
       "css": [
         "styles.css"
@@ -129,7 +131,8 @@
         "assets/icons/editor-tags-20.png",
         "assets/icons/modal-select-256.png",
         "assets/icons/modal-bundle-256.png",
-        "assets/icons/modal-tags-256.png"
+        "assets/icons/modal-tags-256.png",
+        "assets/icons/editor-upload-20.png"
       ],
       "matches": [
         "https://bbs.ruliweb.com/*"

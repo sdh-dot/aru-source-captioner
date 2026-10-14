@@ -4,7 +4,7 @@
 // - 사용자가 input[type=file]에서 이미지를 선택하면 exifr로 EXIF/XMP/IPTC/UserComment를 파싱.
 // - 메타데이터에서 우선순위 6단계로 출처 URL을 추출.
 // - 루리웹 글쓰기 에디터가 <p><img alt="..."> 형태로 이미지를 삽입하면 MutationObserver가 감지.
-// - File.name === img.alt(또는 img.title) 매칭 (FIFO).
+// - 업로드 순서와 무관한 정확 파일명/속성 검증. 중복·불명확한 대응은 자동 기재하지 않는다.
 // - 안전한 URL이면 부모 <p> 바로 다음에 출처 캡션 <p>를 DOM API로 삽입.
 //
 // Phase 1 정책(16개 + DOM 관찰 8항)은 docs/phase1-design.md 단일 출처를 따른다.
@@ -14,7 +14,7 @@
 //   - eval / new Function 사용 금지.
 //   - "출처 없음" placeholder 절대 삽입 금지.
 //   - 페이지 상단의 출처 입력란은 절대 건드리지 않는다.
-//   - File.name === img.alt(또는 img.title) 정확 비교만 사용 (img.src는 매칭에 사용하지 않는다).
+//   - 파일별 대응 또는 가능한 모든 출처의 일치를 확인한다. img.src나 업로드 순서로 추측하지 않는다.
 //   - URL이 없거나 unsafe면 본문에 아무것도 삽입하지 않는다.
 
 (function bootstrap() {
@@ -51,9 +51,8 @@
   const BOOT_OBSERVER_TIMEOUT_MS = 60000;
   const WALK_MAX_DEPTH = 10;
 
-  // 사용자가 이번 세션에서 첨부한 파일들의 메타데이터 추출 결과.
-  // 같은 파일명이 여러 번 첨부되면 FIFO로 소비.
-  const pendingByFileName = new Map();
+  let uploadAttribution = null;
+  const handledFileEvents = new WeakSet();
 
   // ---------------- 옵션 로드 (Phase 2A 재사용) ----------------
 
@@ -138,78 +137,37 @@
 
   // ---------------- 파일 입력 감지 ----------------
 
+  function publishUploadStatus(snapshot) {
+    const value = JSON.stringify(snapshot);
+    if (document.documentElement.dataset.aruUploadDiagnostic !== value) {
+      document.documentElement.dataset.aruUploadDiagnostic = value;
+    }
+  }
+
   function attachFileInputListeners(config) {
     document.addEventListener("change", async (ev) => {
       const target = ev.target;
-      if (!(target instanceof HTMLInputElement)) return;
-      if (target.type !== "file") return;
-      if (!target.files || target.files.length === 0) return;
-
-      const images = Array.from(target.files).filter((f) =>
-        f && typeof f.type === "string" && f.type.startsWith("image/")
-      );
-      if (images.length === 0) return;
-
-      // Pixel table insert — pixelTableMode 활성화 시 최우선 intercept.
+      if (!(target instanceof HTMLInputElement) || target.type !== "file" || !target.files?.length) return;
+      if (handledFileEvents.has(ev)) return;
+      handledFileEvents.add(ev);
+      const images = Array.from(target.files).filter(file => file?.type?.startsWith("image/"));
+      if (!images.length) return;
+      // Keep the existing opt-in pixel-table path and its native event behavior.
       if ((config.pixelTableMode ?? "off") !== "off") {
         const isMobile = isMobileAutoInsertEnvironment();
         if (shouldUsePixelTableInsert(config, isMobile)) {
-          ev.stopImmediatePropagation();
-          ev.stopPropagation();
-          ev.preventDefault();
+          ev.stopImmediatePropagation(); ev.stopPropagation(); ev.preventDefault();
           await handlePixelTableInsert(images, config, isMobile);
           return;
         }
       }
-
-      // config는 parse 시점에는 사용하지 않는다. raw URL을 record에 저장하고
-      // insert 시점(insertCaptionIfNeeded)에서 sanitizeSourceUrl(rawUrl, config)로 검증한다.
-      await handleSelectedImageFiles(images);
+      await handleSelectedImageFiles(images, target);
     }, true);
   }
 
-  async function handleSelectedImageFiles(files) {
-    for (const file of files) {
-      let sourceInfo;
-      try {
-        sourceInfo = await parseSourceFromFile(file);
-      } catch (err) {
-        console.debug("[Aru Source Captioner] parse failed for", file.name, err);
-        sourceInfo = { status: "error", url: null, reason: "parse_threw" };
-      }
-      addPendingRecord(file, sourceInfo);
-    }
-  }
-
-  function addPendingRecord(file, sourceInfo) {
-    const fileName = file.name;
-    const record = {
-      fileName,
-      fileSize: file.size,
-      lastModified: file.lastModified,
-      sourceInfo,
-      consumed: false,
-      createdAt: Date.now()
-    };
-    let arr = pendingByFileName.get(fileName);
-    if (!arr) {
-      arr = [];
-      pendingByFileName.set(fileName, arr);
-    }
-    arr.push(record);
-  }
-
-  function consumePendingRecordByFileName(fileName) {
-    if (typeof fileName !== "string" || fileName.length === 0) return null;
-    const arr = pendingByFileName.get(fileName);
-    if (!arr) return null;
-    for (const record of arr) {
-      if (!record.consumed) {
-        record.consumed = true;
-        return record;
-      }
-    }
-    return null;
+  async function handleSelectedImageFiles(files, input) {
+    if (uploadAttribution) await uploadAttribution.select(files, input);
+    else publishUploadStatus({state:"editor-unavailable",selected:files.length});
   }
 
   // ---------------- PNG AruArchive iTXt 직접 파서 (D2) ----------------
@@ -924,104 +882,31 @@
   // ---------------- DOM 감시 ----------------
 
   function findEditorRoot() {
-    for (const sel of EDITOR_ROOT_SELECTORS) {
-      const el = document.querySelector(sel);
-      if (el instanceof HTMLElement) return el;
+    for (const selector of EDITOR_ROOT_SELECTORS) {
+      const root = document.querySelector(selector);
+      if (root instanceof HTMLElement) return root;
     }
     return null;
   }
 
   function startEditorObserver(config) {
-    let root = findEditorRoot();
-    if (root) {
-      return attachMainObserver(root, config);
-    }
-
-    // 에디터가 동적으로 추가되는 경우 — body 임시 감시 후 발견 시 본격 observer로 전환
-    const bootObs = new MutationObserver(() => {
-      const candidate = findEditorRoot();
-      if (candidate) {
-        bootObs.disconnect();
-        attachMainObserver(candidate, config);
-      }
+    const Controller = globalThis.AruSourceAttribution?.Controller;
+    if (!Controller) return null; // No unverified/FIFO fallback when the module is unavailable.
+    uploadAttribution = new Controller({
+      document,
+      parse: file => parseSourceFromFile(file, {allowLooseFilenameFallback: !isMobileAutoInsertEnvironment()}),
+      sanitize: url => sanitizeSourceUrl(url, config),
+      caption: createSourceCaption,
+      anchor: findImageParagraph,
+      existing: hasExistingSourceCaption,
+      onStatus: publishUploadStatus
     });
-    bootObs.observe(document.body, { childList: true, subtree: true });
-
-    setTimeout(() => {
-      // 시간 내 못 찾으면 boot observer 정리. 본격 observer는 attach 안 됨.
-      // disconnect는 멱등하고 throw하지 않으므로 try/catch 없이 호출한다.
-      bootObs.disconnect();
-    }, BOOT_OBSERVER_TIMEOUT_MS);
-
-    return null;
-  }
-
-  function attachMainObserver(root, config) {
-    const obs = new MutationObserver((mutations) => {
-      for (const mut of mutations) {
-        if (mut.type !== "childList") continue;
-        for (const node of mut.addedNodes) {
-          handleAddedNode(node, config);
-        }
-      }
-    });
-    obs.observe(root, { childList: true, subtree: true });
-    return obs;
-  }
-
-  function handleAddedNode(node, config) {
-    if (!(node instanceof HTMLElement)) return;
-    if (node instanceof HTMLImageElement) {
-      insertCaptionIfNeeded(node, config);
-      return;
-    }
-    if (typeof node.querySelectorAll === "function") {
-      const imgs = node.querySelectorAll("img");
-      for (const img of imgs) {
-        insertCaptionIfNeeded(img, config);
-      }
-    }
-  }
-
-  // ---------------- 캡션 삽입 ----------------
-
-  function insertCaptionIfNeeded(img, config) {
-    if (!(img instanceof HTMLImageElement)) return false;
-    if (img.dataset.aruSourceCaptioned === "1") return false;
-
-    if (hasExistingSourceCaption(img)) {
-      // 사용자가 이미 직접 작성한 출처 캡션이 있으면 마커만 찍고 skip.
-      img.dataset.aruSourceCaptioned = "1";
-      return false;
-    }
-
-    const fileName = img.alt || img.title;
-    if (typeof fileName !== "string" || fileName.length === 0) return false;
-
-    const record = consumePendingRecordByFileName(fileName);
-    if (!record) return false;
-    if (!record.sourceInfo || record.sourceInfo.status !== "ok") return false;
-
-    const safeUrl = sanitizeSourceUrl(record.sourceInfo.url, config);
-    if (!safeUrl) return false;
-
-    const caption = createSourceCaption(safeUrl);
-    const anchor = findImageParagraph(img);
-
-    try {
-      anchor.after(caption);
-    } catch (err) {
-      console.debug("[Aru Source Captioner] insert failed:", err);
-      return false;
-    }
-
-    img.dataset.aruSourceCaptioned = "1";
-    return true;
+    window.addEventListener("pagehide", () => uploadAttribution?.destroy(), {once:true});
+    return uploadAttribution;
   }
 
   function findImageParagraph(img) {
-    const p = img.closest("p");
-    return p || img;
+    return img.closest("p") || img;
   }
 
   function hasExistingSourceCaption(img) {
