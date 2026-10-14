@@ -1,0 +1,29 @@
+@font-face{font-family:"Aru Pretendard";src:url("/assets/fonts/PretendardVariable.woff2") format("woff2");font-weight:45 920;font-display:swap}
+:root{color-scheme:light;--background:#FAF7F2;--surface:#FFFFFF;--text:#30252B;--muted:#69535D;--wine:#923F61;--deep:#642940;--gold:#C5A268;--soft-gold:#E5CFA7;--border:#B9A8AE;--divider:#E6DDE0;--selected:#F5E9D4;--primary-text:#FFFFFF}
+@media(prefers-color-scheme:dark){:root{color-scheme:dark;--background:#21181E;--surface:#2E232A;--text:#F7EEE9;--muted:#D2BDC6;--wine:#C5A268;--deep:#F2B7CF;--border:#947E89;--divider:#54424C;--selected:#4D392C;--primary-text:#21181E}}
+:root[data-aru-theme="dark"]{color-scheme:dark;--background:#21181E;--surface:#2E232A;--text:#F7EEE9;--muted:#D2BDC6;--wine:#C5A268;--deep:#F2B7CF;--border:#947E89;--divider:#54424C;--selected:#4D392C;--primary-text:#21181E}
+*{box-sizing:border-box;scrollbar-color:var(--border) var(--surface);scrollbar-width:thin}
+::selection{background:var(--selected);color:var(--text)}
+body{margin:0;background:var(--background);color:var(--text);font:14px/1.6 "Aru Pretendard",Pretendard,system-ui,-apple-system,"Malgun Gothic",sans-serif}
+.options{max-width:760px;margin:40px auto;padding:28px 32px;background:var(--surface);border-radius:16px}
+h1{font-size:24px;font-weight:700;letter-spacing:-.02em;margin:0 0 4px}
+.options>p{color:var(--muted);margin:0 0 32px}
+fieldset{border:0;border-bottom:1px solid var(--divider);padding:0 0 24px;margin:0 0 28px;min-width:0}
+legend{font-size:16px;font-weight:700;margin-bottom:4px;padding:0}
+p{margin:12px 0}
+label{font-weight:500}
+small{display:inline-block;font-size:12px;line-height:1.6;color:var(--muted);max-width:65ch;margin-top:4px}
+input,select,textarea,button{font:inherit;color:var(--text);accent-color:var(--deep)}
+input:not([type="checkbox"]),select,textarea{border:1px solid var(--border);border-radius:8px;background:var(--surface);padding:8px 10px;min-height:40px;max-width:100%;caret-color:var(--deep)}
+textarea{display:block;width:100%;margin-top:4px;resize:vertical}
+input[type="checkbox"]{width:18px;height:18px;vertical-align:-3px;margin:0 7px 0 0}
+button{min-height:40px;padding:8px 22px;border:0;border-radius:8px;background:var(--wine);color:var(--primary-text);font-weight:700;cursor:pointer}
+button:hover{filter:brightness(.94)}
+button:disabled{opacity:.55;cursor:default}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--deep);outline-offset:3px}
+#save-status{margin-left:12px;color:var(--muted)}
+.save-actions{position:sticky;bottom:0;background:var(--surface);padding:12px 0;margin:0;border-top:1px solid var(--divider);display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+code{font:inherit;color:var(--deep)}
+@media(max-width:600px){.options{margin:0;padding:24px 16px;border-radius:0}h1{font-size:22px}fieldset{margin-bottom:24px}.save-actions{bottom:0}select{width:100%}}
+@media(pointer:coarse){button,input:not([type="checkbox"]),select{min-height:44px}label:has(input[type="checkbox"]){display:inline-flex;align-items:center;min-height:44px}}
+@media(forced-colors:active){button{border:1px solid ButtonText}}

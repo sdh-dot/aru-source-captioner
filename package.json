@@ -1,25 +1,35 @@
 {
-  "name": "aru-source-captioner",
-  "version": "0.1.2",
+  "name": "wxt-starter",
+  "description": "manifest.json description",
   "private": true,
-  "description": "A browser extension for image source attribution and icon management on Ruliweb.",
-  "license": "MIT",
-  "engines": {
-    "node": ">=24.0.0"
-  },
+  "version": "0.0.0",
+  "type": "module",
   "scripts": {
-    "build": "node tools/build.mjs",
-    "verify": "node tools/verify.mjs",
-    "test": "node tools/test.mjs",
-    "test:historical": "node tools/test-historical.mjs",
-    "lint:firefox": "addons-linter firefox --output text",
-    "package:firefox": "node tools/package.mjs firefox",
-    "lint:firefox:strict": "addons-linter firefox --output text --warnings-as-errors",
-    "package:chromium": "node tools/package.mjs whale"
+    "dev": "wxt",
+    "dev:firefox": "wxt -b firefox",
+    "build": "wxt build",
+    "build:firefox": "wxt build -b firefox",
+    "zip": "wxt zip",
+    "zip:firefox": "wxt zip -b firefox",
+    "compile": "tsc --noEmit",
+    "postinstall": "wxt prepare",
+    "lint": "oxlint && pnpm run lint:firefox",
+    "lint:firefox": "addons-linter . --output text --warnings-as-errors",
+    "verify:manifest": "node tools/verify-wxt-manifest.mjs"
   },
   "devDependencies": {
-    "addons-linter": "10.14.0",
-    "jquery": "3.7.1",
-    "jsdom": "26.1.0"
+    "@types/jquery": "^4.0.1",
+    "addons-linter": "^10.14.0",
+    "jquery": "^4.0.0",
+    "jsdom": "^30.1.2",
+    "oxfmt": "^0.72.0",
+    "oxlint": "^1.87.0",
+    "typescript": "^5.9.3",
+    "vite": "^8.1.5",
+    "web-ext": "^10.5.0",
+    "wxt": "^0.21.3"
+  },
+  "dependencies": {
+    "exifr": "^7.1.3"
   }
 }

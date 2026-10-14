@@ -1,27 +1,32 @@
-node_modules/
-dist/
-coverage/
-test-results/
-docs/results/
+# Logs
+logs
 *.log
-*.tap
-*.zip
-*.xpi
-*.crx
-*.pem
-*.p12
-*.pfx
-*.key
-.env
-.env.*
-!.env.example
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+.output
+stats.html
+stats-*.json
+.wxt
+web-ext.config.ts
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
 .DS_Store
-Thumbs.db
-__pycache__/
-.vscode/
-.idea/
-profiles/
-browser-profiles/
-cache/
-tmp/
-temp/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Chrome
+.chrome
+
+# Migration
+_old
