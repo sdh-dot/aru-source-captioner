@@ -15,4 +15,6 @@ ESM 전환 범위는 [통합 안내](docs/architecture/esm-wxt-integration.md)�
 
 테스트의 기대값만 바꾸거나 실패를 숨기지 마세요. 새 브라우저 권한과 메타데이터 규격 변경은 이유와 호환성 검토를 포함해야 합니다. 기존 ID·사용자 설정·캐시·Native Host 연결을 보존하세요.
 
+통합 브랜치의 출처·중복 제외·보류 사항은 [브랜치 통합 보고서](docs/architecture/branch-integration-report.md)를 따릅니다. `npm run test:integration`은 수동 이식의 AST·계측·명시적 주입·부분 처리 상태를 검사합니다. Hybrid에서 가져온 테스트는 같은 바이트의 동결 fixture를 사용하므로 이전 Git 객체가 없는 checkout에서도 실행됩니다.
+
 허락이 확인되지 않은 캐릭터 그림·원본 아이콘팩·실제 사용자 자료는 commit하지 않습니다. 새 의존성에는 버전 고정·라이선스 고지가 필요합니다. 취약점은 공개 PR/Issue보다 SECURITY.md의 비공개 경로를 우선합니다.

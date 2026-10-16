@@ -345,7 +345,7 @@
           const commit = /* @__PURE__ */ __name((pack, data = {}) => {
             if (this.librarySearch && context.articleId) {
               const ref = context.catalogRef || { boardId: context.boardId || "98", articleId: context.articleId, title: context.title, source: "direct" };
-              this.librarySearch.remember(ref, pack, { stale: data.stale === true || pack.kind === "BUNDLE" && (pack.attributeReaderVersion !== 2 || pack.mediaReaderVersion !== 1) });
+              this.librarySearch.remember(ref, pack, { stale: data.stale === true || pack.kind === "NORMAL" && pack.bodyCounts?.tagErrors > 0 || pack.kind === "BUNDLE" && (pack.attributeReaderVersion !== 2 || pack.mediaReaderVersion !== 1) });
               this.librarySearch.setState({ currentKey: String(ref.boardId) + ":" + ref.articleId });
             }
             picker.setCurrentSource?.(String(context.boardId) + ":" + context.articleId);
@@ -465,7 +465,7 @@
                 publish(pack, { from: "article-body" });
                 picker.setMetadataDiagnostics?.(collected.metadataDiagnostics);
                 progress({
-                  status: !pack.icons.length || collected.counts.excluded ? "partial" : "complete",
+                  status: !pack.icons.length || collected.counts.excluded || collected.counts.tagErrors ? "partial" : "complete",
                   phase: "ready",
                   processed: pack.icons.length,
                   loaded: pack.icons.length,

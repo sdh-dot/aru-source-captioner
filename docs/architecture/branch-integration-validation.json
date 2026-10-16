@@ -1,0 +1,333 @@
+{
+  "checkedAt": "2026-10-16T11:08:35.832Z",
+  "branch": "integration/aru-unified",
+  "worktree": "E:/dev/VSCode/personal/aru_archive/browser-extension/aru-unified",
+  "base": "402cf68823d7856325906c08a3af3e8f0c2b95d2",
+  "changedFiles": [
+    "CHANGELOG.md",
+    "CONTRIBUTING.md",
+    "docs/BUILD.md",
+    "docs/KNOWN-ISSUES.md",
+    "docs/MOBILE-MANUAL-TESTING.md",
+    "docs/MOBILE-TAGS.md",
+    "docs/architecture/branch-integration-report.md",
+    "docs/architecture/branch-integration-sources.json",
+    "docs/architecture/branch-integration-validation.json",
+    "docs/architecture/esm-iife-inventory.json",
+    "docs/architecture/esm-wxt-integration.md",
+    "docs/source/compat/performance-api.mjs",
+    "docs/source/compat/performance-metrics.mjs",
+    "docs/source/compat/ruliweb-icons-library-reader.mjs",
+    "docs/source/compat/ruliweb-icons-library-search.mjs",
+    "docs/source/compat/runtime-reader.mjs",
+    "docs/source/compat/upload-attribution-core.mjs",
+    "docs/source/compat/upload-attribution-ui.mjs",
+    "docs/source/performance/metrics.js",
+    "docs/source/performance/metrics.mjs",
+    "docs/source/ruliweb-icons/feature.js",
+    "docs/source/ruliweb-icons/feature.mjs",
+    "docs/source/ruliweb-icons/library-reader.js",
+    "docs/source/ruliweb-icons/library-reader.mjs",
+    "docs/source/ruliweb-icons/library-search.js",
+    "docs/source/ruliweb-icons/library-search.mjs",
+    "docs/source/runtime/icons.mjs",
+    "docs/source/upload-attribution/core.js",
+    "docs/source/upload-attribution/core.mjs",
+    "docs/source/upload-attribution/ui.js",
+    "docs/source/upload-attribution/ui.mjs",
+    "firefox/features/ruliweb-icons/content.bundle.js",
+    "firefox/features/upload-attribution/core.js",
+    "firefox/features/upload-attribution/ui.js",
+    "package.json",
+    "tests/integration/baseline.cjs",
+    "tests/integration/contracts.test.mjs",
+    "tests/integration/fixtures/hybrid-source.json",
+    "tests/integration/fixtures/original-baseline.json",
+    "tests/loading-reader.test.cjs",
+    "tests/optimization.test.cjs",
+    "tests/performance.test.cjs",
+    "tools/audit-esm.mjs",
+    "tools/benchmark-integration.mjs",
+    "tools/esm-completion-entries.json",
+    "tools/test.mjs",
+    "whale/features/ruliweb-icons/content.bundle.js",
+    "whale/features/upload-attribution/core.js",
+    "whale/features/upload-attribution/ui.js"
+  ],
+  "tests": {
+    "test-esm": {
+      "tests": 51,
+      "pass": 51,
+      "fail": 0
+    },
+    "test-integration": {
+      "tests": 4,
+      "pass": 4,
+      "fail": 0
+    },
+    "test": {
+      "tests": 111,
+      "pass": 111,
+      "fail": 0
+    },
+    "rc3-on-unified": {
+      "tests": 59,
+      "pass": 59,
+      "fail": 0
+    },
+    "rc3-baseline": {
+      "tests": 59,
+      "pass": 59,
+      "fail": 0
+    },
+    "hybrid-baseline": {
+      "tests": 106,
+      "pass": 106,
+      "fail": 0
+    },
+    "historical": {
+      "tests": 287,
+      "pass": 193,
+      "fail": 94
+    },
+    "portable-tests": {
+      "tests": 12,
+      "pass": 12,
+      "fail": 0
+    }
+  },
+  "newHistoricalFailures": [],
+  "lint": {
+    "errors": 0,
+    "warnings": 9
+  },
+  "audit": {
+    "sourceIifes": 0,
+    "modules": 50,
+    "failures": [],
+    "inlineHtml": [
+      {
+        "file": "docs/demo/index.html",
+        "script": 0,
+        "iifes": 0
+      }
+    ]
+  },
+  "build": true,
+  "reproducibility": true,
+  "compatibilityOutputs": 52,
+  "manifest": true,
+  "preservedContracts": [
+    {
+      "file": "firefox/manifest.json",
+      "unchanged": true,
+      "sha256": "8dd5aabaace64a3b25867ce763fd3d9a6bb092093eb6b6a02208552b7d812707"
+    },
+    {
+      "file": "whale/manifest.json",
+      "unchanged": true,
+      "sha256": "003282479db6ffe90acb6e272cdbd9bd5e1e725666e9531ae9568913543bec0f"
+    },
+    {
+      "file": "package-lock.json",
+      "unchanged": true,
+      "sha256": "6e6ad079dbbc47ac4c09e6404f70cacd61ad345541f52a4e19d56282fd6a51dd"
+    },
+    {
+      "file": "shared/icon-metadata/tag-codec.mjs",
+      "unchanged": true,
+      "sha256": "cb6d097fce0a6deca4863e36f672e03c0244b77b7913135da8ecc17ff37d7454"
+    },
+    {
+      "file": "shared/icon-metadata/tag-edit-model.mjs",
+      "unchanged": true,
+      "sha256": "801a23e1e63e2004d5b576dd180ad09b35c99a936ff940df002566a3cd930e06"
+    },
+    {
+      "file": "docs/source/ruliweb-icons/core.mjs",
+      "unchanged": true,
+      "sha256": "2c0d28c087176bb9c11ab31e4d24ef02480e73105c8eaf497087921714e519f6"
+    },
+    {
+      "file": "docs/source/ruliweb-icons/metadata.mjs",
+      "unchanged": true,
+      "sha256": "79e792867553f521383c9917567f1158d46aa27c9f2ba9ab61348656a94cefb7"
+    },
+    {
+      "file": "docs/source/ruliweb-icons/browser-adapter.mjs",
+      "unchanged": true,
+      "sha256": "118bc17ed917614fac436150ae3c3619e22f695bd46487be4569ee4e8da644f7"
+    },
+    {
+      "file": "docs/source/ruliweb-icons/site-adapter.mjs",
+      "unchanged": true,
+      "sha256": "66f88ba39f88eb0d6f4f38b41f2408f5e9f3e8a84fe15063416f26aec4a0c82d"
+    },
+    {
+      "file": "docs/source/ruliweb-icons/composer-adapter.mjs",
+      "unchanged": true,
+      "sha256": "eec22984a11f7e886868c92c6570d7666cbccbb744b722df2bb40ee06de3d60a"
+    },
+    {
+      "file": "docs/source/icon-metadata/metadata-editor-bridge.mjs",
+      "unchanged": true,
+      "sha256": "bc11b7db5b3e94afa2d46f385621938dd13a09baa05d85a2d3061a6c9914d448"
+    },
+    {
+      "file": "tools/build.mjs",
+      "unchanged": true,
+      "sha256": "9961adcdd73cfd238f1caa920d556028f196c8435e008c5b1fb1bba44b4c5c33"
+    },
+    {
+      "file": "docs/tools/build-generator.mjs",
+      "unchanged": true,
+      "sha256": "26d84b87ce916078aa044dfc4bb7f44f7ea5ab90d8d79e90d998cd754034ac70"
+    }
+  ],
+  "browsers": [
+    {
+      "browser": "firefox",
+      "version": "158.0",
+      "counts": {
+        "BROWSER/PASS": 4,
+        "MOCK/PASS": 7,
+        "SITE/BLOCKED": 4,
+        "SITE/PASS": 4
+      },
+      "report": "docs/results/esm-e2e/reports/20261016-195654-firefox.json",
+      "backgroundErrors": [],
+      "fixtureErrors": []
+    },
+    {
+      "browser": "chromium",
+      "version": "156.0.8078.4",
+      "counts": {
+        "BROWSER/PASS": 4,
+        "MOCK/PASS": 7,
+        "SITE/BLOCKED": 4,
+        "SITE/PASS": 5
+      },
+      "report": "docs/results/esm-e2e/reports/20261016-195741-chromium.json",
+      "backgroundErrors": [],
+      "fixtureErrors": []
+    },
+    {
+      "browser": "whale",
+      "version": "150.0.7871.252",
+      "counts": {
+        "BROWSER/PASS": 4,
+        "MOCK/PASS": 7,
+        "SITE/BLOCKED": 4,
+        "SITE/PASS": 5
+      },
+      "report": "docs/results/esm-e2e/reports/20261016-195802-whale.json",
+      "backgroundErrors": [],
+      "fixtureErrors": []
+    }
+  ],
+  "performance": {
+    "baselineCommit": "402cf68823d7856325906c08a3af3e8f0c2b95d2",
+    "environment": {
+      "node": "v24.15.0",
+      "platform": "win32",
+      "samples": 30,
+      "scope": "Node/jsdom synthetic time. No real network, media decoding, layout, upload or device measurement."
+    },
+    "baseline": {
+      "dom": {
+        "discover": 30,
+        "reconcile": 30,
+        "snapshot": 30,
+        "uiDiscover": 30
+      },
+      "observerCalls": 60,
+      "observerMs": 35.42320000000018,
+      "registry500MatchesMeanMs": 45.12218000000003,
+      "index1548MeanMs": 412.35732000000013,
+      "parsingCalls": 20,
+      "parsingPeak": 4,
+      "cacheRequests": 180,
+      "cacheHitRatio": 0.5
+    },
+    "current": {
+      "dom": {
+        "discover": 0,
+        "reconcile": 0,
+        "snapshot": 0,
+        "uiDiscover": 0
+      },
+      "observerCalls": 60,
+      "observerMs": 12.620400000000245,
+      "registry500MatchesMeanMs": 0.8871266666666656,
+      "index1548MeanMs": 54.24511333333336,
+      "parsingCalls": 10,
+      "parsingPeak": 2,
+      "cacheRequests": 180,
+      "cacheHitRatio": 0.5
+    }
+  },
+  "protection": {
+    "repositories": [
+      {
+        "directory": "E:\\dev\\VSCode\\personal\\aru_archive\\browser-extension\\github-publication\\repository",
+        "head": "1164afc3745d6af47e4e3fc750540963226f8355",
+        "status": "",
+        "files": 202,
+        "changed": [],
+        "added": [],
+        "headUnchanged": true,
+        "statusUnchanged": true
+      },
+      {
+        "directory": "E:\\dev\\VSCode\\personal\\aru_archive\\browser-extension\\android-upload-attribution",
+        "head": "4d871f702fb633722c09e0074e6fa0d9429c17f6",
+        "status": "M docs/source/ruliweb-icons/library-reader.js\n M docs/source/ruliweb-icons/library-search.js\n M docs/source/upload-attribution/core.js\n M docs/source/upload-attribution/ui.js\n M docs/tools/build-generator.mjs\n M firefox/features/bundle-generator/content.bundle.js\n M firefox/features/icon-metadata/content.bundle.js\n M firefox/features/ruliweb-icons/content.bundle.js\n M firefox/features/upload-attribution/core.js\n M firefox/features/upload-attribution/ui.js\n M firefox/manifest.json\n M tools/build.mjs\n M tools/test.mjs\n M tools/verify.mjs\n M whale/features/bundle-generator/content.bundle.js\n M whale/features/icon-metadata/content.bundle.js\n M whale/features/ruliweb-icons/content.bundle.js\n M whale/features/upload-attribution/core.js\n M whale/features/upload-attribution/ui.js\n M whale/manifest.json\n?? docs/architecture/dom-api-feasibility-analysis.md\n?? docs/optimization/phase1-to-phase5-summary.md\n?? docs/optimization/validation-evidence.json\n?? docs/performance/measurements.json\n?? docs/performance/phase1-baseline-report.md\n?? docs/performance/phase2-dom-optimization.md\n?? docs/performance/phase3-data-optimization.md\n?? docs/release/phase5-validation-report.md\n?? docs/release/release-notes-draft.md\n?? docs/source/performance/metrics.js\n?? docs/stability/phase4-upload-attribution.md\n?? firefox/features/performance/metrics.js\n?? tests/optimization.test.cjs\n?? tests/performance.test.cjs\n?? tools/benchmark-optimization.cjs\n?? tools/validate-optimization.mjs\n?? whale/features/performance/metrics.js",
+        "files": 254,
+        "changed": [],
+        "added": [],
+        "headUnchanged": true,
+        "statusUnchanged": true
+      },
+      {
+        "directory": "E:\\dev\\VSCode\\personal\\aru_archive\\browser-extension\\android-firefox-loading-ux",
+        "head": "a6087a7c740db200f1aba6c3941ec9c8338501f4",
+        "status": "M firefox/manifest.json",
+        "files": 213,
+        "changed": [],
+        "added": [],
+        "headUnchanged": true,
+        "statusUnchanged": true
+      },
+      {
+        "directory": "E:\\dev\\VSCode\\personal\\aru_archive\\browser-extension\\esm-core-transition",
+        "head": "402cf68823d7856325906c08a3af3e8f0c2b95d2",
+        "status": "",
+        "files": 355,
+        "changed": [],
+        "added": [],
+        "headUnchanged": true,
+        "statusUnchanged": true
+      }
+    ],
+    "originalFilesCompared": 1024,
+    "parentLegacyFilesCompared": 8,
+    "parentLegacyChanged": [],
+    "parentReferenceSnapshot": "E:/dev/VSCode/personal/tmp/esm-transition-OgiJvZ/before.json",
+    "archivesCompared": 201,
+    "changedArchives": [],
+    "remoteRefsUnchanged": true,
+    "originalLocalRefsUnchanged": true,
+    "addedLocalRefs": [
+      "refs/heads/integration/aru-unified"
+    ]
+  },
+  "notVerified": [
+    "외부 WXT 개인 포크 실제 통합·빌드",
+    "실제 Android Firefox 업로드·키보드·Native 파일 대응",
+    "로그인 작성기 서버 게시/저장·undo",
+    "실제 Native Host·다운로드 파일 생성",
+    "Manifest 최소 지원 버전·장기 실제 heap"
+  ],
+  "remotePush": false,
+  "pullRequestCreated": false
+}

@@ -7,14 +7,18 @@ npm ci --ignore-scripts
 npm run build
 npm run verify
 npm test
+npm run test:esm
+npm run test:integration
+npm run verify:esm
+npm run audit:esm
 npm run lint:firefox
 npm run package:firefox
 npm run package:chromium
 ```
 
-`npm run build`는 `docs/source/`의 읽을 수 있는 소스를 순서대로 연결해 두 브라우저의 선택기·태그·통합 JS를 생성하고 공통 업로드·출처 모듈을 복사합니다. 생성 파일도 Git에 포함하므로 빌드 후 `git diff --exit-code -- firefox whale`로 차이를 확인할 수 있습니다. 두 번 빌드한 파일의 해시가 같아야 합니다. 현재 캐릭터 에셋은 그대로 포함되며 플레이스홀더 생성기는 정상 빌드에 실행하지 않습니다.
+`npm run build`는 `tools/build-esm.mjs`에서 ESM 호환 출력을 만들고 기존 결합 빌드를 거친 뒤 최종 runtime 그래프를 생성합니다. 관리 원본은 `docs/source/`와 `shared/`의 `.mjs`이며 `.js` 호환 출력은 직접 수정하지 않습니다. 생성 파일도 Git에 포함하므로 빌드 후 `git diff --exit-code -- firefox whale`로 차이를 확인할 수 있습니다. 두 번 빌드한 파일의 해시가 같아야 합니다. 현재 캐릭터 에셋은 그대로 포함되며 플레이스홀더 생성기는 정상 빌드에 실행하지 않습니다.
 
-출처 캡션·브라우저별 background/options·본문 다운로드·읽을 수 있는 MAIN 메타데이터 브리지의 직접 소스는 브라우저 폴더에 보관합니다. 이를 빌드 시 다른 이전 버전에서 가져오지 않습니다. 제3자 exifr UMD의 Chromium 사본은 공식 7.1.3 코드입니다. 기존 Firefox 사본에는 선택적 의존성 로더를 비활성화한 수정이 있어 `tools/build.mjs`에서 재현하며, 원래 라이선스와 수정 내역·무결성 기록을 제공합니다. 수정 라이브러리에 대한 Mozilla 심사 적합성은 별도 확인이 필요합니다.
+출처 캡션·브라우저별 background/options 원본은 `docs/source/platform/{firefox,whale}/`, 본문 다운로드는 `docs/source/body-download/`, MAIN 태그 브리지는 `docs/source/icon-metadata/`에 있습니다. 이를 빌드 시 다른 이전 버전에서 가져오지 않습니다. 제3자 exifr UMD의 Chromium 사본은 공식 7.1.3 코드입니다. 기존 Firefox 사본에는 선택적 의존성 로더를 비활성화한 수정이 있어 `tools/build.mjs`에서 재현하며, 원래 라이선스와 수정 내역·무결성 기록을 제공합니다. 수정 라이브러리에 대한 Mozilla 심사 적합성은 별도 확인이 필요합니다.
 
 빌드 출력은 `firefox/`와 `whale/`이며 각각 Manifest가 폴더 최상단에 있습니다. Firefox 패키징 ZIP은 추적하지 않는 `dist/firefox/`에 생성합니다. Chromium 스토어 제출용 ZIP도 `whale/`의 **내용물**만 압축하고 루트의 문서·node_modules·과거 버전을 넣지 않습니다.
 

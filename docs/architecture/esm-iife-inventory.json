@@ -7,11 +7,11 @@
   },
   "categories": {
     "생성 번들·복사본": {
-      "files": 67,
-      "iifes": 67
+      "files": 68,
+      "iifes": 68
     },
     "기타 도구·원본": {
-      "files": 23,
+      "files": 27,
       "iifes": 0
     },
     "Background Script": {
@@ -47,7 +47,7 @@
       "iifes": 0
     },
     "검증 코드": {
-      "files": 47,
+      "files": 51,
       "iifes": 5
     },
     "제3자 라이브러리": {
@@ -75,6 +75,7 @@
     "docs/source/bundle-generator/ui.mjs",
     "docs/source/icon-metadata/interface.mjs",
     "docs/source/icon-metadata/metadata-editor-bridge.mjs",
+    "docs/source/performance/metrics.mjs",
     "docs/source/platform/firefox/background.mjs",
     "docs/source/platform/firefox/content.mjs",
     "docs/source/platform/firefox/options.mjs",
@@ -470,6 +471,18 @@
       "imports": []
     },
     {
+      "file": "docs/source/compat/performance-api.mjs",
+      "category": "기타 도구·원본",
+      "iifeLines": [],
+      "imports": []
+    },
+    {
+      "file": "docs/source/compat/performance-metrics.mjs",
+      "category": "기타 도구·원본",
+      "iifeLines": [],
+      "imports": []
+    },
+    {
       "file": "docs/source/compat/platform-firefox-background.mjs",
       "category": "Background Script",
       "iifeLines": [],
@@ -647,6 +660,20 @@
         "shared/icon-metadata/tag-codec.mjs",
         "shared/icon-metadata/tag-edit-model.mjs"
       ]
+    },
+    {
+      "file": "docs/source/performance/metrics.js",
+      "category": "생성 번들·복사본",
+      "iifeLines": [
+        2
+      ],
+      "imports": []
+    },
+    {
+      "file": "docs/source/performance/metrics.mjs",
+      "category": "기타 도구·원본",
+      "iifeLines": [],
+      "imports": []
     },
     {
       "file": "docs/source/platform/firefox/background.mjs",
@@ -1483,6 +1510,18 @@
       "imports": []
     },
     {
+      "file": "tests/integration/baseline.cjs",
+      "category": "검증 코드",
+      "iifeLines": [],
+      "imports": []
+    },
+    {
+      "file": "tests/integration/contracts.test.mjs",
+      "category": "검증 코드",
+      "iifeLines": [],
+      "imports": []
+    },
+    {
       "file": "tests/loading-reader.test.cjs",
       "category": "검증 코드",
       "iifeLines": [],
@@ -1503,6 +1542,18 @@
       "imports": []
     },
     {
+      "file": "tests/optimization.test.cjs",
+      "category": "검증 코드",
+      "iifeLines": [],
+      "imports": []
+    },
+    {
+      "file": "tests/performance.test.cjs",
+      "category": "검증 코드",
+      "iifeLines": [],
+      "imports": []
+    },
+    {
       "file": "tests/publication.test.cjs",
       "category": "검증 코드",
       "iifeLines": [],
@@ -1516,6 +1567,12 @@
     },
     {
       "file": "tools/audit-esm.mjs",
+      "category": "기타 도구·원본",
+      "iifeLines": [],
+      "imports": []
+    },
+    {
+      "file": "tools/benchmark-integration.mjs",
       "category": "기타 도구·원본",
       "iifeLines": [],
       "imports": []

@@ -61,7 +61,7 @@ const { ComposerAdapter, ComposerController } = createComposerAdapter({
 
 `docs/source/compat/*.mjs`가 기존 namespace 등록과 MAIN bridge 설치를 연결한다. 알고리즘은 import한 ESM에만 둔다. `shared/icon-metadata/legacy-adapter.mjs`는 명시적으로 호출할 수 있는 추가 호환 API이며 production compat entry에서 자동 호출하지 않는다.
 
-`npm run build`는 호환 출력 51개를 생성하고 기존 `tools/build.mjs`를 실행한 뒤, reader·metadata UI·bundle MAIN/UI의 최종 출력 8개를 각각 하나의 ESM 그래프로 생성한다. 대상과 공개 API는 `tools/esm-completion-entries.json`, runtime 출력은 `tools/esm-runtime-entries.json`에 명시한다. `tools/build.mjs`와 `docs/tools/build-generator.mjs`, Manifest는 변경하지 않았다. `.js` 첫 줄의 자동 생성 안내를 따른다. WXT에서는 생성된 `.js`나 `compat`가 아닌 ESM을 직접 import한다.
+`npm run build`는 호환 출력 52개를 생성하고 기존 `tools/build.mjs`를 실행한 뒤, reader·metadata UI·bundle MAIN/UI의 최종 출력 8개를 각각 하나의 ESM 그래프로 생성한다. 대상과 공개 API는 `tools/esm-completion-entries.json`, runtime 출력은 `tools/esm-runtime-entries.json`에 명시한다. `tools/build.mjs`와 `docs/tools/build-generator.mjs`, Manifest는 변경하지 않았다. `.js` 첫 줄의 자동 생성 안내를 따른다. WXT에서는 생성된 `.js`나 `compat`가 아닌 ESM을 직접 import한다.
 
 reader와 bundle UI 내부의 의존성은 하나의 import 그래프에서 합친다. 서로 다른 MAIN/ISOLATED/Background 및 독립 classic 파일 사이의 코드 중복은 기존 등록 계약 때문에 남을 수 있다. 이는 관리 원본의 중복이 아니다. 미제공 WXT 빌드 구조는 수정하지 않는다.
 
@@ -98,3 +98,9 @@ const { downloads } = installDownloadContent({ environment: globalThis });
 WXT에 이미 UI/Controller가 있으면 전체 runtime을 중복 설치하지 않고 필요한 순수 함수나 개별 factory만 import한다. MAIN과 ISOLATED 진입점을 합치지 않는다. Chromium Background는 `installWhaleBackground` → `createIconsBackground` → `installDownloadBackground` 순서로 설치하고, 기존 `ownsDownload` getter를 먼저 주입한다. Firefox는 기존 Manifest가 분리 등록한 파일 순서를 유지한다. 별도 브라우저 API·Native Host 권한·설정은 추가하지 않는다.
 
 ESM 자체는 브라우저 없이 import할 수 있다. registry의 JSON import attribute는 Node 24/현재 esbuild에서 지원하며 브라우저 배포물에는 inline된다. 실제 호출에는 해당 문서의 DOM 생성자·WebCrypto·브라우저 API가 있는 환경이 필요하다. classic 산출물은 기존 ES2022 대상이며 Manifest의 Firefox 데스크톱 140.0·Android 142.0 최소 버전과 기존 Chromium 등록 정책을 유지한다. 새로운 WXT 설정·entrypoint·TypeScript 옵션·Manifest 생성 정책은 상대 브랜치를 받은 뒤 비교·통합·빌드·브라우저 검증한다.
+
+## 통합 브랜치의 계측과 태그 부분 처리
+
+`docs/source/performance/metrics.mjs`의 `createPerformanceMetrics({environment})`는 기본 OFF인 인스턴스를 반환한다. `configure({enabled:true})`를 명시한 경우에만 허용된 수치와 최대 512개 표본을 유지한다. storage·network·파일명·출처 URL을 수집하지 않는다. 검색/reader/업로드 factory와 `createIconReader`의 선택 인자 `metrics`로 주입하며 WXT에서는 전역 등록 없이 사용할 수 있다. 기존 진단의 `AruPerformance` 등록은 compat 경계에서만 수행하고 Manifest 경로를 추가하지 않는다.
+
+NORMAL의 `bodyCounts.tagErrors > 0`는 미디어를 유지하면서 stale/partial로 전파한다. 성공적인 재수집으로 오류가 사라진 경우에만 complete가 된다. 태그가 없는 정상 이미지는 오류로 분류하지 않는다. cache·검색 UI 통합 시 이 상태를 덮어쓰지 않아야 한다. 상세 출처와 검증은 [브랜치 통합 보고서](branch-integration-report.md)를 따른다.

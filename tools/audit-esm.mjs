@@ -41,7 +41,7 @@ for (const file of files) {
       const callee = node.callee.type === 'MemberExpression' && ['call', 'apply'].includes(node.callee.property.name) ? node.callee.object : node.callee;
       if (['FunctionExpression', 'ArrowFunctionExpression'].includes(callee.type)) iifes.push(node.loc.start.line);
     }
-    if (module && file !== 'shared/icon-metadata/legacy-adapter.mjs' && node.type === 'Identifier' && ['AruIcons', 'AruMetadata', 'AruBundle', 'AruBodyDownload', 'AruSourceAttribution', 'AruUploadUI'].includes(node.name)) failures.push(`${file}:${node.loc.start.line}: 암묵적 전역 API 참조`);
+    if (module && file !== 'shared/icon-metadata/legacy-adapter.mjs' && node.type === 'Identifier' && ['AruIcons', 'AruMetadata', 'AruBundle', 'AruBodyDownload', 'AruSourceAttribution', 'AruUploadUI', 'AruPerformance'].includes(node.name)) failures.push(`${file}:${node.loc.start.line}: 암묵적 전역 API 참조`);
     if (module && ['ImportDeclaration', 'ExportNamedDeclaration', 'ExportAllDeclaration'].includes(node.type) && node.source) {
       const target = path.posix.normalize(path.posix.join(path.posix.dirname(file), node.source.value));
       if (!node.source.value.startsWith('.') || !fs.existsSync(path.join(root, target))) failures.push(`${file}: 확인할 수 없는 import ${node.source.value}`);

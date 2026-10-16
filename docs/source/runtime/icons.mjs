@@ -27,7 +27,7 @@ function createIconBase(environment) {
   icons.SiteAdapter = createSiteAdapter({ environment, metadata: icons.Metadata });
   return icons;
 }
-function createIconReader({ environment = globalThis } = {}) {
+function createIconReader({ environment = globalThis, metrics = null } = {}) {
   const icons = createIconBase(environment);
   let part;
   part = createIconsRegistry({ environment, dependencies: { icons: { "packRegistry": () => icons["packRegistry"] } } });
@@ -36,9 +36,9 @@ function createIconReader({ environment = globalThis } = {}) {
   Object.assign(icons, part.icons);
   part = createIconsDesignSystem({ environment, dependencies: { icons: { "DesignSystem": () => icons["DesignSystem"] } } });
   Object.assign(icons, part.icons);
-  part = createIconsLibrarySearch({ environment, dependencies: { icons: { "normalize": () => icons["normalize"], "CatalogSources": () => icons["CatalogSources"], "queryTokens": () => icons["queryTokens"], "LibrarySearchEngine": () => icons["LibrarySearchEngine"], "libraryIconIdentity": () => icons["libraryIconIdentity"], "libraryFixedTags": () => icons["libraryFixedTags"] } } });
+  part = createIconsLibrarySearch({ environment, metrics, dependencies: { icons: { "normalize": () => icons["normalize"], "CatalogSources": () => icons["CatalogSources"], "queryTokens": () => icons["queryTokens"], "LibrarySearchEngine": () => icons["LibrarySearchEngine"], "libraryIconIdentity": () => icons["libraryIconIdentity"], "libraryFixedTags": () => icons["libraryFixedTags"] } } });
   Object.assign(icons, part.icons);
-  part = createIconsLibraryReader({ environment, dependencies: { icons: { "SiteAdapter": () => icons["SiteAdapter"], "BrowserAdapter": () => icons["BrowserAdapter"], "feature": () => icons["feature"], "Metadata": () => icons["Metadata"], "LibraryPackReader": () => icons["LibraryPackReader"] } } });
+  part = createIconsLibraryReader({ environment, metrics, dependencies: { icons: { "SiteAdapter": () => icons["SiteAdapter"], "BrowserAdapter": () => icons["BrowserAdapter"], "feature": () => icons["feature"], "Metadata": () => icons["Metadata"], "LibraryPackReader": () => icons["LibraryPackReader"] } } });
   Object.assign(icons, part.icons);
   part = createIconsUiPreferences({ environment, dependencies: { icons: { "createUiPreferences": () => icons["createUiPreferences"], "UiPreferences": () => icons["UiPreferences"] } } });
   Object.assign(icons, part.icons);

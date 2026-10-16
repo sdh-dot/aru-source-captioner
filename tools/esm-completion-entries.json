@@ -817,5 +817,23 @@
       ]
     },
     "entry": "docs/source/compat/docs-demo-upload-surfaces.mjs"
+  },
+  {
+    "file": "docs/source/performance/metrics.js",
+    "module": "docs/source/performance/metrics.mjs",
+    "name": "createPerformanceMetrics",
+    "purpose": "명시적 opt-in 수치 계측",
+    "dependencies": {},
+    "exports": {
+      "AruPerformance": [
+        "configure",
+        "reset",
+        "start",
+        "count",
+        "gauge",
+        "snapshot"
+      ]
+    },
+    "entry": "docs/source/compat/performance-metrics.mjs"
   }
 ]

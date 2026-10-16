@@ -1,12 +1,12 @@
 // 업로드 출처 매칭 결과를 작성기 수명에 맞춰 연결하며 기존 이벤트 계약을 보존한다.
 import { createModuleScope, selectModuleExports } from '../runtime/module-scope.mjs';
 
-export function createAttributionUi({ environment = globalThis, dependencies = {} } = {}) {
+export function createAttributionUi({ environment = globalThis, dependencies = {}, metrics = null } = {}) {
   const { document, location, chrome, MutationObserver } = environment;
 
   let icons = createModuleScope(dependencies.icons, ["DesignSystem"], []);
   let uploadUI = createModuleScope(dependencies.uploadUI, [], []);
-/* Decorate proven native controls; never replace upload listeners or requests. */
+/* 확인된 네이티브 업로드 제어만 꾸미며 기존 리스너나 요청을 교체하지 않는다. */
 const initializeAttributionUi = function (g) {
   'use strict';
   const D = icons?.DesignSystem;
@@ -32,10 +32,26 @@ const initializeAttributionUi = function (g) {
       this.statusLabel = doc.createElement('span'); statusShadow.append(this.statusLabel);
       this.statusCleanup = D?.attach(statusShadow);
       const statusStyle = doc.createElement('style'); statusStyle.textContent = ':host{color:var(--aru-deep-wine);font:13px/1.5 "Aru Pretendard",system-ui,sans-serif}';statusShadow.append(statusStyle);
-      this.observer = new g.MutationObserver(() => { this.discover(); this.report(); });
+      this.observer = new g.MutationObserver(mutations => {
+        metrics?.count('uploadUI.observer');
+        // 진단 문구 갱신은 네이티브 업로드 제어를 다시 찾을 필요가 없다.
+        const controlsChanged = mutations.some(mutation => mutation.type === 'childList' &&
+          [...mutation.addedNodes,...mutation.removedNodes].some(node => this.controlChanged(node)));
+        if (controlsChanged) this.discover();
+        if (controlsChanged || mutations.some(m => m.type === 'attributes')) this.report();
+      });
       this.observer.observe(doc.documentElement, { childList: true, subtree: true, attributes: true,
         attributeFilter: ['data-aru-upload-diagnostic'] });
       this.discover(); this.report();
+    }
+    controlChanged(node) {
+      if (node.nodeType !== 1) return false;
+      if (node.tagName === 'LABEL' || (node.tagName === 'INPUT' && node.type === 'file') ||
+          node.classList.contains('note-toolbar') || node.classList.contains('icon-camera') || node.getAttribute('contenteditable') === 'true') return true;
+      if (node.childElementCount > 0 && node.querySelector('.note-toolbar,.icon-camera,input[type="file"],label,[contenteditable="true"]')) return true;
+      for (const [control,record] of this.records) if (node === control || node === record.host ||
+          (node.childElementCount > 0 && (node.contains(control) || node.contains(record.host)))) return true;
+      return false;
     }
     decorate(control) {
       if (this.records.has(control) || !D) return;
@@ -53,6 +69,7 @@ const initializeAttributionUi = function (g) {
       this.records.set(control, { host, cleanup, previous });
     }
     discover() {
+      const finish = metrics?.start('uploadUI.discover'); try {
       for (const [control, record] of this.records) if (!control.isConnected || !record.host.isConnected) {
         record.cleanup?.(); record.host.remove(); delete control.dataset.aruNativeUpload;
         if (record.previous === null) control.removeAttribute('aria-label'); else control.setAttribute('aria-label', record.previous);
@@ -77,6 +94,8 @@ const initializeAttributionUi = function (g) {
       if (toolbar && !this.status.isConnected) {
         if (toolbar === this.doc.body) toolbar.append(this.status); else toolbar.after(this.status);
       }
+      } finally { finish?.(); }
+
     }
     report() {
       let data;

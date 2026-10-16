@@ -220,7 +220,7 @@ const initializeIconsFeature = function(global) {
       let pendingPack=null,pendingData=null,latestProgress=null;
       const progress=info=>{latestProgress={...info};picker.setProgress(info);};
       const commit=(pack,data={})=>{
-        if(this.librarySearch&&context.articleId){const ref=context.catalogRef||{boardId:context.boardId||'98',articleId:context.articleId,title:context.title,source:'direct'};this.librarySearch.remember(ref,pack,{stale:data.stale===true||(pack.kind==='BUNDLE'&&(pack.attributeReaderVersion!==2||pack.mediaReaderVersion!==1))});this.librarySearch.setState({currentKey:String(ref.boardId)+':'+ref.articleId});}
+        if(this.librarySearch&&context.articleId){const ref=context.catalogRef||{boardId:context.boardId||'98',articleId:context.articleId,title:context.title,source:'direct'};this.librarySearch.remember(ref,pack,{stale:data.stale===true||(pack.kind==='NORMAL'&&pack.bodyCounts?.tagErrors>0)||(pack.kind==='BUNDLE'&&(pack.attributeReaderVersion!==2||pack.mediaReaderVersion!==1))});this.librarySearch.setState({currentKey:String(ref.boardId)+':'+ref.articleId});}
         picker.setCurrentSource?.(String(context.boardId)+':'+context.articleId);picker.setPack(pack);
         if(context.catalogRef)picker.setCatalogPack?.(context.catalogRef,pack);
         const view=picker.getSnapshot?.();
@@ -283,7 +283,7 @@ const initializeIconsFeature = function(global) {
             const collected=this.site.readArticlePack(doc,context.articleId,context.title,context.boardId||'98',{diagnostics:this.options?.debug===true});ensure();pack=collected.pack;
             log('body-collect',{selector:collected.selector,...collected.counts});publish(pack,{from:'article-body'});
             picker.setMetadataDiagnostics?.(collected.metadataDiagnostics);
-            progress({status:!pack.icons.length || collected.counts.excluded?'partial':'complete',phase:'ready',processed:pack.icons.length,loaded:pack.icons.length,total:pack.icons.length,
+            progress({status:!pack.icons.length || collected.counts.excluded || collected.counts.tagErrors?'partial':'complete',phase:'ready',processed:pack.icons.length,loaded:pack.icons.length,total:pack.icons.length,
               message:'NORMAL 본문 URL 수집 · 대상 '+collected.counts.candidates+'개 · 제외 '+collected.counts.excluded+'개 · 중복 '+collected.counts.duplicates+'개. '+(!pack.icons.length?'지원하는 본문 미디어가 없습니다. ':'')+(collected.counts.tagErrors?'태그를 읽지 못한 이미지 '+collected.counts.tagErrors+'개는 태그 없이 표시합니다.':''),busy:false});
           } else {
           progress({status:'loading',phase:'native',processed:null,total:null,message:'사이트 아이콘 목록이 준비되기를 기다리고 있어요.',busy:true});

@@ -3,6 +3,109 @@
   var __defProp = Object.defineProperty;
   var __name = (target, value) => __defProp(target, "name", { value, configurable: true });
 
+  // docs/source/performance/metrics.mjs
+  function createPerformanceMetrics({ environment = globalThis } = {}) {
+    const g = environment;
+    "use strict";
+    const names = /* @__PURE__ */ new Set([
+      "upload.discover",
+      "upload.observer",
+      "upload.reconcile",
+      "upload.match",
+      "upload.snapshot",
+      "metadata.parse",
+      "uploadUI.observer",
+      "uploadUI.discover",
+      "library.rebuild",
+      "library.search",
+      "reader.cache",
+      "reader.network",
+      "cache.hit",
+      "cache.miss",
+      "search.hit",
+      "search.miss",
+      "registry.records",
+      "upload.candidates",
+      "upload.roots",
+      "library.rows",
+      "library.cache"
+    ]);
+    const stats = /* @__PURE__ */ new Map(), windowSize = 512;
+    let enabled = false, generation = 0;
+    const clock = /* @__PURE__ */ __name(() => g.performance.now(), "clock");
+    const row = /* @__PURE__ */ __name((name) => {
+      if (!stats.has(name)) stats.set(name, { count: 0, total: 0, max: 0, active: 0, peak: 0, samples: [], cursor: 0 });
+      return stats.get(name);
+    }, "row");
+    const valid = /* @__PURE__ */ __name((name) => enabled && names.has(name), "valid");
+    const api = {
+      configure(options = {}) {
+        enabled = options.enabled === true;
+        generation++;
+        for (const value of stats.values()) value.active = 0;
+      },
+      reset() {
+        generation++;
+        stats.clear();
+      },
+      start(name) {
+        if (!valid(name)) return;
+        const value = row(name), started = clock(), epoch = generation;
+        value.active++;
+        value.peak = Math.max(value.peak, value.active);
+        let finished = false;
+        return () => {
+          if (finished || epoch !== generation || !enabled) return;
+          finished = true;
+          const duration = Math.max(0, clock() - started);
+          value.active--;
+          value.count++;
+          value.total += duration;
+          value.max = Math.max(value.max, duration);
+          value.samples[value.cursor] = duration;
+          value.cursor = (value.cursor + 1) % windowSize;
+        };
+      },
+      count(name) {
+        if (valid(name)) row(name).count++;
+      },
+      gauge(name, number) {
+        if (valid(name) && Number.isFinite(number) && number >= 0) {
+          const value = row(name);
+          value.current = number;
+          value.peak = Math.max(value.peak, number);
+        }
+      },
+      snapshot() {
+        const metrics = {};
+        for (const [name, value] of stats) {
+          const sorted = value.samples.slice().sort((a, b) => a - b), percentile = /* @__PURE__ */ __name((p) => sorted.length ? sorted[Math.ceil(sorted.length * p) - 1] : null, "percentile");
+          metrics[name] = {
+            calls: value.count,
+            totalMs: value.total,
+            meanMs: value.count ? value.total / value.count : 0,
+            maxMs: value.max,
+            p50Ms: percentile(0.5),
+            p95Ms: percentile(0.95),
+            sampleCount: sorted.length,
+            active: value.active,
+            peak: value.peak,
+            ...value.current === void 0 ? {} : { current: value.current }
+          };
+        }
+        return { enabled, windowSize, percentiles: "last 512 completed calls per metric; totals cover this reset interval", metrics };
+      }
+    };
+    return Object.freeze(api);
+  }
+  __name(createPerformanceMetrics, "createPerformanceMetrics");
+
+  // docs/source/compat/performance-api.mjs
+  function getLegacyPerformanceMetrics(environment = globalThis) {
+    return environment.AruPerformance ||= createPerformanceMetrics({ environment });
+  }
+  __name(getLegacyPerformanceMetrics, "getLegacyPerformanceMetrics");
+
   // docs/source/runtime/module-scope.mjs
   function createModuleScope(resolvers = {}, names = [], own = []) {
     const scope = {};
@@ -15,7 +118,7 @@
   __name(createModuleScope, "createModuleScope");
 
   // docs/source/upload-attribution/ui.mjs
-  function createAttributionUi({ environment = globalThis, dependencies = {} } = {}) {
+  function createAttributionUi({ environment = globalThis, dependencies = {}, metrics = null } = {}) {
     const { document, location, chrome, MutationObserver } = environment;
     let icons2 = createModuleScope(dependencies.icons, ["DesignSystem"], []);
     let uploadUI2 = createModuleScope(dependencies.uploadUI, [], []);
@@ -56,9 +159,11 @@
           const statusStyle = doc.createElement("style");
           statusStyle.textContent = ':host{color:var(--aru-deep-wine);font:13px/1.5 "Aru Pretendard",system-ui,sans-serif}';
           statusShadow.append(statusStyle);
-          this.observer = new g.MutationObserver(() => {
-            this.discover();
-            this.report();
+          this.observer = new g.MutationObserver((mutations) => {
+            metrics?.count("uploadUI.observer");
+            const controlsChanged = mutations.some((mutation) => mutation.type === "childList" && [...mutation.addedNodes, ...mutation.removedNodes].some((node) => this.controlChanged(node)));
+            if (controlsChanged) this.discover();
+            if (controlsChanged || mutations.some((m) => m.type === "attributes")) this.report();
           });
           this.observer.observe(doc.documentElement, {
             childList: true,
@@ -68,6 +173,13 @@
           });
           this.discover();
           this.report();
+        }
+        controlChanged(node) {
+          if (node.nodeType !== 1) return false;
+          if (node.tagName === "LABEL" || node.tagName === "INPUT" && node.type === "file" || node.classList.contains("note-toolbar") || node.classList.contains("icon-camera") || node.getAttribute("contenteditable") === "true") return true;
+          if (node.childElementCount > 0 && node.querySelector('.note-toolbar,.icon-camera,input[type="file"],label,[contenteditable="true"]')) return true;
+          for (const [control, record] of this.records) if (node === control || node === record.host || node.childElementCount > 0 && (node.contains(control) || node.contains(record.host))) return true;
+          return false;
         }
         decorate(control) {
           if (this.records.has(control) || !D) return;
@@ -92,31 +204,36 @@
           this.records.set(control, { host, cleanup, previous });
         }
         discover() {
-          for (const [control, record] of this.records) if (!control.isConnected || !record.host.isConnected) {
-            record.cleanup?.();
-            record.host.remove();
-            delete control.dataset.aruNativeUpload;
-            if (record.previous === null) control.removeAttribute("aria-label");
-            else control.setAttribute("aria-label", record.previous);
-            this.records.delete(control);
-          }
-          for (const icon of this.doc.querySelectorAll(".note-toolbar .icon-camera")) {
-            const button = icon.closest("button");
-            if (button) this.decorate(button);
-          }
-          for (const input of this.doc.querySelectorAll('input[type="file"]')) {
-            if (input.closest(".common_write_wrapper")) continue;
-            if (!/image|\.jpe?g|\.png|\.gif|\.webp/i.test(input.accept)) continue;
-            const labels = [...input.labels || []];
-            if (labels.length) labels.forEach((label) => this.decorate(label));
-            else if (input.getClientRects().length) {
-              input.dataset.aruNativeFile = "";
+          const finish = metrics?.start("uploadUI.discover");
+          try {
+            for (const [control, record] of this.records) if (!control.isConnected || !record.host.isConnected) {
+              record.cleanup?.();
+              record.host.remove();
+              delete control.dataset.aruNativeUpload;
+              if (record.previous === null) control.removeAttribute("aria-label");
+              else control.setAttribute("aria-label", record.previous);
+              this.records.delete(control);
             }
-          }
-          const toolbar = this.doc.querySelector(".note-toolbar") || [...this.records.keys()][0]?.parentElement || this.doc.querySelector('input[type="file"]') || this.doc.querySelector('[contenteditable="true"]');
-          if (toolbar && !this.status.isConnected) {
-            if (toolbar === this.doc.body) toolbar.append(this.status);
-            else toolbar.after(this.status);
+            for (const icon of this.doc.querySelectorAll(".note-toolbar .icon-camera")) {
+              const button = icon.closest("button");
+              if (button) this.decorate(button);
+            }
+            for (const input of this.doc.querySelectorAll('input[type="file"]')) {
+              if (input.closest(".common_write_wrapper")) continue;
+              if (!/image|\.jpe?g|\.png|\.gif|\.webp/i.test(input.accept)) continue;
+              const labels = [...input.labels || []];
+              if (labels.length) labels.forEach((label) => this.decorate(label));
+              else if (input.getClientRects().length) {
+                input.dataset.aruNativeFile = "";
+              }
+            }
+            const toolbar = this.doc.querySelector(".note-toolbar") || [...this.records.keys()][0]?.parentElement || this.doc.querySelector('input[type="file"]') || this.doc.querySelector('[contenteditable="true"]');
+            if (toolbar && !this.status.isConnected) {
+              if (toolbar === this.doc.body) toolbar.append(this.status);
+              else toolbar.after(this.status);
+            }
+          } finally {
+            finish?.();
           }
         }
         report() {
@@ -181,7 +298,7 @@
   // docs/source/compat/upload-attribution-ui.mjs
   var icons = globalThis.AruIcons = globalThis.AruIcons || {};
   var uploadUI = globalThis.AruUploadUI = globalThis.AruUploadUI || {};
-  var result = createAttributionUi({ environment: globalThis, dependencies: {
+  var result = createAttributionUi({ environment: globalThis, metrics: getLegacyPerformanceMetrics(), dependencies: {
     icons: { "DesignSystem": /* @__PURE__ */ __name(() => icons["DesignSystem"], "DesignSystem") },
     uploadUI: {}
   } });

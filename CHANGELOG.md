@@ -1,5 +1,14 @@
 # 변경 이력
 
+## 미출시 — 통합 ESM 개발본
+
+2026-10-16. `integration/aru-unified` 로컬 통합 형상. 기존 PR·main·배포 패키지는 변경하지 않는다.
+
+- PR #1의 NORMAL 태그 오류 partial/stale 전파와 재수집 완료 처리를 ESM에 반영했다.
+- Hybrid의 DOM 관련 변경 필터, root별 감시, 업로드 이름 인덱스·공용 2슬롯 파싱·동일 File 진행 중 공유·종료 정리를 통합했다.
+- 검색 재구성 내 사전/정규화 재사용과 기본 OFF 수치 계측을 추가했다. 저장 데이터·이벤트·Manifest·브라우저 버전은 유지한다.
+- [통합 범위·검증·보류 사항](docs/architecture/branch-integration-report.md)을 별도로 기록한다.
+
 ## 미출시 — Firefox 1.0.4 / Whale 0.1.3
 
 2026-10-15. `fix/android-upload-attribution` 개발본. 모바일 로딩 UX 변경을 포함하며 main과 기존 스토어 제출본을 보존한다.
