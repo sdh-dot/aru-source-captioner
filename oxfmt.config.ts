@@ -6,7 +6,7 @@ export default defineConfig({
   ignorePatterns: [
     "_old/**",
     "docs/source/**",
-    "entrypoints/features/**",
+    "entrypoints/features/**/*.js",
     "public/features/**",
   ],
 });

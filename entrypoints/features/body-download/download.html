@@ -1,16 +1,61 @@
 <!doctype html>
-<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>아루 · 게시글 아이콘 일괄 다운로드</title><link rel="stylesheet" href="download.css"></head>
-<body><main>
-  <header><span class="eyebrow">ARU SOURCE CAPTIONER</span><h1>게시글 아이콘 일괄 다운로드</h1><p>현재 게시글 본문의 원본 이미지·MP4·WEBM을 저장합니다.</p></header>
-  <section class="card" aria-label="다운로드 대상"><h2 id="article-title">게시글을 확인하고 있습니다</h2><p id="source"></p>
-    <dl><div><dt>발견된 본문 미디어</dt><dd id="found">—</dd></div><div><dt>중복 제거 후 대상</dt><dd id="unique">—</dd></div><div><dt>지원하지 않는 미디어</dt><dd id="unsupported">—</dd></div></dl>
-    <label for="folder">예상 저장 폴더 · 기본 다운로드 폴더 아래</label><p id="folder" class="path"></p>
-    <p class="hint">실제 형식은 저장 직전에 확인합니다. 지원 형식이 아닌 응답은 저장하지 않으며, 파일명 변경은 기록에 반영합니다.</p>
-  </section>
-  <section class="card" aria-label="다운로드 진행"><div class="progress-heading"><h2>진행 상태</h2><strong id="percentage">0%</strong></div><progress id="progress" max="100" value="0" aria-label="다운로드 진행률"></progress>
-    <p id="counts">실행 전 · 아직 저장한 파일이 없습니다.</p><p id="current" class="hint"></p><p id="status" role="status" aria-live="polite"></p><p id="error" role="alert" hidden></p>
-    <div class="actions"><button id="start" type="button" disabled>다운로드 실행</button><button id="cancel" type="button">취소</button><button id="record" type="button" hidden>로컬 기록 저장</button></div>
-  </section>
-  <details id="results"><summary>파일별 결과</summary><ol id="file-results"></ol></details>
-  <footer>글 작성·댓글 전송·즐겨찾기 변경 없이 저장합니다. 원본 이용 조건은 그대로 적용됩니다.<br>이 화면을 닫으면 작업이 중단될 수 있으며 자동 재개하지 않습니다.</footer>
-</main><script src="core.js"></script><script src="browser-api.js"></script><script src="engine.js"></script><script src="ui.js"></script></body></html>
+<html lang="ko">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>아루 · 게시글 아이콘 일괄 다운로드</title>
+  <link rel="stylesheet" href="download.css">
+</head>
+
+<body>
+  <main>
+    <header><span class="eyebrow">ARU SOURCE CAPTIONER</span>
+      <h1>게시글 아이콘 일괄 다운로드</h1>
+      <p>현재 게시글 본문의 원본 이미지·MP4·WEBM을 저장합니다.</p>
+    </header>
+    <section class="card" aria-label="다운로드 대상">
+      <h2 id="article-title">게시글을 확인하고 있습니다</h2>
+      <p id="source"></p>
+      <dl>
+        <div>
+          <dt>발견된 본문 미디어</dt>
+          <dd id="found">—</dd>
+        </div>
+        <div>
+          <dt>중복 제거 후 대상</dt>
+          <dd id="unique">—</dd>
+        </div>
+        <div>
+          <dt>지원하지 않는 미디어</dt>
+          <dd id="unsupported">—</dd>
+        </div>
+      </dl>
+      <label for="folder">예상 저장 폴더 · 기본 다운로드 폴더 아래</label>
+      <p id="folder" class="path"></p>
+      <p class="hint">실제 형식은 저장 직전에 확인합니다. 지원 형식이 아닌 응답은 저장하지 않으며, 파일명 변경은 기록에 반영합니다.</p>
+    </section>
+    <section class="card" aria-label="다운로드 진행">
+      <div class="progress-heading">
+        <h2>진행 상태</h2><strong id="percentage">0%</strong>
+      </div><progress id="progress" max="100" value="0" aria-label="다운로드 진행률"></progress>
+      <p id="counts">실행 전 · 아직 저장한 파일이 없습니다.</p>
+      <p id="current" class="hint"></p>
+      <p id="status" role="status" aria-live="polite"></p>
+      <p id="error" role="alert" hidden></p>
+      <div class="actions"><button id="start" type="button" disabled>다운로드 실행</button><button id="cancel"
+          type="button">취소</button><button id="record" type="button" hidden>로컬 기록 저장</button></div>
+    </section>
+    <details id="results">
+      <summary>파일별 결과</summary>
+      <ol id="file-results"></ol>
+    </details>
+    <footer>글 작성·댓글 전송·즐겨찾기 변경 없이 저장합니다. 원본 이용 조건은 그대로 적용됩니다.<br>이 화면을 닫으면 작업이 중단될 수 있으며 자동 재개하지 않습니다.</footer>
+  </main>
+  <script src="core.js"></script>
+  <script src="browser-api.js"></script>
+  <script src="engine.js"></script>
+  <script src="ui.js"></script>
+</body>
+
+</html>

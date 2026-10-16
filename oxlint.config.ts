@@ -6,5 +6,7 @@ export default defineConfig({
   },
   rules: {
     "eslint/no-unused-vars": "error",
+    "curly": ["error", "all"],
+    "no-control-regex": "off",
   },
 });

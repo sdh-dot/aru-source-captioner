@@ -1,1 +1,210 @@
-:root{color-scheme:light;font:15px/1.6 system-ui,'Malgun Gothic',sans-serif;color:#2e2840;background:#f7f5fa}*{box-sizing:border-box}body{margin:0;padding:32px 20px}main{max-width:780px;margin:auto}header{margin:12px 0 24px}.eyebrow{color:#7c5da6;font-size:12px;font-weight:700;letter-spacing:1.6px}h1{font-size:26px;line-height:1.35;margin:9px 0}h2{font-size:19px;margin:0 0 12px;overflow-wrap:anywhere}p{margin:8px 0}header p,.hint,footer{color:#756d83}.card{background:white;border:1px solid #e1d9eb;border-radius:16px;padding:24px;margin-bottom:18px;box-shadow:0 3px 15px #33224405}dl{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;border-top:1px solid #eee8f3;padding-top:18px;margin:18px 0 22px}dt{font-size:12px;color:#756d83}dd{margin:5px 0 0;font-size:26px;font-weight:700;color:#674693}.path{background:#f6f2fa;border:1px solid #e9e1f2;border-radius:8px;padding:12px;font-size:13px;overflow-wrap:anywhere}.hint{font-size:13px}.progress-heading{display:flex;justify-content:space-between;align-items:center}.progress-heading h2{margin:0}.progress-heading strong{color:#7954a5}progress{display:block;width:100%;height:10px;margin:17px 0;accent-color:#8c65b5}.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:20px}button{font:inherit;font-weight:600;min-height:44px;border:1px solid #d5c8e4;border-radius:9px;background:#fff;padding:10px 20px;cursor:pointer}#start{background:#7954a5;border-color:#7954a5;color:white}button:disabled{opacity:.45;cursor:default}button:focus-visible,summary:focus-visible{outline:3px solid #ba98e0;outline-offset:3px}#error{background:#fff3ed;color:#914422;padding:12px;border-radius:8px}#status{font-weight:600}details{padding:10px 4px}summary{cursor:pointer}#file-results{max-height:280px;overflow:auto;font-size:13px;overflow-wrap:anywhere}footer{font-size:12px;margin-top:18px}@media(max-width:520px){body{padding:18px 12px}h1{font-size:22px}.card{padding:18px}dl{gap:8px}dt{font-size:11px}dd{font-size:24px}}
+:root {
+  color-scheme: light;
+  font: 15px/1.6 system-ui, 'Malgun Gothic', sans-serif;
+  color: #2e2840;
+  background: #f7f5fa
+}
+
+* {
+  box-sizing: border-box
+}
+
+body {
+  margin: 0;
+  padding: 32px 20px
+}
+
+main {
+  max-width: 780px;
+  margin: auto
+}
+
+header {
+  margin: 12px 0 24px
+}
+
+.eyebrow {
+  color: #7c5da6;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 1.6px
+}
+
+h1 {
+  font-size: 26px;
+  line-height: 1.35;
+  margin: 9px 0
+}
+
+h2 {
+  font-size: 19px;
+  margin: 0 0 12px;
+  overflow-wrap: anywhere
+}
+
+p {
+  margin: 8px 0
+}
+
+header p,
+.hint,
+footer {
+  color: #756d83
+}
+
+.card {
+  background: white;
+  border: 1px solid #e1d9eb;
+  border-radius: 16px;
+  padding: 24px;
+  margin-bottom: 18px;
+  box-shadow: 0 3px 15px #33224405
+}
+
+dl {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  border-top: 1px solid #eee8f3;
+  padding-top: 18px;
+  margin: 18px 0 22px
+}
+
+dt {
+  font-size: 12px;
+  color: #756d83
+}
+
+dd {
+  margin: 5px 0 0;
+  font-size: 26px;
+  font-weight: 700;
+  color: #674693
+}
+
+.path {
+  background: #f6f2fa;
+  border: 1px solid #e9e1f2;
+  border-radius: 8px;
+  padding: 12px;
+  font-size: 13px;
+  overflow-wrap: anywhere
+}
+
+.hint {
+  font-size: 13px
+}
+
+.progress-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center
+}
+
+.progress-heading h2 {
+  margin: 0
+}
+
+.progress-heading strong {
+  color: #7954a5
+}
+
+progress {
+  display: block;
+  width: 100%;
+  height: 10px;
+  margin: 17px 0;
+  accent-color: #8c65b5
+}
+
+.actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 20px
+}
+
+button {
+  font: inherit;
+  font-weight: 600;
+  min-height: 44px;
+  border: 1px solid #d5c8e4;
+  border-radius: 9px;
+  background: #fff;
+  padding: 10px 20px;
+  cursor: pointer
+}
+
+#start {
+  background: #7954a5;
+  border-color: #7954a5;
+  color: white
+}
+
+button:disabled {
+  opacity: .45;
+  cursor: default
+}
+
+button:focus-visible,
+summary:focus-visible {
+  outline: 3px solid #ba98e0;
+  outline-offset: 3px
+}
+
+#error {
+  background: #fff3ed;
+  color: #914422;
+  padding: 12px;
+  border-radius: 8px
+}
+
+#status {
+  font-weight: 600
+}
+
+details {
+  padding: 10px 4px
+}
+
+summary {
+  cursor: pointer
+}
+
+#file-results {
+  max-height: 280px;
+  overflow: auto;
+  font-size: 13px;
+  overflow-wrap: anywhere
+}
+
+footer {
+  font-size: 12px;
+  margin-top: 18px
+}
+
+@media(max-width:520px) {
+  body {
+    padding: 18px 12px
+  }
+
+  h1 {
+    font-size: 22px
+  }
+
+  .card {
+    padding: 18px
+  }
+
+  dl {
+    gap: 8px
+  }
+
+  dt {
+    font-size: 11px
+  }
+
+  dd {
+    font-size: 24px
+  }
+}
