@@ -3,30 +3,133 @@
   var __defProp = Object.defineProperty;
   var __name = (target, value) => __defProp(target, "name", { value, configurable: true });
 
+  // docs/source/source-caption/png-chunks.mjs
+  var PNG_SIGNATURE = [137, 80, 78, 71, 13, 10, 26, 10];
+  function hasPngSignature(buffer) {
+    if (!buffer || buffer.byteLength < 8) {
+      return false;
+    }
+    const sig = new Uint8Array(buffer, 0, 8);
+    for (let i = 0; i < PNG_SIGNATURE.length; i++) {
+      if (sig[i] !== PNG_SIGNATURE[i]) {
+        return false;
+      }
+    }
+    return true;
+  }
+  __name(hasPngSignature, "hasPngSignature");
+  function* parsePngItxtChunks(buffer) {
+    const view = new DataView(buffer);
+    let offset = 8;
+    while (offset + 12 <= buffer.byteLength) {
+      const length = view.getUint32(offset, false);
+      if (length > 2147483647) {
+        return;
+      }
+      const dataStart = offset + 8;
+      const dataEnd = dataStart + length;
+      if (dataEnd + 4 > buffer.byteLength) {
+        return;
+      }
+      const t0 = view.getUint8(offset + 4);
+      const t1 = view.getUint8(offset + 5);
+      const t2 = view.getUint8(offset + 6);
+      const t3 = view.getUint8(offset + 7);
+      const type = String.fromCodePoint(t0, t1, t2, t3);
+      if (type === "iTXt" && length > 0) {
+        yield new Uint8Array(buffer, dataStart, length);
+      }
+      if (type === "IEND") {
+        return;
+      }
+      offset = dataEnd + 4;
+    }
+  }
+  __name(parsePngItxtChunks, "parsePngItxtChunks");
+  function parseItxtChunk(data) {
+    if (!data || data.length < 6) {
+      return null;
+    }
+    let kwEnd = -1;
+    const maxKw = Math.min(data.length, 80);
+    for (let i = 0; i < maxKw; i++) {
+      if (data[i] === 0) {
+        kwEnd = i;
+        break;
+      }
+    }
+    if (kwEnd < 1) {
+      return null;
+    }
+    let keyword;
+    try {
+      keyword = String.fromCodePoint(...data.subarray(0, kwEnd));
+    } catch {
+      return null;
+    }
+    if (kwEnd + 2 >= data.length) {
+      return null;
+    }
+    const compressionFlag = data[kwEnd + 1];
+    const compressionMethod = data[kwEnd + 2];
+    let langEnd = -1;
+    for (let i = kwEnd + 3; i < data.length; i++) {
+      if (data[i] === 0) {
+        langEnd = i;
+        break;
+      }
+    }
+    if (langEnd === -1) {
+      return null;
+    }
+    let tkwEnd = -1;
+    for (let i = langEnd + 1; i < data.length; i++) {
+      if (data[i] === 0) {
+        tkwEnd = i;
+        break;
+      }
+    }
+    if (tkwEnd === -1) {
+      return null;
+    }
+    const textBytes = data.subarray(tkwEnd + 1);
+    return { keyword, compressionFlag, compressionMethod, textBytes };
+  }
+  __name(parseItxtChunk, "parseItxtChunk");
+
+  // docs/source/runtime/contracts.mjs
+  var defaultEnvironment = globalThis;
+
   // docs/source/runtime/module-scope.mjs
   function createModuleScope(resolvers = {}, names = [], own = []) {
     const scope = {};
     for (const name of names) {
-      if (own.includes(name)) scope[name] = resolvers[name]?.();
-      else Object.defineProperty(scope, name, { enumerable: true, get: /* @__PURE__ */ __name(() => resolvers[name]?.(), "get") });
+      if (own.includes(name)) {
+        scope[name] = resolvers[name]?.();
+      } else {
+        Object.defineProperty(scope, name, {
+          enumerable: true,
+          get: /* @__PURE__ */ __name(() => resolvers[name]?.(), "get")
+        });
+      }
     }
     return scope;
   }
   __name(createModuleScope, "createModuleScope");
 
   // docs/source/platform/firefox/content.mjs
-  function installFirefoxContent({ environment = globalThis, dependencies = {} } = {}) {
+  function installFirefoxContent({ environment = defaultEnvironment, dependencies = {} } = {}) {
     const window = environment.window ?? environment;
     const { document, location, navigator, chrome, MutationObserver, HTMLElement, TextDecoder, URL, exifr, console } = environment;
     const setTimeout = typeof environment.setTimeout === "function" ? (...args) => environment.setTimeout(...args) : void 0;
     const setInterval = typeof environment.setInterval === "function" ? (...args) => environment.setInterval(...args) : void 0;
     const clearInterval = typeof environment.clearInterval === "function" ? (...args) => environment.clearInterval(...args) : void 0;
-    const getComputedStyle = typeof environment.getComputedStyle === "function" ? (...args) => environment.getComputedStyle(...args) : void 0;
-    const matchMedia = typeof environment.matchMedia === "function" ? (...args) => environment.matchMedia(...args) : void 0;
     let attribution2 = createModuleScope(dependencies.attribution, ["Controller"], []);
     const runBootstrap1 = /* @__PURE__ */ __name(function bootstrap() {
       "use strict";
-      console.log("[Aru Source Captioner] content script loaded", { href: location.href });
+      console.log("[Aru Source Captioner] content script loaded", {
+        href: location.href
+      });
       const DEFAULT_OPTIONS = Object.freeze({
         enabled: true,
         allowHttp: false,
@@ -44,13 +147,13 @@
         "Description",
         "ImageDescription"
       ];
-      const EDITOR_ROOT_SELECTORS = [
+      const _EDITOR_ROOT_SELECTORS = [
         '[contenteditable="true"]',
         ".cke_editable",
         ".fr-element",
         ".editor"
       ];
-      const BOOT_OBSERVER_TIMEOUT_MS = 6e4;
+      const _BOOT_OBSERVER_TIMEOUT_MS = 6e4;
       const WALK_MAX_DEPTH = 10;
       let uploadAttribution = null;
       const handledFileEvents = /* @__PURE__ */ new WeakSet();
@@ -64,11 +167,21 @@
       __name(isMobileAutoInsertEnvironment, "isMobileAutoInsertEnvironment");
       function isChromeStorageSyncAvailable() {
         try {
-          if (typeof chrome === "undefined") return false;
-          if (!chrome) return false;
-          if (!chrome.storage) return false;
-          if (!chrome.storage.sync) return false;
-          if (typeof chrome.storage.sync.get !== "function") return false;
+          if (typeof chrome === "undefined") {
+            return false;
+          }
+          if (!chrome) {
+            return false;
+          }
+          if (!chrome.storage) {
+            return false;
+          }
+          if (!chrome.storage.sync) {
+            return false;
+          }
+          if (typeof chrome.storage.sync.get !== "function") {
+            return false;
+          }
           return true;
         } catch {
           return false;
@@ -79,23 +192,20 @@
         return new Promise((resolve) => {
           try {
             if (!isChromeStorageSyncAvailable()) {
-              console.warn(
-                "[Aru Source Captioner] chrome.storage.sync unavailable — using default options"
-              );
+              console.warn("[Aru Source Captioner] chrome.storage.sync unavailable — using default options");
               resolve({ ...DEFAULT_OPTIONS });
               return;
             }
             chrome.storage.sync.get(null, (items) => {
               try {
                 if (typeof chrome !== "undefined" && chrome && chrome.runtime && chrome.runtime.lastError) {
-                  console.warn(
-                    "[Aru Source Captioner] storage.get failed, falling back to defaults:",
-                    chrome.runtime.lastError.message
-                  );
+                  console.warn("[Aru Source Captioner] storage.get failed, falling back to defaults:", chrome.runtime.lastError.message);
                   resolve({ ...DEFAULT_OPTIONS });
                   return;
                 }
-                const merged = { ...DEFAULT_OPTIONS };
+                const merged = {
+                  ...DEFAULT_OPTIONS
+                };
                 const safeItems = items && typeof items === "object" ? items : {};
                 for (const key of Object.keys(DEFAULT_OPTIONS)) {
                   if (key in safeItems) {
@@ -104,18 +214,12 @@
                 }
                 resolve(merged);
               } catch (callbackErr) {
-                console.warn(
-                  "[Aru Source Captioner] storage.get callback threw, falling back to defaults:",
-                  callbackErr
-                );
+                console.warn("[Aru Source Captioner] storage.get callback threw, falling back to defaults:", callbackErr);
                 resolve({ ...DEFAULT_OPTIONS });
               }
             });
           } catch (err) {
-            console.warn(
-              "[Aru Source Captioner] loadConfig threw, falling back to defaults:",
-              err
-            );
+            console.warn("[Aru Source Captioner] loadConfig threw, falling back to defaults:", err);
             resolve({ ...DEFAULT_OPTIONS });
           }
         });
@@ -128,42 +232,50 @@
         }
       }
       __name(publishUploadStatus, "publishUploadStatus");
-      function attachFileInputListeners(config) {
+      function attachFileInputListeners(_config) {
         document.addEventListener("change", async (ev) => {
           const target = ev.target;
-          if (!(target instanceof HTMLInputElement) || target.type !== "file" || !target.files?.length) return;
-          if (handledFileEvents.has(ev)) return;
+          if (!(target instanceof HTMLInputElement) || target.type !== "file" || !target.files?.length) {
+            return;
+          }
+          if (handledFileEvents.has(ev)) {
+            return;
+          }
           handledFileEvents.add(ev);
           const images = Array.from(target.files).filter((file) => file?.type?.startsWith("image/"));
-          if (!images.length) return;
+          if (!images.length) {
+            return;
+          }
           await handleSelectedImageFiles(images, target);
         }, true);
       }
       __name(attachFileInputListeners, "attachFileInputListeners");
       async function handleSelectedImageFiles(files, input) {
-        if (uploadAttribution) await uploadAttribution.select(files, input);
-        else publishUploadStatus({ state: "editor-unavailable", selected: files.length });
+        if (uploadAttribution) {
+          await uploadAttribution.select(files, input);
+        } else {
+          publishUploadStatus({
+            state: "editor-unavailable",
+            selected: files.length
+          });
+        }
       }
       __name(handleSelectedImageFiles, "handleSelectedImageFiles");
-      const PNG_SIGNATURE = [137, 80, 78, 71, 13, 10, 26, 10];
       const ARU_ITXT_KEYWORD = "AruArchive";
       const ARU_PAYLOAD_URL_KEYS = ["artwork_url", "source_url", "artworkUrl"];
       function isPngFile(file) {
-        if (!file) return false;
-        if (typeof file.type === "string" && file.type === "image/png") return true;
-        if (typeof file.name === "string" && /\.png$/i.test(file.name)) return true;
+        if (!file) {
+          return false;
+        }
+        if (typeof file.type === "string" && file.type === "image/png") {
+          return true;
+        }
+        if (typeof file.name === "string" && /\.png$/i.test(file.name)) {
+          return true;
+        }
         return false;
       }
       __name(isPngFile, "isPngFile");
-      function hasPngSignature(buffer) {
-        if (!buffer || buffer.byteLength < 8) return false;
-        const sig = new Uint8Array(buffer, 0, 8);
-        for (let i = 0; i < PNG_SIGNATURE.length; i++) {
-          if (sig[i] !== PNG_SIGNATURE[i]) return false;
-        }
-        return true;
-      }
-      __name(hasPngSignature, "hasPngSignature");
       function decodeAruPayloadFromItxtText(textBytes) {
         let jsonText;
         try {
@@ -175,7 +287,11 @@
         try {
           payload = JSON.parse(jsonText);
         } catch {
-          return { status: "error", url: null, reason: "png_itxt_json_parse_failed" };
+          return {
+            status: "error",
+            url: null,
+            reason: "png_itxt_json_parse_failed"
+          };
         }
         return extractSourceFromAruArchivePayload(payload);
       }
@@ -188,82 +304,32 @@
           return { status: "error", url: null, reason: "arraybuffer_failed" };
         }
         if (!hasPngSignature(buffer)) {
-          return { status: "missing", url: null, reason: "png_itxt_invalid_signature" };
+          return {
+            status: "missing",
+            url: null,
+            reason: "png_itxt_invalid_signature"
+          };
         }
         for (const chunkBytes of parsePngItxtChunks(buffer)) {
           const itxt = parseItxtChunk(chunkBytes);
-          if (!itxt) continue;
-          if (itxt.keyword !== ARU_ITXT_KEYWORD) continue;
+          if (!itxt) {
+            continue;
+          }
+          if (itxt.keyword !== ARU_ITXT_KEYWORD) {
+            continue;
+          }
           if (itxt.compressionFlag !== 0) {
-            return { status: "missing", url: null, reason: "png_itxt_compressed_unsupported" };
+            return {
+              status: "missing",
+              url: null,
+              reason: "png_itxt_compressed_unsupported"
+            };
           }
           return decodeAruPayloadFromItxtText(itxt.textBytes);
         }
         return { status: "missing", url: null, reason: "png_itxt_missing" };
       }
       __name(parseAruArchivePngItxt, "parseAruArchivePngItxt");
-      function* parsePngItxtChunks(buffer) {
-        const view = new DataView(buffer);
-        let offset = 8;
-        while (offset + 12 <= buffer.byteLength) {
-          const length = view.getUint32(offset, false);
-          if (length > 2147483647) return;
-          const dataStart = offset + 8;
-          const dataEnd = dataStart + length;
-          if (dataEnd + 4 > buffer.byteLength) return;
-          const t0 = view.getUint8(offset + 4);
-          const t1 = view.getUint8(offset + 5);
-          const t2 = view.getUint8(offset + 6);
-          const t3 = view.getUint8(offset + 7);
-          const type = String.fromCodePoint(t0, t1, t2, t3);
-          if (type === "iTXt" && length > 0) {
-            yield new Uint8Array(buffer, dataStart, length);
-          }
-          if (type === "IEND") return;
-          offset = dataEnd + 4;
-        }
-      }
-      __name(parsePngItxtChunks, "parsePngItxtChunks");
-      function parseItxtChunk(data) {
-        if (!data || data.length < 6) return null;
-        let kwEnd = -1;
-        const maxKw = Math.min(data.length, 80);
-        for (let i = 0; i < maxKw; i++) {
-          if (data[i] === 0) {
-            kwEnd = i;
-            break;
-          }
-        }
-        if (kwEnd < 1) return null;
-        let keyword;
-        try {
-          keyword = String.fromCodePoint(...data.subarray(0, kwEnd));
-        } catch {
-          return null;
-        }
-        if (kwEnd + 2 >= data.length) return null;
-        const compressionFlag = data[kwEnd + 1];
-        const compressionMethod = data[kwEnd + 2];
-        let langEnd = -1;
-        for (let i = kwEnd + 3; i < data.length; i++) {
-          if (data[i] === 0) {
-            langEnd = i;
-            break;
-          }
-        }
-        if (langEnd === -1) return null;
-        let tkwEnd = -1;
-        for (let i = langEnd + 1; i < data.length; i++) {
-          if (data[i] === 0) {
-            tkwEnd = i;
-            break;
-          }
-        }
-        if (tkwEnd === -1) return null;
-        const textBytes = data.subarray(tkwEnd + 1);
-        return { keyword, compressionFlag, compressionMethod, textBytes };
-      }
-      __name(parseItxtChunk, "parseItxtChunk");
       function extractSourceFromAruArchivePayload(payload) {
         if (!payload || typeof payload !== "object") {
           return { status: "missing", url: null, reason: "png_itxt_no_url" };
@@ -295,11 +361,7 @@
             return aruResult;
           }
           if (aruResult.status === "error") {
-            console.debug(
-              "[Aru Source Captioner] png itxt fallback to exifr:",
-              file.name,
-              aruResult.reason
-            );
+            console.debug("[Aru Source Captioner] png itxt fallback to exifr:", file.name, aruResult.reason);
           }
         }
         {
@@ -320,7 +382,11 @@
               url: filenameUrl,
               reason: "exifr_unavailable"
             });
-            return { status: "ok", url: filenameUrl, reason: "filename_fallback" };
+            return {
+              status: "ok",
+              url: filenameUrl,
+              reason: "filename_fallback"
+            };
           }
           return { status: "error", url: null, reason: "exifr_unavailable" };
         }
@@ -334,11 +400,7 @@
             userComment: true
           });
         } catch (err) {
-          console.warn(
-            "[Aru Source Captioner] exifr.parse failed —",
-            `name=${file.name} type=${file.type || "unknown"} size=${file.size}B isWebp=${isWebp}`,
-            err.message || err
-          );
+          console.warn("[Aru Source Captioner] exifr.parse failed —", `name=${file.name} type=${file.type || "unknown"} size=${file.size}B isWebp=${isWebp}`, err.message || err);
           const filenameUrl = allowLooseFilenameFallback ? parsePixivFilenameUrl(file.name) : null;
           if (filenameUrl) {
             console.info("[Aru Source Captioner] filename fallback", {
@@ -346,7 +408,11 @@
               url: filenameUrl,
               reason: "exifr_parse_failed"
             });
-            return { status: "ok", url: filenameUrl, reason: "filename_fallback" };
+            return {
+              status: "ok",
+              url: filenameUrl,
+              reason: "filename_fallback"
+            };
           }
           if (isWebp) {
             return { status: "missing", url: null, reason: "webp_no_exif" };
@@ -361,7 +427,11 @@
               url: filenameUrl,
               reason: "no_metadata"
             });
-            return { status: "ok", url: filenameUrl, reason: "filename_fallback" };
+            return {
+              status: "ok",
+              url: filenameUrl,
+              reason: "filename_fallback"
+            };
           }
           return { status: "missing", url: null, reason: "no_metadata" };
         }
@@ -374,7 +444,11 @@
               url: filenameUrl,
               reason: "no_url_candidates"
             });
-            return { status: "ok", url: filenameUrl, reason: "filename_fallback" };
+            return {
+              status: "ok",
+              url: filenameUrl,
+              reason: "filename_fallback"
+            };
           }
           return { status: "missing", url: null, reason: "no_url_candidates" };
         }
@@ -382,7 +456,9 @@
       }
       __name(parseSourceFromFile, "parseSourceFromFile");
       function isPixivUserUrl(s) {
-        if (typeof s !== "string") return false;
+        if (typeof s !== "string") {
+          return false;
+        }
         try {
           const u = new URL(s);
           return (u.hostname === "www.pixiv.net" || u.hostname === "pixiv.net") && /^\/users\/\d+/.test(u.pathname);
@@ -392,7 +468,9 @@
       }
       __name(isPixivUserUrl, "isPixivUserUrl");
       function parsePixivFilenameUrl(filename) {
-        if (typeof filename !== "string") return null;
+        if (typeof filename !== "string") {
+          return null;
+        }
         let clean;
         try {
           clean = decodeURIComponent(filename);
@@ -400,15 +478,17 @@
           clean = filename;
         }
         const base = clean.split(/[\\/]/).pop() || "";
-        const m = base.match(
-          /^(?:pixiv[_\-\s]?|illust[_\-\s]?)?(\d{6,12})(?:_p\d+)?(?:_[a-z0-9]+)*\.(?:jpg|jpeg|png|webp|gif)$/i
-        );
-        if (m) return `https://www.pixiv.net/artworks/${m[1]}`;
+        const m = base.match(/^(?:pixiv[_\-\s]?|illust[_\-\s]?)?(\d{6,12})(?:_p\d+)?(?:_[a-z0-9]+)*\.(?:jpg|jpeg|png|webp|gif)$/i);
+        if (m) {
+          return `https://www.pixiv.net/artworks/${m[1]}`;
+        }
         return null;
       }
       __name(parsePixivFilenameUrl, "parsePixivFilenameUrl");
       function parsePixivFilenameUrlStrict(filename) {
-        if (typeof filename !== "string") return null;
+        if (typeof filename !== "string") {
+          return null;
+        }
         let clean;
         try {
           clean = decodeURIComponent(filename);
@@ -416,19 +496,21 @@
           clean = filename;
         }
         const base = clean.split(/[\\/]/).pop() || "";
-        const mPrefix = base.match(
-          /^(?:pixiv[_\-\s]?|illust[_\-\s]?)(\d{6,12})(?:_p\d+)?(?:_[a-z0-9]+)*\.(?:jpg|jpeg|png|webp|gif)$/i
-        );
-        if (mPrefix) return `https://www.pixiv.net/artworks/${mPrefix[1]}`;
-        const mSuffix = base.match(
-          /^(\d{6,12})_p\d+(?:_[a-z0-9]+)*\.(?:jpg|jpeg|png|webp|gif)$/i
-        );
-        if (mSuffix) return `https://www.pixiv.net/artworks/${mSuffix[1]}`;
+        const mPrefix = base.match(/^(?:pixiv[_\-\s]?|illust[_\-\s]?)(\d{6,12})(?:_p\d+)?(?:_[a-z0-9]+)*\.(?:jpg|jpeg|png|webp|gif)$/i);
+        if (mPrefix) {
+          return `https://www.pixiv.net/artworks/${mPrefix[1]}`;
+        }
+        const mSuffix = base.match(/^(\d{6,12})_p\d+(?:_[a-z0-9]+)*\.(?:jpg|jpeg|png|webp|gif)$/i);
+        if (mSuffix) {
+          return `https://www.pixiv.net/artworks/${mSuffix[1]}`;
+        }
         return null;
       }
       __name(parsePixivFilenameUrlStrict, "parsePixivFilenameUrlStrict");
       function extractSourceUrl(metadata) {
-        if (!metadata || typeof metadata !== "object") return [];
+        if (!metadata || typeof metadata !== "object") {
+          return [];
+        }
         const candidates = [];
         collectFromPossibleAruJson(metadata, candidates);
         for (const key of ["Source", "source"]) {
@@ -474,18 +556,19 @@
       function collectFromPossibleAruJson(metadata, candidates) {
         for (const field of TEXT_FIELDS_FOR_JSON) {
           const v = metadata[field];
-          if (typeof v !== "string") continue;
+          if (typeof v !== "string") {
+            continue;
+          }
           const obj = safeJsonParse(v);
-          if (!obj || typeof obj !== "object") continue;
+          if (!obj || typeof obj !== "object") {
+            continue;
+          }
           for (const key of ["artwork_url", "source_url", "artworkUrl"]) {
             const urlVal = (obj[key] || "").trim();
             if (urlVal && /^https?:\/\//.test(urlVal) && !isPixivUserUrl(urlVal)) {
               candidates.push(urlVal);
             } else if (urlVal && isPixivUserUrl(urlVal)) {
-              console.debug(
-                "[Aru Source Captioner] source candidate skipped (artist url):",
-                { key, urlVal }
-              );
+              console.debug("[Aru Source Captioner] source candidate skipped (artist url):", { key, urlVal });
             }
           }
           const artworkId = (obj.artwork_id || "").trim();
@@ -495,7 +578,9 @@
           const origFilename = obj.original_filename;
           if (typeof origFilename === "string") {
             const filenameUrl = parsePixivFilenameUrl(origFilename);
-            if (filenameUrl) candidates.push(filenameUrl);
+            if (filenameUrl) {
+              candidates.push(filenameUrl);
+            }
           }
         }
       }
@@ -503,7 +588,9 @@
       function collectUrlCandidates(metadata, candidates) {
         for (const field of TEXT_FIELDS_FOR_JSON) {
           const v = metadata[field];
-          if (typeof v !== "string") continue;
+          if (typeof v !== "string") {
+            continue;
+          }
           const trimmed = v.trim();
           if (/^https?:\/\//.test(trimmed)) {
             candidates.push(trimmed);
@@ -512,7 +599,9 @@
       }
       __name(collectUrlCandidates, "collectUrlCandidates");
       function walkStringFields(value, candidates, depth) {
-        if (depth > WALK_MAX_DEPTH) return;
+        if (depth > WALK_MAX_DEPTH) {
+          return;
+        }
         if (typeof value === "string") {
           const matches = value.match(URL_PATTERN);
           if (matches) {
@@ -536,9 +625,13 @@
       }
       __name(walkStringFields, "walkStringFields");
       function safeJsonParse(text) {
-        if (typeof text !== "string") return null;
+        if (typeof text !== "string") {
+          return null;
+        }
         const trimmed = text.trim();
-        if (!trimmed.startsWith("{") && !trimmed.startsWith("[")) return null;
+        if (!trimmed.startsWith("{") && !trimmed.startsWith("[")) {
+          return null;
+        }
         try {
           return JSON.parse(trimmed);
         } catch (err) {
@@ -554,22 +647,26 @@
       function pushIfString(arr, v) {
         if (typeof v === "string") {
           const t = v.trim();
-          if (t.length > 0) arr.push(t);
+          if (t.length > 0) {
+            arr.push(t);
+          }
         }
       }
       __name(pushIfString, "pushIfString");
-      function pushIfStringOrArray(arr, v) {
+      function _pushIfStringOrArray(arr, v) {
         if (typeof v === "string") {
           pushIfString(arr, v);
           return;
         }
         if (Array.isArray(v)) {
           for (const item of v) {
-            if (typeof item === "string") pushIfString(arr, item);
+            if (typeof item === "string") {
+              pushIfString(arr, item);
+            }
           }
         }
       }
-      __name(pushIfStringOrArray, "pushIfStringOrArray");
+      __name(_pushIfStringOrArray, "_pushIfStringOrArray");
       function uniqueOrdered(arr) {
         const seen = /* @__PURE__ */ new Set();
         const out = [];
@@ -583,9 +680,13 @@
       }
       __name(uniqueOrdered, "uniqueOrdered");
       function sanitizeSourceUrl(rawUrl, config) {
-        if (typeof rawUrl !== "string") return null;
+        if (typeof rawUrl !== "string") {
+          return null;
+        }
         const trimmed = rawUrl.trim();
-        if (trimmed.length === 0) return null;
+        if (trimmed.length === 0) {
+          return null;
+        }
         let parsed;
         try {
           parsed = new URL(trimmed);
@@ -595,43 +696,65 @@
         const protocol = parsed.protocol;
         if (protocol === "https:") {
         } else if (protocol === "http:") {
-          if (!config.allowHttp) return null;
+          if (!config.allowHttp) {
+            return null;
+          }
         } else {
           return null;
         }
         if (config.strictAllowlist) {
-          if (!isAllowedByPolicy(parsed.hostname, config)) return null;
+          if (!isAllowedByPolicy(parsed.hostname, config)) {
+            return null;
+          }
         }
         return parsed.toString();
       }
       __name(sanitizeSourceUrl, "sanitizeSourceUrl");
       function isAllowedByPolicy(hostname, config) {
-        if (typeof hostname !== "string" || hostname.length === 0) return false;
-        if (!Array.isArray(config.allowedHosts)) return false;
+        if (typeof hostname !== "string" || hostname.length === 0) {
+          return false;
+        }
+        if (!Array.isArray(config.allowedHosts)) {
+          return false;
+        }
         const h = hostname.toLowerCase();
         for (const allowed of config.allowedHosts) {
-          if (typeof allowed !== "string") continue;
+          if (typeof allowed !== "string") {
+            continue;
+          }
           const a = allowed.trim().toLowerCase();
-          if (a.length === 0) continue;
-          if (h === a) return true;
-          if (h.endsWith("." + a)) return true;
+          if (a.length === 0) {
+            continue;
+          }
+          if (h === a) {
+            return true;
+          }
+          if (h.endsWith("." + a)) {
+            return true;
+          }
         }
         return false;
       }
       __name(isAllowedByPolicy, "isAllowedByPolicy");
       function startEditorObserver(config) {
         const Controller = attribution2?.Controller;
-        if (!Controller) return null;
+        if (!Controller) {
+          return null;
+        }
         uploadAttribution = new Controller({
           document,
-          parse: /* @__PURE__ */ __name((file) => parseSourceFromFile(file, { allowLooseFilenameFallback: !isMobileAutoInsertEnvironment() }), "parse"),
+          parse: /* @__PURE__ */ __name((file) => parseSourceFromFile(file, {
+            allowLooseFilenameFallback: !isMobileAutoInsertEnvironment()
+          }), "parse"),
           sanitize: /* @__PURE__ */ __name((url) => sanitizeSourceUrl(url, config), "sanitize"),
           caption: createSourceCaption,
           anchor: findImageParagraph,
           existing: hasExistingSourceCaption,
           onStatus: publishUploadStatus
         });
-        window.addEventListener("pagehide", () => uploadAttribution?.destroy(), { once: true });
+        window.addEventListener("pagehide", () => uploadAttribution?.destroy(), {
+          once: true
+        });
         return uploadAttribution;
       }
       __name(startEditorObserver, "startEditorObserver");
@@ -642,14 +765,18 @@
       function hasExistingSourceCaption(img) {
         const anchor = findImageParagraph(img);
         const next = anchor.nextElementSibling;
-        if (!next) return false;
+        if (!next) {
+          return false;
+        }
         if (next instanceof HTMLElement && next.dataset?.aruSourceCaption === "1") {
           return true;
         }
         const text = (next.textContent || "").trim();
         if (text.startsWith("출처:")) {
           const a = next.querySelector?.("a[href]");
-          if (a) return true;
+          if (a) {
+            return true;
+          }
         }
         return false;
       }
@@ -707,22 +834,32 @@
       const COMMENT_SOURCE_PREFIX = "출처:";
       const wrapperSourceMap = /* @__PURE__ */ new WeakMap();
       let readPageConfig = null;
-      let cachedConfig = null;
+      let _cachedConfig = null;
       function resolveCommentWrapperForTextarea(textarea) {
         const outer = textarea.closest(".border_box.after_clear");
-        if (outer) return outer;
+        if (outer) {
+          return outer;
+        }
         const borderBox = textarea.closest(".border_box");
-        if (borderBox) return borderBox;
+        if (borderBox) {
+          return borderBox;
+        }
         const formish = textarea.closest("form, fieldset");
-        if (formish) return formish;
+        if (formish) {
+          return formish;
+        }
         const innerWrapper = textarea.closest(".common_input_wrapper");
-        if (innerWrapper?.parentElement) return innerWrapper.parentElement;
+        if (innerWrapper?.parentElement) {
+          return innerWrapper.parentElement;
+        }
         return textarea.parentElement?.parentElement || textarea.parentElement || null;
       }
       __name(resolveCommentWrapperForTextarea, "resolveCommentWrapperForTextarea");
       function classifyAndPushWrapper(wrapper, result2) {
         const textarea = wrapper.querySelector(COMMENT_TEXTAREA_SELECTOR);
-        if (!(textarea instanceof HTMLTextAreaElement)) return;
+        if (!(textarea instanceof HTMLTextAreaElement)) {
+          return;
+        }
         const imgButton = wrapper.querySelector(COMMENT_IMG_BUTTON_SELECTOR);
         result2.push(wrapper);
         const textareaInfo = {
@@ -731,26 +868,20 @@
           className: textarea.className
         };
         if (imgButton) {
-          console.log(
-            "[Aru Source Captioner] scan: wrapper OK (has textarea + .common_img_button)",
-            { wrapper, textarea: textareaInfo }
-          );
+          console.log("[Aru Source Captioner] scan: wrapper OK (has textarea + .common_img_button)", { wrapper, textarea: textareaInfo });
         } else {
-          console.log(
-            "[Aru Source Captioner] scan: wrapper has textarea but no .common_img_button — will use textarea position",
-            { wrapper, textarea: textareaInfo }
-          );
+          console.log("[Aru Source Captioner] scan: wrapper has textarea but no .common_img_button — will use textarea position", { wrapper, textarea: textareaInfo });
         }
       }
       __name(classifyAndPushWrapper, "classifyAndPushWrapper");
       function findCommentInputWrappers() {
         const textareas = document.querySelectorAll(COMMENT_TEXTAREA_SELECTOR);
-        console.log(
-          `[Aru Source Captioner] scan: found ${textareas.length} comment textarea candidates`
-        );
+        console.log(`[Aru Source Captioner] scan: found ${textareas.length} comment textarea candidates`);
         const wrappers = /* @__PURE__ */ new Set();
         for (const textarea of textareas) {
-          if (!(textarea instanceof HTMLTextAreaElement)) continue;
+          if (!(textarea instanceof HTMLTextAreaElement)) {
+            continue;
+          }
           const wrapper = resolveCommentWrapperForTextarea(textarea);
           if (wrapper instanceof HTMLElement) {
             wrappers.add(wrapper);
@@ -760,9 +891,7 @@
         for (const wrapper of wrappers) {
           classifyAndPushWrapper(wrapper, result2);
         }
-        console.log(
-          `[Aru Source Captioner] scan: ${result2.length} comment wrappers identified`
-        );
+        console.log(`[Aru Source Captioner] scan: ${result2.length} comment wrappers identified`);
         return result2;
       }
       __name(findCommentInputWrappers, "findCommentInputWrappers");
@@ -801,14 +930,19 @@
             newLength: newValue.length,
             maxLength: maxLen
           });
-          logCommentInsertSkip("maxlength_exceeded", { maxLen, newLen: newValue.length });
+          logCommentInsertSkip("maxlength_exceeded", {
+            maxLen,
+            newLen: newValue.length
+          });
           return "too-long";
         }
         return null;
       }
       __name(checkInsertSkipReason, "checkInsertSkipReason");
       function buildMergedTextareaValue(existing, sourceText) {
-        if (existing.trim().length === 0) return sourceText;
+        if (existing.trim().length === 0) {
+          return sourceText;
+        }
         return existing.replace(/\s+$/u, "") + "\n\n" + sourceText;
       }
       __name(buildMergedTextareaValue, "buildMergedTextareaValue");
@@ -848,7 +982,9 @@
         });
         const newValue = buildMergedTextareaValue(existing, sourceText);
         const skip = checkInsertSkipReason(textarea, existing, sourceLine, newValue);
-        if (skip) return skip;
+        if (skip) {
+          return skip;
+        }
         applyTextareaValue(textarea, newValue);
         console.log("[Aru Source Captioner] insert: completed successfully");
         return "ok";
@@ -861,9 +997,7 @@
           return;
         }
         if (!document.contains(textarea)) {
-          console.warn(
-            "[Aru Source Captioner] click: textarea is detached from DOM, re-scanning..."
-          );
+          console.warn("[Aru Source Captioner] click: textarea is detached from DOM, re-scanning...");
           try {
             setupCommentSourceCaptioner();
           } catch (err) {
@@ -874,13 +1008,9 @@
         const wrapper = resolveCommentWrapperForTextarea(textarea);
         const savedSource = wrapper ? wrapperSourceMap.get(wrapper) : null;
         if (!savedSource) {
-          console.log(
-            "[Aru Source Captioner] click: no extracted source — image not attached or has no Aru metadata"
-          );
+          console.log("[Aru Source Captioner] click: no extracted source — image not attached or has no Aru metadata");
           try {
-            alert(
-              "이미지에 출처 metadata가 없습니다.\nAru Archive로 처리한 이미지를 댓글에 첨부해 주세요."
-            );
+            alert("이미지에 출처 metadata가 없습니다.\nAru Archive로 처리한 이미지를 댓글에 첨부해 주세요.");
           } catch {
           }
           return;
@@ -891,8 +1021,10 @@
         console.log("[Aru Source Captioner] click: insertion result =", result2);
       }
       __name(handleCommentSourceButtonClick, "handleCommentSourceButtonClick");
-      function injectCommentSourceButton(wrapper) {
-        if (!(wrapper instanceof HTMLElement)) return false;
+      function _injectCommentSourceButton(wrapper) {
+        if (!(wrapper instanceof HTMLElement)) {
+          return false;
+        }
         if (wrapper.dataset[COMMENT_BOUND_DATASET_KEY] === "1") {
           console.log("[Aru Source Captioner] inject: skipped (already bound)", wrapper);
           return false;
@@ -904,10 +1036,7 @@
         }
         if (wrapper.querySelector("." + COMMENT_BUTTON_CLASS)) {
           wrapper.dataset[COMMENT_BOUND_DATASET_KEY] = "1";
-          console.log(
-            "[Aru Source Captioner] inject: skipped (button already in this wrapper)",
-            wrapper
-          );
+          console.log("[Aru Source Captioner] inject: skipped (button already in this wrapper)", wrapper);
           return false;
         }
         const imgButton = wrapper.querySelector(COMMENT_IMG_BUTTON_SELECTOR);
@@ -933,10 +1062,7 @@
             imgButton.after(button);
           } else {
             textarea.after(button);
-            console.log(
-              "[Aru Source Captioner] inject: used textarea fallback (no .common_img_button)",
-              { wrapper, textarea }
-            );
+            console.log("[Aru Source Captioner] inject: used textarea fallback (no .common_img_button)", { wrapper, textarea });
           }
         } catch (err) {
           console.debug("[Aru Source Captioner] comment button insert failed:", err);
@@ -945,15 +1071,14 @@
         console.log("[Aru Source Captioner] inject: button added", { wrapper });
         return true;
       }
-      __name(injectCommentSourceButton, "injectCommentSourceButton");
+      __name(_injectCommentSourceButton, "_injectCommentSourceButton");
       function hookCommentFileInput(wrapper, config) {
-        if (!(wrapper instanceof HTMLElement)) return false;
+        if (!(wrapper instanceof HTMLElement)) {
+          return false;
+        }
         const fileInput = wrapper.querySelector(COMMENT_FILE_INPUT_SELECTOR);
         if (!(fileInput instanceof HTMLInputElement)) {
-          console.log(
-            "[Aru Source Captioner] file: no file input in wrapper",
-            wrapper
-          );
+          console.log("[Aru Source Captioner] file: no file input in wrapper", wrapper);
           return false;
         }
         if (fileInput.type !== "file") {
@@ -966,7 +1091,9 @@
         fileInput.addEventListener("change", async (event) => {
           const target = event.target;
           const files = target instanceof HTMLInputElement ? target.files : null;
-          if (!files || files.length === 0) return;
+          if (!files || files.length === 0) {
+            return;
+          }
           let imageFile = null;
           for (const f of files) {
             if (f && typeof f.type === "string" && f.type.startsWith("image/")) {
@@ -978,64 +1105,45 @@
             console.log("[Aru Source Captioner] file: no image in selection");
             return;
           }
-          console.log(
-            "[Aru Source Captioner] file: extracting metadata from",
-            imageFile.name
-          );
+          console.log("[Aru Source Captioner] file: extracting metadata from", imageFile.name);
           let sourceInfo;
           try {
             sourceInfo = await parseSourceFromFile(imageFile);
           } catch (err) {
-            console.warn(
-              "[Aru Source Captioner] file: metadata extraction threw",
-              err
-            );
+            console.warn("[Aru Source Captioner] file: metadata extraction threw", err);
             return;
           }
           if (sourceInfo?.status !== "ok" || !sourceInfo.url) {
-            console.log(
-              "[Aru Source Captioner] file: no Aru source metadata found in image",
-              { reason: sourceInfo?.reason }
-            );
+            console.log("[Aru Source Captioner] file: no Aru source metadata found in image", { reason: sourceInfo?.reason });
             return;
           }
           const safeUrl = sanitizeSourceUrl(sourceInfo.url, config);
           if (!safeUrl) {
-            console.log(
-              "[Aru Source Captioner] file: extracted source rejected by sanitizer",
-              { rawUrl: sourceInfo.url }
-            );
+            console.log("[Aru Source Captioner] file: extracted source rejected by sanitizer", { rawUrl: sourceInfo.url });
             return;
           }
-          console.log(
-            "[Aru Source Captioner] file: extracted source =",
-            safeUrl
-          );
+          console.log("[Aru Source Captioner] file: extracted source =", safeUrl);
           wrapperSourceMap.set(wrapper, safeUrl);
           const textarea = wrapper.querySelector(COMMENT_TEXTAREA_SELECTOR);
           if (textarea instanceof HTMLTextAreaElement) {
             const sourceText = buildCommentSourceText(safeUrl);
             const result2 = insertSourceIntoCommentTextarea(textarea, sourceText);
-            console.log(
-              "[Aru Source Captioner] file: auto insertion result =",
-              result2
-            );
+            console.log("[Aru Source Captioner] file: auto insertion result =", result2);
           } else {
-            console.log(
-              "[Aru Source Captioner] file: source stored, but no textarea found for auto insert",
-              wrapper
-            );
+            console.log("[Aru Source Captioner] file: source stored, but no textarea found for auto insert", wrapper);
           }
         });
-        console.log(
-          "[Aru Source Captioner] file: hooked file input change",
-          { wrapper, fileInput }
-        );
+        console.log("[Aru Source Captioner] file: hooked file input change", {
+          wrapper,
+          fileInput
+        });
         return true;
       }
       __name(hookCommentFileInput, "hookCommentFileInput");
-      function setupCommentSourceCaptioner(config) {
-        if (!isReadPage()) return;
+      function setupCommentSourceCaptioner(config = void 0) {
+        if (!isReadPage()) {
+          return;
+        }
         const effectiveConfig = config || readPageConfig;
         const wrappers = findCommentInputWrappers();
         let hookedFileInputs = 0;
@@ -1045,20 +1153,18 @@
           }
         }
         if (wrappers.length === 0) {
-          console.log(
-            "[Aru Source Captioner] setup: no comment wrapper found yet (may load later)"
-          );
+          console.log("[Aru Source Captioner] setup: no comment wrapper found yet (may load later)");
         } else if (hookedFileInputs > 0) {
-          console.log(
-            `[Aru Source Captioner] setup: hooked ${hookedFileInputs} new file inputs (auto-insert mode)`
-          );
+          console.log(`[Aru Source Captioner] setup: hooked ${hookedFileInputs} new file inputs (auto-insert mode)`);
         }
       }
       __name(setupCommentSourceCaptioner, "setupCommentSourceCaptioner");
       let commentObserver = null;
       let commentObserverScheduled = false;
       function scheduleCommentSetup() {
-        if (commentObserverScheduled) return;
+        if (commentObserverScheduled) {
+          return;
+        }
         commentObserverScheduled = true;
         Promise.resolve().then(() => {
           commentObserverScheduled = false;
@@ -1071,11 +1177,17 @@
       }
       __name(scheduleCommentSetup, "scheduleCommentSetup");
       function startCommentObserver() {
-        if (!isReadPage()) return null;
-        if (commentObserver) return commentObserver;
+        if (!isReadPage()) {
+          return null;
+        }
+        if (commentObserver) {
+          return commentObserver;
+        }
         commentObserver = new MutationObserver((mutations) => {
           for (const mut of mutations) {
-            if (mut.type !== "childList") continue;
+            if (mut.type !== "childList") {
+              continue;
+            }
             if (mut.addedNodes && mut.addedNodes.length > 0) {
               scheduleCommentSetup();
               return;
@@ -1083,7 +1195,10 @@
           }
         });
         if (document.body) {
-          commentObserver.observe(document.body, { childList: true, subtree: true });
+          commentObserver.observe(document.body, {
+            childList: true,
+            subtree: true
+          });
         }
         let attempts = 0;
         const maxAttempts = 30;
@@ -1096,14 +1211,10 @@
           }
           if (attempts >= maxAttempts) {
             clearInterval(pollIntervalId);
-            console.log(
-              "[Aru Source Captioner] poll: stopping after 15s (MutationObserver continues)"
-            );
+            console.log("[Aru Source Captioner] poll: stopping after 15s (MutationObserver continues)");
           }
         }, 500);
-        console.log(
-          "[Aru Source Captioner] observer: started (polling 15s + MutationObserver)"
-        );
+        console.log("[Aru Source Captioner] observer: started (polling 15s + MutationObserver)");
         return commentObserver;
       }
       __name(startCommentObserver, "startCommentObserver");
@@ -1128,7 +1239,9 @@
       function getPseudoElementContent(el, pseudo) {
         try {
           const raw = window.getComputedStyle(el, pseudo).getPropertyValue("content");
-          if (!raw || raw === "none" || raw === "normal" || raw === '""') return "";
+          if (!raw || raw === "none" || raw === "normal" || raw === '""') {
+            return "";
+          }
           return raw.replace(/^["']|["']$/g, "").replace(/\\A/g, " ").replace(/\s+/g, " ").trim();
         } catch {
           return "";
@@ -1144,11 +1257,17 @@
         const parts = [];
         for (const el of candidates) {
           const text = (el.innerText || el.textContent || "").replace(/\s+/g, " ").trim();
-          if (text) parts.push(text);
+          if (text) {
+            parts.push(text);
+          }
           const before = getPseudoElementContent(el, "::before");
-          if (before) parts.push(before);
+          if (before) {
+            parts.push(before);
+          }
           const after = getPseudoElementContent(el, "::after");
-          if (after) parts.push(after);
+          if (after) {
+            parts.push(after);
+          }
         }
         return parts.join(" ").replace(/\s+/g, " ").trim();
       }
@@ -1170,9 +1289,7 @@
       __name(normalizeKeywordList, "normalizeKeywordList");
       function hasKeyword(text, keywords) {
         const normalizedText = normalizeRuliwebOverlayText(text);
-        return normalizeKeywordList(keywords).some(
-          (keyword) => keyword && normalizedText.includes(keyword)
-        );
+        return normalizeKeywordList(keywords).some((keyword) => keyword && normalizedText.includes(keyword));
       }
       __name(hasKeyword, "hasKeyword");
       function shouldOpenRuliwebOverlayByKeywords(overlayText, config) {
@@ -1202,9 +1319,13 @@
           pointerType: "mouse",
           isPrimary: true
         }), "mkPointer");
-        if (hasPointerEvent) el.dispatchEvent(mkPointer("pointerdown"));
+        if (hasPointerEvent) {
+          el.dispatchEvent(mkPointer("pointerdown"));
+        }
         el.dispatchEvent(mkMouse("mousedown"));
-        if (hasPointerEvent) el.dispatchEvent(mkPointer("pointerup"));
+        if (hasPointerEvent) {
+          el.dispatchEvent(mkPointer("pointerup"));
+        }
         el.dispatchEvent(mkMouse("mouseup"));
         el.dispatchEvent(mkMouse("click"));
       }
@@ -1240,7 +1361,10 @@
         const cy = Math.round(rect.top + Math.min(rect.height * 0.45, 260));
         const pointEl = document.elementFromPoint(cx, cy);
         if (!pointEl) {
-          console.debug("[Aru][reveal] elementFromPoint returned null", { cx, cy });
+          console.debug("[Aru][reveal] elementFromPoint returned null", {
+            cx,
+            cy
+          });
           return false;
         }
         const unsafe = pointEl.closest(RULIWEB_UNSAFE_CLICK_SELECTOR);
@@ -1285,14 +1409,18 @@
       function _setupRuliwebClickWithRetry(config) {
         let done = false;
         function attempt() {
-          if (done) return;
+          if (done) {
+            return;
+          }
           if (_tryRuliwebOverlayClickOnce(config)) {
             done = true;
           }
         }
         __name(attempt, "attempt");
         attempt();
-        if (done) return;
+        if (done) {
+          return;
+        }
         RULIWEB_REVEAL_RETRY_DELAYS_MS.forEach((delay) => {
           setTimeout(attempt, delay);
         });
@@ -1302,9 +1430,14 @@
             return;
           }
           attempt();
-          if (done) obs.disconnect();
+          if (done) {
+            obs.disconnect();
+          }
         });
-        obs.observe(document.body || document.documentElement, { childList: true, subtree: true });
+        obs.observe(document.body || document.documentElement, {
+          childList: true,
+          subtree: true
+        });
         setTimeout(() => {
           done = true;
           obs.disconnect();
@@ -1345,8 +1478,12 @@
           hasAiBlind: hasRuliwebAiBlind(),
           hasBoardMainView: !!_findBoardMainView()
         });
-        if (mode === "off") return;
-        if (!isRuliwebReadPage()) return;
+        if (mode === "off") {
+          return;
+        }
+        if (!isRuliwebReadPage()) {
+          return;
+        }
         if (mode === "click_overlay") {
           _setupRuliwebClickWithRetry(config);
           return;
@@ -1364,7 +1501,7 @@
           exifrAvailable: typeof exifr !== "undefined"
         });
         const config = await loadConfig();
-        cachedConfig = config;
+        _cachedConfig = config;
         if (!config.enabled) {
           console.info("[Aru Source Captioner] disabled — skipping content script");
           return;
@@ -1374,10 +1511,10 @@
           setupCommentSourceCaptioner(config);
           startCommentObserver();
           setupRuliwebAiReveal(config);
-          console.info(
-            "[Aru Source Captioner] read page active — comment source button enabled",
-            { strictAllowlist: config.strictAllowlist, allowHttp: config.allowHttp }
-          );
+          console.info("[Aru Source Captioner] read page active — comment source button enabled", {
+            strictAllowlist: config.strictAllowlist,
+            allowHttp: config.allowHttp
+          });
           return;
         }
         if (typeof exifr === "undefined") {
@@ -1385,14 +1522,11 @@
         }
         attachFileInputListeners(config);
         startEditorObserver(config);
-        console.info(
-          "[Aru Source Captioner] auto-insert mode active — file selection triggers caption insertion",
-          {
-            strictAllowlist: config.strictAllowlist,
-            allowHttp: config.allowHttp,
-            mobile: isMobileAutoInsertEnvironment()
-          }
-        );
+        console.info("[Aru Source Captioner] auto-insert mode active — file selection triggers caption insertion", {
+          strictAllowlist: config.strictAllowlist,
+          allowHttp: config.allowHttp,
+          mobile: isMobileAutoInsertEnvironment()
+        });
       }
       __name(init, "init");
       init().catch((err) => {

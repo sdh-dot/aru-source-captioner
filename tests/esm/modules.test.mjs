@@ -1,3 +1,4 @@
+import {normalizeControlBlocks} from "../helpers/normalize-control-blocks.mjs";
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -47,7 +48,7 @@ test('MAIN 설치 함수의 알고리즘은 의존성 선언을 제외하면 기
     .replace("'use strict';", '').replace('const M=g.AruMetadata,d=g.document;', 'const M={decode,fail,plan},d=g.document;');
   const expected = parse(`function installMetadataEditorBridge(g){${body}}`, { ecmaVersion: 'latest' }).body[0].body;
   const actual = parse(fs.readFileSync(new URL('../../docs/source/icon-metadata/metadata-editor-bridge.mjs', import.meta.url), 'utf8'), { ecmaVersion: 'latest', sourceType: 'module' }).body.find(node => node.type === 'ExportNamedDeclaration').declaration.body;
-  const canonical = value => JSON.parse(JSON.stringify(value, (key, value) => ['start', 'end', 'raw'].includes(key) ? undefined : value));
+  const canonical = normalizeControlBlocks;
   assert.deepEqual(canonical(actual), canonical(expected));
 });
 

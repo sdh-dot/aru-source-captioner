@@ -3,12 +3,21 @@
   var __defProp = Object.defineProperty;
   var __name = (target, value) => __defProp(target, "name", { value, configurable: true });
 
+  // docs/source/runtime/contracts.mjs
+  var defaultEnvironment = globalThis;
+
   // docs/source/runtime/module-scope.mjs
   function createModuleScope(resolvers = {}, names = [], own = []) {
     const scope = {};
     for (const name of names) {
-      if (own.includes(name)) scope[name] = resolvers[name]?.();
-      else Object.defineProperty(scope, name, { enumerable: true, get: /* @__PURE__ */ __name(() => resolvers[name]?.(), "get") });
+      if (own.includes(name)) {
+        scope[name] = resolvers[name]?.();
+      } else {
+        Object.defineProperty(scope, name, {
+          enumerable: true,
+          get: /* @__PURE__ */ __name(() => resolvers[name]?.(), "get")
+        });
+      }
     }
     return scope;
   }
@@ -19,11 +28,17 @@
   __name(selectModuleExports, "selectModuleExports");
 
   // docs/source/bundle-generator/ui.mjs
-  function createBundleUi({ environment = globalThis, dependencies = {} } = {}) {
-    const { document, browser, MutationObserver } = environment;
-    const setTimeout = typeof environment.setTimeout === "function" ? (...args) => environment.setTimeout(...args) : void 0;
-    const clearTimeout = typeof environment.clearTimeout === "function" ? (...args) => environment.clearTimeout(...args) : void 0;
-    let bundle2 = createModuleScope(dependencies.bundle, ["Browser", "SourceReader", "Draft", "SearchPanel", "articleUrl", "fail", "encode", "clone"], ["Panel"]);
+  function createBundleUi({ environment = defaultEnvironment, dependencies = {} } = {}) {
+    let bundle2 = createModuleScope(dependencies.bundle, [
+      "Browser",
+      "SourceReader",
+      "Draft",
+      "SearchPanel",
+      "articleUrl",
+      "fail",
+      "encode",
+      "clone"
+    ], ["Panel"]);
     let icons2 = createModuleScope(dependencies.icons, ["DesignSystem", "Metadata"], []);
     const initializeBundleUi = /* @__PURE__ */ __name(function(g) {
       "use strict";
@@ -33,15 +48,33 @@
         static {
           __name(this, "Panel");
         }
-        constructor({ document: document2 = g.document, client, token, browser: browser2 = B.Browser, reader = new B.SourceReader(), searcher, onClose = /* @__PURE__ */ __name(() => {
+        constructor({ document = g.document, client, token, browser = B.Browser, reader = new B.SourceReader(), searcher, onClose = /* @__PURE__ */ __name(() => {
         }, "onClose") }) {
-          Object.assign(this, { doc: document2, client, token, browser: browser2, reader, onClose, draft: new B.Draft(), busy: false, closed: false, ready: false, preview: null, dragId: null, page: 0, pageSize: 50 });
+          Object.assign(this, {
+            doc: document,
+            client,
+            token,
+            browser,
+            reader,
+            onClose,
+            draft: new B.Draft(),
+            busy: false,
+            closed: false,
+            ready: false,
+            preview: null,
+            dragId: null,
+            page: 0,
+            pageSize: 50
+          });
           this.host = this.doc.createElement("div");
           this.host.dataset.aruBundlePanel = "";
           this.shadow = this.host.attachShadow({ mode: "open" });
           this.shadow.innerHTML = `<style>${CSS}</style><div class="shade"><section class="dialog" role="dialog" aria-modal="true" aria-label="아이콘 통합"><header><strong>아이콘 통합</strong><button type="button" class="close" aria-label="닫기"><svg class="aru-ui-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m6 6 12 12M18 6 6 18"/></svg></button></header><main><p class="hint">원본 게시글을 모아 통합팩을 만듭니다. 게시글 저장은 직접 진행하세요.</p><p class="context hint"></p><label>통합팩 제목<input class="name" maxlength="240" placeholder="통합 아이콘팩 제목"></label><label for="aru-bundle-url">원본 아이콘 공유 게시글 URL</label><div class="lookup"><input id="aru-bundle-url" class="url" type="url" placeholder="https://bbs.ruliweb.com/community/board/98/read/…"><button type="button" class="add">조회 · 추가</button><button type="button" class="cancel" disabled>조회 취소</button></div><div class="status" role="status" aria-live="polite">에디터 확인 중…</div><p class="hint">드래그하거나 위·아래 버튼으로 순서를 바꾸세요.</p><ul class="refs" aria-label="원본 글별 그룹"></ul><div class="preview" hidden></div></main><footer><button type="button" class="save">초안 저장</button><button type="button" class="load">초안 불러오기</button><button type="button" class="generate">변경 미리보기</button><button type="button" class="apply primary" disabled>편집기에 적용</button></footer></section></div>`;
           this.uiCleanup = icons2?.DesignSystem?.attach(this.shadow);
-          icons2?.DesignSystem?.modalHeader(this.shadow.querySelector("header"), { kind: "bundle", description: "아이콘 공유 게시글을 통합팩으로 구성합니다." });
+          icons2?.DesignSystem?.modalHeader(this.shadow.querySelector("header"), {
+            kind: "bundle",
+            description: "아이콘 공유 게시글을 통합팩으로 구성합니다."
+          });
           this.doc.body.append(this.host);
           this.q = (s) => this.shadow.querySelector(s);
           this.search = new B.SearchPanel(this, searcher);
@@ -52,7 +85,9 @@
           reason.setAttribute("role", "status");
           this.q("footer").append(reason);
           this.q("footer").append(this.button("에디터 다시 연결", () => {
-            if (!this.busy) this.init();
+            if (!this.busy) {
+              this.init();
+            }
           }, "에디터 다시 연결"));
           this.q(".close").onclick = () => this.close();
           this.q(".name").oninput = () => {
@@ -75,22 +110,29 @@
           paging.className = "pages";
           this.pageLabel = this.doc.createElement("small");
           paging.append(this.button("이전 목록", () => {
-            if (this.busy || this.page === 0) return;
+            if (this.busy || this.page === 0) {
+              return;
+            }
             this.page--;
             this.render();
           }), this.pageLabel, this.button("다음 목록", () => {
-            if (this.busy || this.page + 1 >= Math.ceil(this.draft.rows.length / this.pageSize)) return;
+            if (this.busy || this.page + 1 >= Math.ceil(this.draft.rows.length / this.pageSize)) {
+              return;
+            }
             this.page++;
             this.render();
           }));
           this.q(".refs").after(paging);
-          this.key = (e) => {
+          this.key = (event) => {
+            const e = event;
             if (e.key === "Escape") {
               e.preventDefault();
               this.close();
             }
             if (e.key === "Tab") {
-              const nodes = [...this.shadow.querySelectorAll("button,input,summary,textarea")].filter((n) => !n.disabled && !n.closest("[hidden]"));
+              const nodes = [
+                ...this.shadow.querySelectorAll("button,input,summary,textarea")
+              ].filter((n) => !n.disabled && !n.closest("[hidden]"));
               const first = nodes[0], last = nodes.at(-1), active = this.shadow.activeElement;
               if (e.shiftKey && active === first) {
                 e.preventDefault();
@@ -106,8 +148,10 @@
           this.init();
         }
         async init() {
-          if (this.session) await this.client.request("release", { session: this.session }).catch(() => {
-          });
+          if (this.session) {
+            await this.client.request("release", { session: this.session }).catch(() => {
+            });
+          }
           this.ready = false;
           this.controls();
           try {
@@ -138,7 +182,9 @@
           }
         }
         message(text, error = false) {
-          if (this.closed) return;
+          if (this.closed) {
+            return;
+          }
           const n = this.q(".status");
           n.textContent = text;
           n.classList.toggle("error", error);
@@ -146,13 +192,30 @@
         watchEditor() {
           this.editorObserver?.disconnect();
           const root = this.doc.querySelector('[data-aru-bundle-target="' + this.token + '"]');
-          if (!root) return;
+          if (!root) {
+            return;
+          }
           this.editorObserver = new g.MutationObserver(() => {
-            if (this.closed || this.busy) return;
+            if (this.closed || this.busy) {
+              return;
+            }
             this.invalidate();
             this.message("에디터 변경을 감지했습니다. 최신 본문에서 미리보기를 다시 확인합니다.");
           });
-          this.editorObserver.observe(root, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ["class", "hidden", "contenteditable", "src", "data-aru-id", "data-aru-tags"] });
+          this.editorObserver.observe(root, {
+            subtree: true,
+            childList: true,
+            characterData: true,
+            attributes: true,
+            attributeFilter: [
+              "class",
+              "hidden",
+              "contenteditable",
+              "src",
+              "data-aru-id",
+              "data-aru-tags"
+            ]
+          });
         }
         invalidate() {
           this.revision++;
@@ -163,16 +226,31 @@
           this.invalidReason = "변경 미리보기를 확인해 주세요.";
           this.q(".preview").hidden = true;
           this.controls();
-          if (this.ready && !this.busy && this.draft.name.trim() && this.draft.rows.length) this.previewTimer = g.setTimeout(() => this.generate({ automatic: true }), 350);
+          if (this.ready && !this.busy && this.draft.name.trim() && this.draft.rows.length) {
+            this.previewTimer = g.setTimeout(() => this.generate({ automatic: true }), 350);
+          }
         }
         controls() {
-          if (this.closed) return;
-          for (const s of [".name", ".url", ".add", ".save", ".load", ".generate"]) this.q(s).disabled = !this.ready || this.busy;
+          if (this.closed) {
+            return;
+          }
+          for (const s of [
+            ".name",
+            ".url",
+            ".add",
+            ".save",
+            ".load",
+            ".generate"
+          ]) {
+            this.q(s).disabled = !this.ready || this.busy;
+          }
           this.q(".cancel").disabled = !this.busy || !this.reader.pending.size;
           const reason = !this.ready ? this.invalidReason : this.busy ? "작업 중…" : !this.draft.name.trim() ? "통합팩 제목을 입력해 주세요." : !this.draft.rows.length ? "원본 게시글을 하나 이상 추가하세요." : this.preview?.changed === false ? "편집기에 적용할 변경사항이 없습니다." : !this.preview ? this.invalidReason : "";
           this.q(".apply").disabled = !!reason;
           this.q(".apply-reason").textContent = reason || "변경 미리보기를 확인한 뒤 편집기에 적용해 주세요.";
-          for (const n of this.shadow.querySelectorAll(".actions button,.pages button")) n.disabled = this.busy;
+          for (const n of this.shadow.querySelectorAll(".actions button,.pages button")) {
+            n.disabled = this.busy;
+          }
           this.search?.controls();
         }
         async query(url) {
@@ -189,13 +267,21 @@
           }
         }
         async add() {
-          if (!this.ready || this.busy) return;
+          if (!this.ready || this.busy) {
+            return;
+          }
           try {
             const ref = B.articleUrl(this.q(".url").value.trim());
-            if (this.draft.rows.some((r) => r.slave.articleId === ref.articleId)) B.fail("DUPLICATE_REFERENCE", "이미 추가한 게시글입니다.");
-            if (ref.articleId === this.articleId) B.fail("SELF_REFERENCE", "대표 게시글은 원본으로 참조할 수 없습니다.");
+            if (this.draft.rows.some((r) => r.slave.articleId === ref.articleId)) {
+              B.fail("DUPLICATE_REFERENCE", "이미 추가한 게시글입니다.");
+            }
+            if (ref.articleId === this.articleId) {
+              B.fail("SELF_REFERENCE", "대표 게시글은 원본으로 참조할 수 없습니다.");
+            }
             const summary = await this.query(ref.url);
-            if (this.closed) return;
+            if (this.closed) {
+              return;
+            }
             this.draft.add(summary);
             this.q(".url").value = "";
             this.invalidate();
@@ -206,10 +292,14 @@
           }
         }
         async refresh(articleId) {
-          if (this.busy) return;
+          if (this.busy) {
+            return;
+          }
           try {
             const summary = await this.query(icons2.Metadata.publicArticleUrl(articleId));
-            if (this.closed) return;
+            if (this.closed) {
+              return;
+            }
             this.draft.refresh(summary);
             this.invalidate();
             this.render();
@@ -222,7 +312,9 @@
           const n = this.doc.createElement("button");
           n.type = "button";
           n.textContent = text;
-          if (label) n.setAttribute("aria-label", label);
+          if (label) {
+            n.setAttribute("aria-label", label);
+          }
           n.onclick = fn;
           return n;
         }
@@ -252,12 +344,32 @@
             title.textContent = summary?.title || "원본 글 " + s.articleId;
             const actions = this.doc.createElement("div");
             actions.className = "actions";
-            for (const [text, fn, label] of [["위", () => this.move(s.articleId, -1), "원본 " + s.articleId + " 위로"], ["아래", () => this.move(s.articleId, 1), "원본 " + s.articleId + " 아래로"], ["새로고침", () => this.refresh(s.articleId)], ["제거", () => {
-              if (this.busy) return;
-              this.draft.remove(this.draft.rows.findIndex((r) => r.slave.articleId === s.articleId));
-              this.invalidate();
-              this.render();
-            }]]) actions.append(this.button(text, fn, label));
+            for (const [text, fn, label] of [
+              [
+                "위",
+                () => this.move(s.articleId, -1),
+                "원본 " + s.articleId + " 위로"
+              ],
+              [
+                "아래",
+                () => this.move(s.articleId, 1),
+                "원본 " + s.articleId + " 아래로"
+              ],
+              ["새로고침", () => this.refresh(s.articleId)],
+              [
+                "제거",
+                () => {
+                  if (this.busy) {
+                    return;
+                  }
+                  this.draft.remove(this.draft.rows.findIndex((r) => r.slave.articleId === s.articleId));
+                  this.invalidate();
+                  this.render();
+                }
+              ]
+            ]) {
+              actions.append(this.button(text, fn, label));
+            }
             head.append(drag, title, actions);
             n.append(head);
             const info = this.doc.createElement("small");
@@ -303,13 +415,19 @@
             n.ondragleave = () => n.classList.remove("drag-over");
             n.ondragend = () => {
               this.dragId = null;
-              for (const row2 of list.children) row2.classList.remove("drag-over");
+              for (const row2 of list.children) {
+                row2.classList.remove("drag-over");
+              }
             };
             n.ondrop = (e) => {
               e.preventDefault();
-              if (this.busy || !this.dragId) return;
+              if (this.busy || !this.dragId) {
+                return;
+              }
               const from = this.draft.rows.findIndex((r) => r.slave.articleId === this.dragId), to = this.draft.rows.findIndex((r) => r.slave.articleId === s.articleId);
-              if (from < 0 || to < 0) return;
+              if (from < 0 || to < 0) {
+                return;
+              }
               this.draft.move(from, to);
               this.dragId = null;
               this.invalidate();
@@ -320,15 +438,21 @@
           this.controls();
         }
         move(articleId, offset) {
-          if (this.busy) return;
+          if (this.busy) {
+            return;
+          }
           const from = this.draft.rows.findIndex((r) => r.slave.articleId === articleId), to = from + offset;
-          if (to < 0 || to >= this.draft.rows.length) return;
+          if (to < 0 || to >= this.draft.rows.length) {
+            return;
+          }
           this.draft.move(from, to);
           this.invalidate();
           this.render();
         }
-        async generate({ automatic = false } = {}) {
-          if (this.busy || !this.ready) return;
+        async generate({ automatic: _automatic = false } = {}) {
+          if (this.busy || !this.ready) {
+            return;
+          }
           g.clearTimeout(this.previewTimer);
           this.busy = true;
           const revision = this.revision;
@@ -348,16 +472,27 @@
               list.append(item);
             }
             n.append(list);
-            const value = this.draft.value(this.articleId), encoded = B.encode(value), p = await this.client.request("preview", { session: this.session, encoded });
-            if (this.closed) return;
+            const value = this.draft.value(this.articleId), encoded = B.encode(value), p = await this.client.request("preview", {
+              session: this.session,
+              encoded
+            });
+            if (this.closed) {
+              return;
+            }
             this.watchEditor();
-            if (!this.articleId) this.q(".context").textContent = "새 게시글입니다. 저장 후 글 번호가 연결됩니다. 이전 선택기에서는 읽지 못할 수 있습니다.";
-            if (revision !== this.revision) return;
+            if (!this.articleId) {
+              this.q(".context").textContent = "새 게시글입니다. 저장 후 글 번호가 연결됩니다. 이전 선택기에서는 읽지 못할 수 있습니다.";
+            }
+            if (revision !== this.revision) {
+              return;
+            }
             this.preview = p;
             this.currentValue = value;
             g.clearTimeout(this.expiryTimer);
             this.expiryTimer = g.setTimeout(() => {
-              if (this.closed) return;
+              if (this.closed) {
+                return;
+              }
               this.preview = null;
               this.invalidReason = "미리보기가 만료되었습니다. 다시 생성해 주세요.";
               this.controls();
@@ -384,12 +519,19 @@
           }
         }
         async apply() {
-          if (this.busy || !this.preview || this.preview.changed === false) return;
+          if (this.busy || !this.preview || this.preview.changed === false) {
+            return;
+          }
           this.busy = true;
           this.controls();
           try {
-            await this.client.request("apply", { session: this.session, previewId: this.preview.previewId });
-            if (this.closed) return;
+            await this.client.request("apply", {
+              session: this.session,
+              previewId: this.preview.previewId
+            });
+            if (this.closed) {
+              return;
+            }
             this.draft.base = B.clone(this.currentValue);
             this.preview = null;
             this.invalidReason = "적용했습니다. 새 변경사항이 없습니다.";
@@ -405,7 +547,9 @@
           }
         }
         async save() {
-          if (this.busy || !this.ready) return;
+          if (this.busy || !this.ready) {
+            return;
+          }
           this.busy = true;
           this.controls();
           try {
@@ -420,13 +564,19 @@
           }
         }
         async load() {
-          if (this.busy || !this.ready) return;
+          if (this.busy || !this.ready) {
+            return;
+          }
           this.busy = true;
           this.controls();
           try {
             const draft = await this.browser.loadDraft();
-            if (draft.base?.mainArticleId > 0 && draft.base.mainArticleId !== this.articleId) B.fail("ARTICLE_ID_MISMATCH", "다른 대표 글의 수정 초안입니다. 해당 글에서 불러와 주세요.");
-            if (this.draft.base) B.fail("DRAFT_CONFLICT", "본문에 통합팩이 있습니다. 기존 구성은 저장 초안으로 덮어쓰지 않습니다.");
+            if (draft.base?.mainArticleId > 0 && draft.base.mainArticleId !== this.articleId) {
+              B.fail("ARTICLE_ID_MISMATCH", "다른 대표 글의 수정 초안입니다. 해당 글에서 불러와 주세요.");
+            }
+            if (this.draft.base) {
+              B.fail("DRAFT_CONFLICT", "본문에 통합팩이 있습니다. 기존 구성은 저장 초안으로 덮어쓰지 않습니다.");
+            }
             this.draft = draft;
             this.q(".name").value = draft.name;
             this.invalidate();
@@ -437,24 +587,32 @@
           } finally {
             this.busy = false;
             this.controls();
-            if (this.ready) this.schedulePreview();
+            if (this.ready) {
+              this.schedulePreview();
+            }
           }
         }
         schedulePreview() {
-          if (this.closed || this.busy || !this.ready || !this.draft.name.trim() || !this.draft.rows.length) return;
+          if (this.closed || this.busy || !this.ready || !this.draft.name.trim() || !this.draft.rows.length) {
+            return;
+          }
           g.clearTimeout(this.previewTimer);
           this.previewTimer = g.setTimeout(() => this.generate({ automatic: true }), 350);
         }
         close() {
-          if (this.closed) return;
+          if (this.closed) {
+            return;
+          }
           this.closed = true;
           this.editorObserver?.disconnect();
           g.clearTimeout(this.previewTimer);
           g.clearTimeout(this.expiryTimer);
           this.search.destroy();
           this.reader.destroy();
-          if (this.session) this.client.request("release", { session: this.session }).catch(() => {
-          });
+          if (this.session) {
+            this.client.request("release", { session: this.session }).catch(() => {
+            });
+          }
           this.uiCleanup?.();
           this.host.remove();
           this.onClose();
@@ -463,7 +621,7 @@
       Object.assign(B, { Panel });
     }, "initializeBundleUi");
     initializeBundleUi(environment);
-    return { "bundle": selectModuleExports(bundle2, ["Panel"]) };
+    return { bundle: selectModuleExports(bundle2, ["Panel"]) };
   }
   __name(createBundleUi, "createBundleUi");
 

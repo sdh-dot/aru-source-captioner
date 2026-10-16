@@ -1,7 +1,8 @@
+import { defaultEnvironment } from "../src/runtime/contracts.ts";
 import { isolatedState } from "../runtime/world-state";
 import { defineContentScript } from "wxt/utils/define-content-script";
 import { contentMatches } from "../config/manifests";
-import { createBundleUiRuntime } from "../docs/source/runtime/icons.mjs";
+import { createBundleUiRuntime } from "../src/runtime/icons.ts";
 export default defineContentScript({
   matches: contentMatches(6),
   runAt: "document_idle",
@@ -9,7 +10,7 @@ export default defineContentScript({
   main() {
     const state = isolatedState();
     const result = createBundleUiRuntime({
-      environment: globalThis,
+      environment: defaultEnvironment,
       initialIcons: state.icons,
       initialBundle: state.bundle,
     });

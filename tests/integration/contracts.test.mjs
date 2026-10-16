@@ -1,3 +1,4 @@
+import {normalizeControlBlocks} from "../helpers/normalize-control-blocks.mjs";
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -14,7 +15,7 @@ import {encode} from '../../shared/icon-metadata/tag-codec.mjs';
 const sources=JSON.parse(fs.readFileSync(new URL('./fixtures/hybrid-source.json',import.meta.url))).sources;
 const plain=value=>JSON.parse(JSON.stringify(value));
 function walk(node,visit){if(!node||typeof node!=='object')return;if(node.type)visit(node);for(const value of Object.values(node))if(Array.isArray(value))value.forEach(n=>walk(n,visit));else if(value&&typeof value==='object')walk(value,visit);}
-const canonical=source=>JSON.stringify(parse('function compare(g){'+source+'}',{ecmaVersion:'latest'}),(key,value)=>['start','end','raw'].includes(key)?undefined:value);
+const canonical=source=>JSON.stringify(normalizeControlBlocks(parse('function compare(g){'+source+'}',{ecmaVersion:'latest'})));
 function environment(){
   const dom=new JSDOM('<div class="seditor"><input type="file" accept="image/*"><div class="note-editable" contenteditable="true"></div></div>',{url:'https://bbs.ruliweb.com/community/board/300143/write',pretendToBeVisual:true});
   const w=dom.window;

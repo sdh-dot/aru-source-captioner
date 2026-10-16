@@ -7,8 +7,14 @@
   function createModuleScope(resolvers = {}, names = [], own = []) {
     const scope = {};
     for (const name of names) {
-      if (own.includes(name)) scope[name] = resolvers[name]?.();
-      else Object.defineProperty(scope, name, { enumerable: true, get: /* @__PURE__ */ __name(() => resolvers[name]?.(), "get") });
+      if (own.includes(name)) {
+        scope[name] = resolvers[name]?.();
+      } else {
+        Object.defineProperty(scope, name, {
+          enumerable: true,
+          get: /* @__PURE__ */ __name(() => resolvers[name]?.(), "get")
+        });
+      }
     }
     return scope;
   }

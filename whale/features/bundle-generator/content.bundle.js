@@ -7,12 +7,21 @@
       __defProp(target, name, { get: all[name], enumerable: true });
   };
 
+  // docs/source/runtime/contracts.mjs
+  var defaultEnvironment = globalThis;
+
   // docs/source/runtime/module-scope.mjs
   function createModuleScope(resolvers = {}, names = [], own = []) {
     const scope = {};
     for (const name of names) {
-      if (own.includes(name)) scope[name] = resolvers[name]?.();
-      else Object.defineProperty(scope, name, { enumerable: true, get: /* @__PURE__ */ __name(() => resolvers[name]?.(), "get") });
+      if (own.includes(name)) {
+        scope[name] = resolvers[name]?.();
+      } else {
+        Object.defineProperty(scope, name, {
+          enumerable: true,
+          get: /* @__PURE__ */ __name(() => resolvers[name]?.(), "get")
+        });
+      }
     }
     return scope;
   }
@@ -23,16 +32,49 @@
   __name(selectModuleExports, "selectModuleExports");
 
   // docs/source/ruliweb-icons/design-system.mjs
-  function createIconsDesignSystem({ environment = globalThis, dependencies = {} } = {}) {
-    const { chrome, browser, MutationObserver } = environment;
-    const getComputedStyle = typeof environment.getComputedStyle === "function" ? (...args) => environment.getComputedStyle(...args) : void 0;
-    const matchMedia = typeof environment.matchMedia === "function" ? (...args) => environment.matchMedia(...args) : void 0;
+  function createIconsDesignSystem({ environment = defaultEnvironment, dependencies = {} } = {}) {
     let icons = createModuleScope(dependencies.icons, ["DesignSystem"], ["DesignSystem"]);
     const initializeIconsDesignSystem = /* @__PURE__ */ __name(function(g) {
       "use strict";
       const A = icons = icons || {};
-      const LIGHT = Object.freeze({ background: "#FAF7F2", surface: "#FFFFFF", soft: "#F4EDE7", text: "#30252B", muted: "#69535D", wine: "#923F61", deepWine: "#642940", gold: "#C5A268", softGold: "#E5CFA7", border: "#B9A8AE", primary: "#923F61", primaryText: "#FFFFFF", accentText: "#FFFFFF", selected: "#F5E9D4", selectedText: "#642940", danger: "#8C2929", dangerBackground: "#FFF0E9" });
-      const DARK = Object.freeze({ background: "#21181E", surface: "#2E232A", soft: "#3B2C34", text: "#F7EEE9", muted: "#D2BDC6", wine: "#E59AB6", deepWine: "#F2B7CF", gold: "#D9B77F", softGold: "#E5CFA7", border: "#947E89", primary: "#C5A268", primaryText: "#21181E", accentText: "#2B1721", selected: "#4D392C", selectedText: "#F7E3BE", danger: "#FFC1B1", dangerBackground: "#482A2A" });
+      const LIGHT = Object.freeze({
+        background: "#FAF7F2",
+        surface: "#FFFFFF",
+        soft: "#F4EDE7",
+        text: "#30252B",
+        muted: "#69535D",
+        wine: "#923F61",
+        deepWine: "#642940",
+        gold: "#C5A268",
+        softGold: "#E5CFA7",
+        border: "#B9A8AE",
+        primary: "#923F61",
+        primaryText: "#FFFFFF",
+        accentText: "#FFFFFF",
+        selected: "#F5E9D4",
+        selectedText: "#642940",
+        danger: "#8C2929",
+        dangerBackground: "#FFF0E9"
+      });
+      const DARK = Object.freeze({
+        background: "#21181E",
+        surface: "#2E232A",
+        soft: "#3B2C34",
+        text: "#F7EEE9",
+        muted: "#D2BDC6",
+        wine: "#E59AB6",
+        deepWine: "#F2B7CF",
+        gold: "#D9B77F",
+        softGold: "#E5CFA7",
+        border: "#947E89",
+        primary: "#C5A268",
+        primaryText: "#21181E",
+        accentText: "#2B1721",
+        selected: "#4D392C",
+        selectedText: "#F7E3BE",
+        danger: "#FFC1B1",
+        dangerBackground: "#482A2A"
+      });
       const variables = /* @__PURE__ */ __name((palette) => Object.entries(palette).map(([name, value]) => "--aru-" + name.replace(/[A-Z]/g, (c) => "-" + c.toLowerCase()) + ":" + value + ";").join(""), "variables");
       const css = `:host{${variables(LIGHT)}font-family:"Aru Pretendard",Pretendard,system-ui,-apple-system,"Malgun Gothic",sans-serif!important;color:var(--aru-text)!important;color-scheme:light}
   @media(prefers-color-scheme:dark){:host{${variables(DARK)}color-scheme:dark}}
@@ -192,16 +234,32 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
           const detect = /* @__PURE__ */ __name(() => {
             for (const node of [doc.body, doc.documentElement]) {
               const c = node && g.getComputedStyle(node).backgroundColor, values = c?.match(/[\d.]+/g)?.map(Number);
-              if (values?.length >= 3 && (values.length < 4 || values[3] >= 0.95)) return 0.2126 * values[0] + 0.7152 * values[1] + 0.0722 * values[2] < 128 ? "dark" : "light";
+              if (values && values.length >= 3 && (values.length < 4 || values[3] >= 0.95)) {
+                return 0.2126 * values[0] + 0.7152 * values[1] + 0.0722 * values[2] < 128 ? "dark" : "light";
+              }
             }
             return mq?.matches ? "dark" : "light";
           }, "detect");
           const update = /* @__PURE__ */ __name(() => {
             const theme = detect();
-            for (const host of hosts) host.dataset.aruTheme = theme;
+            for (const host of hosts) {
+              host.dataset.aruTheme = theme;
+            }
           }, "update");
           const observer = g.MutationObserver ? new g.MutationObserver(update) : null;
-          for (const node of [doc.documentElement, doc.body]) if (node) observer?.observe(node, { attributes: true, attributeFilter: ["class", "style", "data-theme", "data-color-scheme"] });
+          for (const node of [doc.documentElement, doc.body]) {
+            if (node) {
+              observer?.observe(node, {
+                attributes: true,
+                attributeFilter: [
+                  "class",
+                  "style",
+                  "data-theme",
+                  "data-color-scheme"
+                ]
+              });
+            }
+          }
           mq?.addEventListener?.("change", update);
           watch = { hosts, update, observer, mq };
           themes.set(doc, watch);
@@ -228,9 +286,16 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
         button.dataset.priority = priority;
         button.textContent = label;
         button.title = tooltip;
-        const iconName = { "아이콘 선택": "editor-select", "아이콘 통합": "editor-bundle", "아이콘 태그": "editor-tags", "이미지 첨부": "editor-upload" }[label];
+        const iconName = {
+          "아이콘 선택": "editor-select",
+          "아이콘 통합": "editor-bundle",
+          "아이콘 태그": "editor-tags",
+          "이미지 첨부": "editor-upload"
+        }[label];
         const icon = iconName && assetImage(shadow.host.ownerDocument, "assets/icons/" + iconName + "-20.png", iconName, "aru-entry-icon");
-        if (icon) button.prepend(icon);
+        if (icon) {
+          button.prepend(icon);
+        }
         return cleanup;
       }
       __name(entry, "entry");
@@ -259,7 +324,9 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
       __name(assetURL, "assetURL");
       function assetImage(doc, file, kind, className, onFallback) {
         const url = file.startsWith("assets/icons/") ? assetURL("assets/icons/" + file.slice("assets/icons/".length)) : assetURL(file);
-        if (!url) return fallbackIcon(doc, kind, className);
+        if (!url) {
+          return fallbackIcon(doc, kind, className);
+        }
         const image = doc.createElement("img");
         image.className = className;
         image.alt = "";
@@ -293,11 +360,19 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
     @media(max-width:500px){.dialog .aru-modal-header .header-actions{flex-direction:column;align-items:flex-end;gap:4px}.dialog .aru-modal-header #catalog-dock{font-size:11px;padding:4px 6px}.dialog .aru-modal-description{font-size:11px}}
   `;
       function modalHeader(header, { kind, description } = {}) {
-        const file = { select: "modal-select", bundle: "modal-bundle", tags: "modal-tags" }[kind];
-        if (!header || !file || header.classList.contains("aru-modal-header")) return;
+        const file = {
+          select: "modal-select",
+          bundle: "modal-bundle",
+          tags: "modal-tags"
+        }[kind];
+        if (!header || !file || header.classList.contains("aru-modal-header")) {
+          return;
+        }
         const doc = header.ownerDocument, shadow = header.getRootNode();
         let heading = header.querySelector(".header-title,h1,h2,strong");
-        if (!heading) return;
+        if (!heading) {
+          return;
+        }
         if (!heading.classList.contains("header-title")) {
           const wrapper = doc.createElement("div");
           header.insertBefore(wrapper, heading);
@@ -325,13 +400,18 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
         const image = assetImage(doc, "assets/icons/" + file + "-256.png", kind, "aru-modal-character", compactFallback);
         image.setAttribute("width", "128");
         image.setAttribute("height", "128");
-        if (image.tagName.toLowerCase() === "svg") compactFallback(image);
-        else heading.after(image);
+        if (image.tagName.toLowerCase() === "svg") {
+          compactFallback(image);
+        } else {
+          heading.after(image);
+        }
       }
       __name(modalHeader, "modalHeader");
       function attach(shadow, { fontURL } = {}) {
-        if (!shadow || shadow.querySelector("[data-aru-design-tokens]")) return () => {
-        };
+        if (!shadow || shadow.querySelector("[data-aru-design-tokens]")) {
+          return () => {
+          };
+        }
         const doc = shadow.host.ownerDocument, style = doc.createElement("style");
         style.dataset.aruDesignTokens = "";
         style.textContent = css + polish + " .primary{background:var(--aru-primary);border-color:var(--aru-primary);color:var(--aru-primary-text)}";
@@ -360,21 +440,40 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
         return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
       }
       __name(contrast, "contrast");
-      A.DesignSystem = Object.freeze({ LIGHT, DARK, css: css + entryCss + polish, attach, entry, observeTheme, contrast, assetURL, assetImage, modalHeader });
+      A.DesignSystem = Object.freeze({
+        LIGHT,
+        DARK,
+        css: css + entryCss + polish,
+        attach,
+        entry,
+        observeTheme,
+        contrast,
+        assetURL,
+        assetImage,
+        modalHeader
+      });
     }, "initializeIconsDesignSystem");
     initializeIconsDesignSystem(environment);
-    return { "icons": selectModuleExports(icons, ["DesignSystem"]) };
+    return { icons: selectModuleExports(icons, ["DesignSystem"]) };
   }
   __name(createIconsDesignSystem, "createIconsDesignSystem");
 
   // docs/source/bundle-generator/core.mjs
-  function createBundleCore({ environment = globalThis, dependencies = {} } = {}) {
-    const { document, location, AbortController, TextEncoder, TextDecoder: TextDecoder2, URL: URL2 } = environment;
-    const setTimeout2 = typeof environment.setTimeout === "function" ? (...args) => environment.setTimeout(...args) : void 0;
-    const clearTimeout2 = typeof environment.clearTimeout === "function" ? (...args) => environment.clearTimeout(...args) : void 0;
+  function createBundleCore({ environment = defaultEnvironment, dependencies = {} } = {}) {
+    const { TextEncoder, TextDecoder: TextDecoder2, URL: URL2 } = environment;
     const fetch = typeof environment.fetch === "function" ? (...args) => environment.fetch(...args) : void 0;
-    const btoa = typeof environment.btoa === "function" ? (...args) => environment.btoa(...args) : void 0;
-    let bundle = createModuleScope(dependencies.bundle, [], ["fail", "clone", "articleUrl", "validate", "existing", "encode", "preserveUnknown", "Draft", "readPublicDocument", "SourceReader"]);
+    let bundle = createModuleScope(dependencies.bundle, [], [
+      "fail",
+      "clone",
+      "articleUrl",
+      "validate",
+      "existing",
+      "encode",
+      "preserveUnknown",
+      "Draft",
+      "readPublicDocument",
+      "SourceReader"
+    ]);
     let icons = createModuleScope(dependencies.icons, ["Metadata", "SiteAdapter"], []);
     const initializeBundleCore = /* @__PURE__ */ __name(function(g) {
       "use strict";
@@ -385,53 +484,91 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
       }
       __name(fail2, "fail");
       function articleUrl(value) {
-        if (typeof value !== "string" || value.length > 2048 || /[\u0000-\u0020\u007f\\]/u.test(value)) fail2("URL_INVALID", "공개 아이콘 게시글 URL을 입력해 주세요.");
+        if (typeof value !== "string" || value.length > 2048 || /[\u0000-\u0020\u007f\\]/u.test(value)) {
+          fail2("URL_INVALID", "공개 아이콘 게시글 URL을 입력해 주세요.");
+        }
         let u;
         try {
           u = new URL2(value);
         } catch (_) {
           fail2("URL_INVALID", "올바른 게시글 URL이 아닙니다.");
         }
-        if (u.protocol !== "https:" || !["bbs.ruliweb.com", "m.ruliweb.com"].includes(u.hostname) || u.username || u.password || u.port) fail2("URL_INVALID", "루리웹 HTTPS 공개 게시글만 지원합니다.");
+        if (u.protocol !== "https:" || !["bbs.ruliweb.com", "m.ruliweb.com"].includes(u.hostname) || u.username || u.password || u.port) {
+          fail2("URL_INVALID", "루리웹 HTTPS 공개 게시글만 지원합니다.");
+        }
         const match = u.pathname.match(/^\/community\/board\/98\/read\/([1-9]\d*)\/?$/);
-        if (!match || !Number.isSafeInteger(Number(match[1]))) fail2("BOARD_UNSUPPORTED", "ruricon:v1 통합팩은 아이콘 공유 게시판(98)의 글만 참조할 수 있습니다.");
+        if (!match || !Number.isSafeInteger(Number(match[1]))) {
+          fail2("BOARD_UNSUPPORTED", "ruricon:v1 통합팩은 아이콘 공유 게시판(98)의 글만 참조할 수 있습니다.");
+        }
         const articleId = Number(match[1]);
         return { boardId: 98, articleId, url: M.publicArticleUrl(articleId) };
       }
       __name(articleUrl, "articleUrl");
       function validate(value) {
         M.validateV1(value, { allowUnbound: true });
-        if (new Set(value.slaves.map((s) => s.articleId)).size !== value.slaves.length) fail2("DUPLICATE_REFERENCE", "동일 글을 여러 페이지로 나눈 기존 통합팩은 안전한 편집을 지원하지 않습니다. 원본을 유지합니다.");
-        if (value.slaves.some((s) => s.articleId === value.mainArticleId)) fail2("SELF_REFERENCE", "대표 게시글을 원본으로 참조할 수 없습니다.");
+        if (new Set(value.slaves.map((s) => s.articleId)).size !== value.slaves.length) {
+          fail2("DUPLICATE_REFERENCE", "동일 글을 여러 페이지로 나눈 기존 통합팩은 안전한 편집을 지원하지 않습니다. 원본을 유지합니다.");
+        }
+        if (value.slaves.some((s) => s.articleId === value.mainArticleId)) {
+          fail2("SELF_REFERENCE", "대표 게시글을 원본으로 참조할 수 없습니다.");
+        }
         return value;
       }
       __name(validate, "validate");
       function existing(root) {
         const markers = [...root.querySelectorAll("[data-meta]")].filter((n) => /^(ruricon|aru-icons):/.test(n.getAttribute("data-meta")));
-        if (markers.some((n) => n.getAttribute("data-meta") !== "ruricon:v1")) fail2("FORMAT_UNSUPPORTED", "v2 또는 알 수 없는 메타데이터가 있습니다. 기존 필드를 보존하기 위해 적용을 중단합니다.");
+        if (markers.some((n) => n.getAttribute("data-meta") !== "ruricon:v1")) {
+          fail2("FORMAT_UNSUPPORTED", "v2 또는 알 수 없는 메타데이터가 있습니다. 기존 필드를 보존하기 위해 적용을 중단합니다.");
+        }
         const carriers = M.readDocumentCarriers(root);
-        if (!markers.length) return null;
-        if (markers.length !== 1 || carriers.v1.length !== 1) fail2("CARRIER_DUPLICATE", "BUNDLE 메타데이터가 중복되거나 불완전합니다. 자동으로 합치지 않습니다.");
+        if (!markers.length) {
+          return null;
+        }
+        if (markers.length !== 1 || carriers.v1.length !== 1) {
+          fail2("CARRIER_DUPLICATE", "BUNDLE 메타데이터가 중복되거나 불완전합니다. 자동으로 합치지 않습니다.");
+        }
         return validate(M.decodeCarrier(carriers.v1[0]).value);
       }
       __name(existing, "existing");
       function encode2(value) {
         validate(value);
         const bytes = new TextEncoder().encode(JSON.stringify(value));
-        if (bytes.length > M.LIMITS.decodedBytes) fail2("RESOURCE_LIMIT", "통합팩 메타데이터가 v1의 1MB 상한을 넘었습니다.");
+        if (bytes.length > M.LIMITS.decodedBytes) {
+          fail2("RESOURCE_LIMIT", "통합팩 메타데이터가 v1의 1MB 상한을 넘었습니다.");
+        }
         let binary = "";
-        for (let i = 0; i < bytes.length; i += 8192) binary += String.fromCharCode(...bytes.subarray(i, i + 8192));
+        for (let i = 0; i < bytes.length; i += 8192) {
+          binary += String.fromCharCode(...bytes.subarray(i, i + 8192));
+        }
         return g.btoa(binary).replaceAll("+", "-").replaceAll("/", "_").replace(/=+$/, "");
       }
       __name(encode2, "encode");
       function preserveUnknown(before, after) {
-        const known = /* @__PURE__ */ new Set(["version", "name", "boardId", "mainArticleId", "slaves"]);
-        for (const key of Object.keys(before || {})) if (!known.has(key) && JSON.stringify(before[key]) !== JSON.stringify(after[key])) fail2("UNKNOWN_FIELD_CHANGED", "알 수 없는 기존 최상위 필드를 변경할 수 없습니다: " + key);
+        const known = /* @__PURE__ */ new Set([
+          "version",
+          "name",
+          "boardId",
+          "mainArticleId",
+          "slaves"
+        ]);
+        for (const key of Object.keys(before || {})) {
+          if (!known.has(key) && JSON.stringify(before[key]) !== JSON.stringify(after[key])) {
+            fail2("UNKNOWN_FIELD_CHANGED", "알 수 없는 기존 최상위 필드를 변경할 수 없습니다: " + key);
+          }
+        }
         for (const old of before?.slaves || []) {
           const next = after.slaves.find((s) => s.articleId === old.articleId);
-          if (!next) continue;
-          if (next.page !== old.page) fail2("PAGE_CHANGED", "기존 참조의 page 식별값을 변경할 수 없습니다.");
-          for (const key of Object.keys(old)) if (!["page", "articleId", "images"].includes(key) && JSON.stringify(old[key]) !== JSON.stringify(next[key])) fail2("UNKNOWN_FIELD_CHANGED", "알 수 없는 기존 참조 필드를 변경할 수 없습니다: " + key);
+          if (!next) {
+            continue;
+          }
+          if (next.page !== old.page) {
+            fail2("PAGE_CHANGED", "기존 참조의 page 식별값을 변경할 수 없습니다.");
+          }
+          for (const key of Object.keys(old)) {
+            if (!["page", "articleId", "images"].includes(key) && JSON.stringify(old[key]) !== JSON.stringify(next[key])) {
+              fail2("UNKNOWN_FIELD_CHANGED", "알 수 없는 기존 참조 필드를 변경할 수 없습니다: " + key);
+            }
+          }
         }
       }
       __name(preserveUnknown, "preserveUnknown");
@@ -442,37 +579,69 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
         constructor(value = null) {
           this.base = value ? clone(validate(value)) : null;
           this.name = value?.name || "";
-          this.rows = (value?.slaves || []).map((s) => ({ slave: clone(s), summary: null }));
+          this.rows = (value?.slaves || []).map((s) => ({
+            slave: clone(s),
+            summary: null
+          }));
         }
         add(summary) {
-          if (this.rows.some((r) => r.slave.articleId === summary.articleId)) fail2("DUPLICATE_REFERENCE", "이미 추가한 게시글입니다. PC·모바일 주소는 같은 글로 처리합니다.");
-          if (this.rows.length >= M.LIMITS.sources) fail2("RESOURCE_LIMIT", "참조 글은 최대 512개입니다.");
-          if (this.base?.mainArticleId === summary.articleId) fail2("SELF_REFERENCE", "대표 게시글을 원본으로 참조할 수 없습니다.");
+          if (this.rows.some((r) => r.slave.articleId === summary.articleId)) {
+            fail2("DUPLICATE_REFERENCE", "이미 추가한 게시글입니다. PC·모바일 주소는 같은 글로 처리합니다.");
+          }
+          if (this.rows.length >= M.LIMITS.sources) {
+            fail2("RESOURCE_LIMIT", "참조 글은 최대 512개입니다.");
+          }
+          if (this.base?.mainArticleId === summary.articleId) {
+            fail2("SELF_REFERENCE", "대표 게시글을 원본으로 참조할 수 없습니다.");
+          }
           const used = new Set(this.rows.map((r) => r.slave.page));
           let page = 1;
-          while (used.has(page)) page++;
-          this.rows.push({ slave: { page, articleId: summary.articleId, images: [...summary.urls] }, summary: clone(summary) });
+          while (used.has(page)) {
+            page++;
+          }
+          this.rows.push({
+            slave: {
+              page,
+              articleId: summary.articleId,
+              images: [...summary.urls]
+            },
+            summary: clone(summary)
+          });
         }
         remove(index) {
-          if (!Number.isInteger(index) || index < 0 || index >= this.rows.length) fail2("ROW_INVALID", "참조 항목이 바뀌었습니다.");
+          if (!Number.isInteger(index) || index < 0 || index >= this.rows.length) {
+            fail2("ROW_INVALID", "참조 항목이 바뀌었습니다.");
+          }
           this.rows.splice(index, 1);
         }
         move(from, to) {
-          if (!Number.isInteger(from) || !Number.isInteger(to) || from < 0 || to < 0 || from >= this.rows.length || to >= this.rows.length) fail2("ROW_INVALID", "이동할 참조를 확인해 주세요.");
+          if (!Number.isInteger(from) || !Number.isInteger(to) || from < 0 || to < 0 || from >= this.rows.length || to >= this.rows.length) {
+            fail2("ROW_INVALID", "이동할 참조를 확인해 주세요.");
+          }
           const row = this.rows.splice(from, 1)[0];
           this.rows.splice(to, 0, row);
         }
         refresh(summary) {
           const row = this.rows.find((r) => r.slave.articleId === summary.articleId);
-          if (!row) fail2("ROW_INVALID", "제거된 참조입니다.");
+          if (!row) {
+            fail2("ROW_INVALID", "제거된 참조입니다.");
+          }
           row.summary = clone(summary);
           row.slave.images = [...summary.urls];
         }
         value(mainArticleId) {
-          if (mainArticleId === null && this.base?.mainArticleId > 0) fail2("ARTICLE_ID_PENDING", "다른 대표 글의 구성은 해당 글의 수정 화면에서 적용해 주세요.");
-          if (mainArticleId === null) mainArticleId = 0;
-          if (!Number.isSafeInteger(mainArticleId) || mainArticleId < 0) fail2("ARTICLE_ID_PENDING", "대표 글 번호를 확인할 수 없습니다.");
-          if (this.base?.mainArticleId > 0 && this.base.mainArticleId !== mainArticleId) fail2("ARTICLE_ID_MISMATCH", "현재 수정 글과 기존 메타데이터의 대표 글 번호가 다릅니다.");
+          if (mainArticleId === null && this.base?.mainArticleId > 0) {
+            fail2("ARTICLE_ID_PENDING", "다른 대표 글의 구성은 해당 글의 수정 화면에서 적용해 주세요.");
+          }
+          if (mainArticleId === null) {
+            mainArticleId = 0;
+          }
+          if (!Number.isSafeInteger(mainArticleId) || mainArticleId < 0) {
+            fail2("ARTICLE_ID_PENDING", "대표 글 번호를 확인할 수 없습니다.");
+          }
+          if (this.base?.mainArticleId > 0 && this.base.mainArticleId !== mainArticleId) {
+            fail2("ARTICLE_ID_MISMATCH", "현재 수정 글과 기존 메타데이터의 대표 글 번호가 다릅니다.");
+          }
           const value = this.base ? clone(this.base) : { version: 1, boardId: 98 };
           value.name = this.name.trim();
           value.mainArticleId = mainArticleId;
@@ -482,29 +651,60 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
           return value;
         }
         snapshot() {
-          return { format: "aru-bundle-local-draft", version: 1, base: clone(this.base), name: this.name, rows: clone(this.rows) };
+          return {
+            format: "aru-bundle-local-draft",
+            version: 1,
+            base: clone(this.base),
+            name: this.name,
+            rows: clone(this.rows)
+          };
         }
         static restore(saved) {
-          if (saved?.format !== "aru-bundle-local-draft" || saved.version !== 1 || !Array.isArray(saved.rows) || saved.rows.length > M.LIMITS.sources) fail2("DRAFT_INVALID", "저장한 초안 형식을 확인할 수 없습니다.");
+          if (saved?.format !== "aru-bundle-local-draft" || saved.version !== 1 || !Array.isArray(saved.rows) || saved.rows.length > M.LIMITS.sources) {
+            fail2("DRAFT_INVALID", "저장한 초안 형식을 확인할 수 없습니다.");
+          }
           const draft = new Draft(saved.base);
           draft.name = String(saved.name || "");
           draft.rows = clone(saved.rows);
-          const probe = { version: 1, boardId: 98, name: draft.name.trim() || "초안", mainArticleId: draft.base?.mainArticleId || Number.MAX_SAFE_INTEGER, slaves: draft.rows.map((r) => r.slave) };
-          if (probe.slaves.length) validate(probe);
+          const probe = {
+            version: 1,
+            boardId: 98,
+            name: draft.name.trim() || "초안",
+            mainArticleId: draft.base?.mainArticleId || Number.MAX_SAFE_INTEGER,
+            slaves: draft.rows.map((r) => r.slave)
+          };
+          if (probe.slaves.length) {
+            validate(probe);
+          }
           return draft;
         }
       }
       async function readPublicDocument(articleId, { signal, origin = g.location.origin, fetchFn = g.fetch, timeoutMs = 1e4 } = {}) {
         const url = icons.SiteAdapter.readPath(articleId, origin, "98"), controller = new g.AbortController(), abort = /* @__PURE__ */ __name(() => controller.abort(), "abort");
         signal?.addEventListener("abort", abort, { once: true });
-        if (signal?.aborted) abort();
+        if (signal?.aborted) {
+          abort();
+        }
         const timer = g.setTimeout(abort, timeoutMs);
         try {
-          const response = await fetchFn(url, { method: "GET", credentials: "same-origin", mode: "same-origin", redirect: "error", cache: "no-cache", signal: controller.signal });
-          if (response.redirected || response.url && response.url !== url) fail2("READ_REDIRECT", "공개 글 주소가 변경되어 조회를 중단했습니다.");
-          if (!response.ok) fail2([401, 403, 429].includes(response.status) ? "ACCESS_DENIED" : "READ_FAILED", "원본 글 조회 실패 (HTTP " + response.status + "). 삭제·접근 제한 여부를 원본에서 확인해 주세요.");
+          const response = await fetchFn(url, {
+            method: "GET",
+            credentials: "same-origin",
+            mode: "same-origin",
+            redirect: "error",
+            cache: "no-cache",
+            signal: controller.signal
+          });
+          if (response.redirected || response.url && response.url !== url) {
+            fail2("READ_REDIRECT", "공개 글 주소가 변경되어 조회를 중단했습니다.");
+          }
+          if (!response.ok) {
+            fail2([401, 403, 429].includes(response.status) ? "ACCESS_DENIED" : "READ_FAILED", "원본 글 조회 실패 (HTTP " + response.status + "). 삭제·접근 제한 여부를 원본에서 확인해 주세요.");
+          }
           const limit = 3 * 1024 * 1024;
-          if (Number(response.headers?.get("content-length")) > limit) fail2("RESOURCE_LIMIT", "공개 본문 응답이 3MB 상한을 넘었습니다.");
+          if (Number(response.headers?.get("content-length")) > limit) {
+            fail2("RESOURCE_LIMIT", "공개 본문 응답이 3MB 상한을 넘었습니다.");
+          }
           let html = "";
           if (response.body?.getReader) {
             const reader = response.body.getReader(), decoder = new TextDecoder2();
@@ -512,7 +712,9 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
             try {
               while (true) {
                 const r = await reader.read();
-                if (r.done) break;
+                if (r.done) {
+                  break;
+                }
                 bytes += r.value.byteLength;
                 if (bytes > limit) {
                   await reader.cancel();
@@ -526,14 +728,20 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
             }
           } else {
             html = await response.text();
-            if (new TextEncoder().encode(html).length > limit) fail2("RESOURCE_LIMIT", "공개 본문 응답이 3MB 상한을 넘었습니다.");
+            if (new TextEncoder().encode(html).length > limit) {
+              fail2("RESOURCE_LIMIT", "공개 본문 응답이 3MB 상한을 넘었습니다.");
+            }
           }
           const template = g.document.createElement("template");
           template.innerHTML = html;
-          if (!template.content.querySelector('.view_content[itemprop="articleBody"],.view_content article')) fail2("READ_UNAVAILABLE", "공개 본문이 없습니다. 삭제·로그인 요구·접근 제한 여부를 원본에서 확인해 주세요.");
+          if (!template.content.querySelector('.view_content[itemprop="articleBody"],.view_content article')) {
+            fail2("READ_UNAVAILABLE", "공개 본문이 없습니다. 삭제·로그인 요구·접근 제한 여부를 원본에서 확인해 주세요.");
+          }
           return template.content;
         } catch (e) {
-          if (controller.signal.aborted) fail2(signal?.aborted ? "ABORTED" : "TIMEOUT", signal?.aborted ? "조회를 취소했습니다." : "조회 시간이 초과되었습니다.");
+          if (controller.signal.aborted) {
+            fail2(signal?.aborted ? "ABORTED" : "TIMEOUT", signal?.aborted ? "조회를 취소했습니다." : "조회 시간이 초과되었습니다.");
+          }
           throw e;
         } finally {
           g.clearTimeout(timer);
@@ -553,22 +761,42 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
           this.stopped = false;
         }
         read(url, { signal } = {}) {
-          if (this.stopped) return Promise.reject(Object.assign(new Error("생성기를 다시 열어 주세요."), { code: "ABORTED" }));
+          if (this.stopped) {
+            return Promise.reject(Object.assign(new Error("생성기를 다시 열어 주세요."), {
+              code: "ABORTED"
+            }));
+          }
           const ref = articleUrl(url);
-          if (this.pending.has(ref.articleId)) return this.pending.get(ref.articleId).promise;
+          if (this.pending.has(ref.articleId)) {
+            return this.pending.get(ref.articleId).promise;
+          }
           const controller = new g.AbortController(), abort = /* @__PURE__ */ __name(() => controller.abort(), "abort");
           signal?.addEventListener("abort", abort, { once: true });
-          if (signal?.aborted) abort();
+          if (signal?.aborted) {
+            abort();
+          }
           const readSourceDocument = /* @__PURE__ */ __name(async () => {
-            const doc = await this.readDocument(ref.articleId, { origin: this.origin, signal: controller.signal });
-            if (controller.signal.aborted) fail2("ABORTED", "조회를 취소했습니다.");
+            const doc = await this.readDocument(ref.articleId, {
+              origin: this.origin,
+              signal: controller.signal
+            });
+            if (controller.signal.aborted) {
+              fail2("ABORTED", "조회를 취소했습니다.");
+            }
             const body = this.site.findArticleBody(doc).element;
-            const parsed = await M.parseDocument(body, { articleId: ref.articleId, boardId: 98 });
-            if (parsed.kind === "BUNDLE" || parsed.limited) fail2("SOURCE_UNSUPPORTED", "통합팩이나 잘못된 메타데이터를 원본으로 중첩 참조할 수 없습니다. 개별 NORMAL 글을 사용해 주세요.");
+            const parsed = await M.parseDocument(body, {
+              articleId: ref.articleId,
+              boardId: 98
+            });
+            if (parsed.kind === "BUNDLE" || parsed.limited) {
+              fail2("SOURCE_UNSUPPORTED", "통합팩이나 잘못된 메타데이터를 원본으로 중첩 참조할 수 없습니다. 개별 NORMAL 글을 사용해 주세요.");
+            }
             const titleNode = doc.querySelector(".subject_text") || doc.querySelector(".subject") || body.querySelector("h1");
             const title = titleNode?.textContent?.trim().slice(0, 120) || "원본 글 " + ref.articleId;
             const result2 = this.site.readArticlePack(doc, ref.articleId, title, "98"), icons2 = result2.pack.icons;
-            if (!icons2.length) fail2("SOURCE_EMPTY", "다운로드 가능한 아이콘이 없는 게시글입니다.");
+            if (!icons2.length) {
+              fail2("SOURCE_EMPTY", "다운로드 가능한 아이콘이 없는 게시글입니다.");
+            }
             const urls = icons2.map((x) => x.url);
             const imageIcons = icons2.filter((x) => x.mediaKind !== "video"), videoIcons = icons2.filter((x) => x.mediaKind === "video");
             return {
@@ -595,25 +823,49 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
           return promise;
         }
         cancel() {
-          for (const p of this.pending.values()) p.controller.abort();
+          for (const p of this.pending.values()) {
+            p.controller.abort();
+          }
         }
         destroy() {
           this.stopped = true;
           this.cancel();
         }
       }
-      Object.assign(B, { fail: fail2, clone, articleUrl, validate, existing, encode: encode2, preserveUnknown, Draft, readPublicDocument, SourceReader });
+      Object.assign(B, {
+        fail: fail2,
+        clone,
+        articleUrl,
+        validate,
+        existing,
+        encode: encode2,
+        preserveUnknown,
+        Draft,
+        readPublicDocument,
+        SourceReader
+      });
     }, "initializeBundleCore");
     initializeBundleCore(environment);
-    return { "bundle": selectModuleExports(bundle, ["fail", "clone", "articleUrl", "validate", "existing", "encode", "preserveUnknown", "Draft", "readPublicDocument", "SourceReader"]) };
+    return {
+      bundle: selectModuleExports(bundle, [
+        "fail",
+        "clone",
+        "articleUrl",
+        "validate",
+        "existing",
+        "encode",
+        "preserveUnknown",
+        "Draft",
+        "readPublicDocument",
+        "SourceReader"
+      ])
+    };
   }
   __name(createBundleCore, "createBundleCore");
 
   // docs/source/bundle-generator/client.mjs
-  function createBundleClient({ environment = globalThis, dependencies = {} } = {}) {
-    const { chrome, browser, CustomEvent, TextEncoder, crypto } = environment;
-    const setTimeout2 = typeof environment.setTimeout === "function" ? (...args) => environment.setTimeout(...args) : void 0;
-    const clearTimeout2 = typeof environment.clearTimeout === "function" ? (...args) => environment.clearTimeout(...args) : void 0;
+  function createBundleClient({ environment = defaultEnvironment, dependencies = {} } = {}) {
+    const { TextEncoder } = environment;
     let bundle = createModuleScope(dependencies.bundle, ["fail", "Draft"], ["Client", "Browser"]);
     const initializeBundleClient = /* @__PURE__ */ __name(function(g) {
       "use strict";
@@ -627,7 +879,9 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
           this.pending = /* @__PURE__ */ new Map();
           this.closed = false;
           this.receive = (e) => {
-            if (e.target !== doc || typeof e.detail !== "string" || e.detail.length > 2 * 1024 * 1024) return;
+            if (e.target !== doc || typeof e.detail !== "string" || e.detail.length > 2 * 1024 * 1024) {
+              return;
+            }
             let p;
             try {
               p = JSON.parse(e.detail);
@@ -635,20 +889,31 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
               return;
             }
             const r = this.pending.get(p.requestId);
-            if (!r) return;
+            if (!r) {
+              return;
+            }
             g.clearTimeout(r.timer);
             this.pending.delete(p.requestId);
-            if (p.ok) r.resolve(p.result);
-            else r.reject(Object.assign(new Error(p.error?.message || "생성기 연결 오류"), { code: p.error?.code }));
+            if (p.ok) {
+              r.resolve(p.result);
+            } else {
+              r.reject(Object.assign(new Error(p.error?.message || "생성기 연결 오류"), {
+                code: p.error?.code
+              }));
+            }
           };
           doc.addEventListener("aru-bundle-response-v1", this.receive);
         }
         request(op, data = {}) {
-          if (this.closed) return Promise.reject(new Error("생성기가 종료되었습니다."));
+          if (this.closed) {
+            return Promise.reject(new Error("생성기가 종료되었습니다."));
+          }
           return new Promise((resolve, reject) => {
             const requestId = g.crypto.randomUUID().replaceAll("-", ""), detail = JSON.stringify({ ...data, op, requestId });
             if (detail.length > 2 * 1024 * 1024) {
-              reject(Object.assign(new Error("요청 크기가 2MB 상한을 넘었습니다."), { code: "RESOURCE_LIMIT" }));
+              reject(Object.assign(new Error("요청 크기가 2MB 상한을 넘었습니다."), {
+                code: "RESOURCE_LIMIT"
+              }));
               return;
             }
             const timer = g.setTimeout(() => {
@@ -671,15 +936,22 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
       }
       const api = g.browser || g.chrome, KEY = "aruBundleDraftV1";
       async function storage(area, method, arg) {
-        if (!api?.storage?.[area]) throw new Error("확장 저장소에 접근할 수 없습니다.");
-        if (g.browser) return api.storage[area][method](arg);
+        if (!api?.storage?.[area]) {
+          throw new Error("확장 저장소에 접근할 수 없습니다.");
+        }
+        if (g.browser) {
+          return api.storage[area][method](arg);
+        }
         return new Promise((resolve, reject) => api.storage[area][method](arg, (r) => api.runtime?.lastError ? reject(new Error(api.runtime.lastError.message)) : resolve(r)));
       }
       __name(storage, "storage");
       const Browser = {
         async active() {
           try {
-            const v = await storage("sync", "get", ["enabled", "aruIconsOptions"]);
+            const v = await storage("sync", "get", [
+              "enabled",
+              "aruIconsOptions"
+            ]);
             return v.enabled !== false && v.aruIconsOptions?.enabled === true;
           } catch (_) {
             return false;
@@ -687,49 +959,67 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
         },
         subscribe(fn) {
           const listener = /* @__PURE__ */ __name((c, a) => {
-            if (a === "sync" && (c.enabled || c.aruIconsOptions)) fn();
+            if (a === "sync" && (c.enabled || c.aruIconsOptions)) {
+              fn();
+            }
           }, "listener");
           api?.storage?.onChanged?.addListener(listener);
           return () => api?.storage?.onChanged?.removeListener(listener);
         },
         async saveDraft(draft) {
           const data = draft.snapshot();
-          if (new TextEncoder().encode(JSON.stringify(data)).length > 2 * 1024 * 1024) B.fail("RESOURCE_LIMIT", "저장할 초안이 2MB 상한을 넘었습니다.");
+          if (new TextEncoder().encode(JSON.stringify(data)).length > 2 * 1024 * 1024) {
+            B.fail("RESOURCE_LIMIT", "저장할 초안이 2MB 상한을 넘었습니다.");
+          }
           await storage("local", "set", { [KEY]: data });
         },
         async loadDraft() {
           const r = await storage("local", "get", KEY);
-          if (!r[KEY]) B.fail("DRAFT_EMPTY", "저장한 생성기 초안이 없습니다.");
+          if (!r[KEY]) {
+            B.fail("DRAFT_EMPTY", "저장한 생성기 초안이 없습니다.");
+          }
           return B.Draft.restore(r[KEY]);
         }
       };
       Object.assign(B, { Client, Browser });
     }, "initializeBundleClient");
     initializeBundleClient(environment);
-    return { "bundle": selectModuleExports(bundle, ["Client", "Browser"]) };
+    return { bundle: selectModuleExports(bundle, ["Client", "Browser"]) };
   }
   __name(createBundleClient, "createBundleClient");
 
   // docs/source/bundle-generator/search.mjs
-  function createBundleSearch({ environment = globalThis, dependencies = {} } = {}) {
-    const { document, location, AbortController, TextEncoder, TextDecoder: TextDecoder2, URL: URL2 } = environment;
-    const setTimeout2 = typeof environment.setTimeout === "function" ? (...args) => environment.setTimeout(...args) : void 0;
-    const clearTimeout2 = typeof environment.clearTimeout === "function" ? (...args) => environment.clearTimeout(...args) : void 0;
+  function createBundleSearch({ environment = defaultEnvironment, dependencies = {} } = {}) {
+    const { TextEncoder, TextDecoder: TextDecoder2, URL: URL2 } = environment;
     const fetch = typeof environment.fetch === "function" ? (...args) => environment.fetch(...args) : void 0;
-    let bundle = createModuleScope(dependencies.bundle, ["fail", "articleUrl", "clone"], ["searchUrl", "parseSearch", "readSearchHTML", "BoardSearch", "SearchSelection"]);
+    let bundle = createModuleScope(dependencies.bundle, ["fail", "articleUrl", "clone"], [
+      "searchUrl",
+      "parseSearch",
+      "readSearchHTML",
+      "BoardSearch",
+      "SearchSelection"
+    ]);
     let icons = createModuleScope(dependencies.icons, ["Metadata"], []);
     const initializeBoardSearch = /* @__PURE__ */ __name(function(g) {
       "use strict";
       const B = bundle;
       const normalized = /* @__PURE__ */ __name((q) => {
-        if (typeof q !== "string" || /[\u0000-\u001f\u007f]/u.test(q)) B.fail("SEARCH_INVALID", "검색어를 확인해 주세요.");
+        if (typeof q !== "string" || /[\u0000-\u001f\u007f]/u.test(q)) {
+          B.fail("SEARCH_INVALID", "검색어를 확인해 주세요.");
+        }
         q = q.normalize("NFC").trim();
-        if (!q || [...q].length > 120) B.fail("SEARCH_INVALID", "제목 검색어는 1~120자로 입력해 주세요.");
+        if (!q || [...q].length > 120) {
+          B.fail("SEARCH_INVALID", "제목 검색어는 1~120자로 입력해 주세요.");
+        }
         return q;
       }, "normalized");
       function searchUrl(query, page = 1, origin = g.location.origin) {
-        if (!["https://bbs.ruliweb.com", "https://m.ruliweb.com"].includes(origin)) B.fail("SEARCH_ORIGIN", "루리웹 페이지에서 검색해 주세요.");
-        if (!Number.isSafeInteger(page) || page < 1 || page > 1e4) B.fail("SEARCH_PAGE", "검색 페이지가 올바르지 않습니다.");
+        if (!["https://bbs.ruliweb.com", "https://m.ruliweb.com"].includes(origin)) {
+          B.fail("SEARCH_ORIGIN", "루리웹 페이지에서 검색해 주세요.");
+        }
+        if (!Number.isSafeInteger(page) || page < 1 || page > 1e4) {
+          B.fail("SEARCH_PAGE", "검색 페이지가 올바르지 않습니다.");
+        }
         const u = new URL2("/community/board/98", origin);
         u.searchParams.set("search_type", "subject");
         u.searchParams.set("search_key", normalized(query));
@@ -746,20 +1036,30 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
           u = new URL2(boardUrl, origin);
         } catch (_) {
         }
-        if (board !== "98" || u?.origin !== origin || !/^\/community\/board\/98\/?$/.test(u.pathname) || !search?.querySelector('select[name="search_type"] option[value="subject"]') || !search.querySelector('input[name="search_key"]')) B.fail("SEARCH_UNAVAILABLE", "98번 게시판의 제목 검색 화면을 확인하지 못했습니다. 로그인·접근 권한과 기본 게시판 검색을 확인해 주세요.");
+        if (board !== "98" || u?.origin !== origin || !/^\/community\/board\/98\/?$/.test(u.pathname) || !search?.querySelector('select[name="search_type"] option[value="subject"]') || !search.querySelector('input[name="search_key"]')) {
+          B.fail("SEARCH_UNAVAILABLE", "98번 게시판의 제목 검색 화면을 확인하지 못했습니다. 로그인·접근 권한과 기본 게시판 검색을 확인해 주세요.");
+        }
         return root;
       }
       __name(contract, "contract");
       function thumbs(row, origin) {
         const raw = [], img = row.querySelector(".thumbnail img,img.thumbnail,.thumbnail_wrapper img");
-        if (img) raw.push(img.getAttribute("data-src"), img.getAttribute("src"));
-        for (const n of row.querySelectorAll(".thumbnail[style]")) for (const m of n.style.backgroundImage.matchAll(/url\(["']?([^"'()\s]+)["']?\)/gu)) raw.push(m[1]);
+        if (img) {
+          raw.push(img.getAttribute("data-src"), img.getAttribute("src"));
+        }
+        for (const n of row.querySelectorAll(".thumbnail[style]")) {
+          for (const m of n.style.backgroundImage.matchAll(/url\(["']?([^"'()\s]+)["']?\)/gu)) {
+            raw.push(m[1]);
+          }
+        }
         const safe = [];
         for (const s of raw.filter(Boolean)) {
           try {
             const u = new URL2(s, origin);
             icons.Metadata.mediaUrl(u.href);
-            if (!/\.(mp4|webm|m3u8|mpd)(?:$|\?)/i.test(u.href) && !safe.includes(u.href)) safe.push(u.href);
+            if (!/\.(mp4|webm|m3u8|mpd)(?:$|\?)/i.test(u.href) && !safe.includes(u.href)) {
+              safe.push(u.href);
+            }
           } catch (_) {
           }
         }
@@ -768,55 +1068,107 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
       __name(thumbs, "thumbs");
       function parseSearch(doc, { query, page, origin }) {
         const root = contract(doc, origin), input = root.querySelector('[name="search_key"]'), type = root.querySelector('[name="search_type"]');
-        if (normalized(input.value) !== normalized(query) || type.value !== "subject") B.fail("SEARCH_MISMATCH", "서버 응답의 검색 조건이 요청과 다릅니다. 기본 검색 화면을 확인해 주세요.");
+        if (normalized(input.value) !== normalized(query) || type.value !== "subject") {
+          B.fail("SEARCH_MISMATCH", "서버 응답의 검색 조건이 요청과 다릅니다. 기본 검색 화면을 확인해 주세요.");
+        }
         const table = root.querySelector(".board_list_table"), cards = [...root.querySelectorAll(".flex_item.article_wrapper")];
-        if (!table && !cards.length) B.fail("SEARCH_LAYOUT", "게시판 목록 구조가 변경되었습니다. URL 직접 추가를 사용해 주세요.");
+        if (!table && !cards.length) {
+          B.fail("SEARCH_LAYOUT", "게시판 목록 구조가 변경되었습니다. URL 직접 추가를 사용해 주세요.");
+        }
         const items = [], seen = /* @__PURE__ */ new Set();
-        const rows = [...table?.querySelectorAll("tr.table_body") || [], ...cards];
+        const rows = [
+          ...table?.querySelectorAll("tr.table_body") || [],
+          ...cards
+        ];
         for (const row of rows) {
-          if (row.matches(".notice,.other,.list_inner")) continue;
+          if (row.matches(".notice,.other,.list_inner")) {
+            continue;
+          }
           const a = row.querySelector("a.subject_link[href]");
-          if (!a) continue;
+          if (!a) {
+            continue;
+          }
           let ref;
           try {
             ref = B.articleUrl(new URL2(a.getAttribute("href"), origin).href);
           } catch (_) {
             continue;
           }
-          if (seen.has(ref.articleId)) continue;
+          if (seen.has(ref.articleId)) {
+            continue;
+          }
           seen.add(ref.articleId);
           const title = a.cloneNode(true);
-          for (const n of title.querySelectorAll(".num_reply")) n.remove();
+          for (const n of title.querySelectorAll(".num_reply")) {
+            n.remove();
+          }
           const text = (a.getAttribute("title") || title.textContent).trim();
-          if (!text) continue;
-          if (items.length >= 100) B.fail("SEARCH_LIMIT", "한 페이지의 검색 항목이 안전한 표시 상한을 넘었습니다.");
+          if (!text) {
+            continue;
+          }
+          if (items.length >= 100) {
+            B.fail("SEARCH_LIMIT", "한 페이지의 검색 항목이 안전한 표시 상한을 넘었습니다.");
+          }
           const thumbnails = thumbs(row, origin);
-          items.push({ ...ref, title: text.slice(0, 240), thumbnail: thumbnails[0] || null, thumbnails, page, index: items.length });
+          items.push({
+            ...ref,
+            title: text.slice(0, 240),
+            thumbnail: thumbnails[0] || null,
+            thumbnails,
+            page,
+            index: items.length
+          });
         }
         const active = root.querySelector(".paging_wrapper .active")?.textContent.trim();
-        if (active && /^\d+$/.test(active) && Number(active) !== page) B.fail("SEARCH_PAGE", "요청한 검색 페이지와 응답이 다릅니다.");
+        if (active && /^\d+$/.test(active) && Number(active) !== page) {
+          B.fail("SEARCH_PAGE", "요청한 검색 페이지와 응답이 다릅니다.");
+        }
         const pages = [];
         for (const a of root.querySelectorAll(".paging_wrapper a[href]")) {
           try {
             const u = new URL2(a.getAttribute("href"), origin), n = Number(u.searchParams.get("page") || 1);
-            if (u.origin === origin && /^\/community\/board\/98\/?$/.test(u.pathname) && u.searchParams.get("search_type") === "subject" && u.searchParams.get("search_key") === normalized(query) && Number.isSafeInteger(n) && n >= 1 && n <= 1e4) pages.push(n);
+            if (u.origin === origin && /^\/community\/board\/98\/?$/.test(u.pathname) && u.searchParams.get("search_type") === "subject" && u.searchParams.get("search_key") === normalized(query) && Number.isSafeInteger(n) && n >= 1 && n <= 1e4) {
+              pages.push(n);
+            }
           } catch (_) {
           }
         }
-        return { query: normalized(query), page, items, hasPrevious: page > 1, hasNext: items.length > 0 && pages.some((n) => n > page), url: searchUrl(query, page, origin) };
+        return {
+          query: normalized(query),
+          page,
+          items,
+          hasPrevious: page > 1,
+          hasNext: items.length > 0 && pages.some((n) => n > page),
+          url: searchUrl(query, page, origin)
+        };
       }
       __name(parseSearch, "parseSearch");
       async function readSearchHTML(url, { signal, fetchFn = g.fetch, timeoutMs = 1e4 } = {}) {
         const controller = new g.AbortController(), abort = /* @__PURE__ */ __name(() => controller.abort(), "abort");
         signal?.addEventListener("abort", abort, { once: true });
-        if (signal?.aborted) abort();
+        if (signal?.aborted) {
+          abort();
+        }
         const timer = g.setTimeout(abort, timeoutMs);
         try {
-          const response = await fetchFn(url, { method: "GET", mode: "same-origin", credentials: "same-origin", redirect: "error", cache: "no-cache", signal: controller.signal });
-          if (response.redirected || response.url && response.url !== url) B.fail("SEARCH_REDIRECT", "검색 페이지가 다른 주소로 이동하여 중단했습니다.");
-          if (!response.ok) B.fail([401, 403, 429].includes(response.status) ? "ACCESS_DENIED" : "SEARCH_FAILED", "게시판 검색 실패 (HTTP " + response.status + "). 기본 검색을 확인해 주세요.");
+          const response = await fetchFn(url, {
+            method: "GET",
+            mode: "same-origin",
+            credentials: "same-origin",
+            redirect: "error",
+            cache: "no-cache",
+            signal: controller.signal
+          });
+          if (response.redirected || response.url && response.url !== url) {
+            B.fail("SEARCH_REDIRECT", "검색 페이지가 다른 주소로 이동하여 중단했습니다.");
+          }
+          if (!response.ok) {
+            B.fail([401, 403, 429].includes(response.status) ? "ACCESS_DENIED" : "SEARCH_FAILED", "게시판 검색 실패 (HTTP " + response.status + "). 기본 검색을 확인해 주세요.");
+          }
           const limit = 3 * 1024 * 1024;
-          if (Number(response.headers?.get("content-length")) > limit) B.fail("RESOURCE_LIMIT", "검색 HTML 응답이 3MB를 넘었습니다.");
+          if (Number(response.headers?.get("content-length")) > limit) {
+            B.fail("RESOURCE_LIMIT", "검색 HTML 응답이 3MB를 넘었습니다.");
+          }
           let html = "";
           if (response.body?.getReader) {
             const r = response.body.getReader(), decoder = new TextDecoder2();
@@ -824,7 +1176,9 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
             try {
               while (true) {
                 const x = await r.read();
-                if (x.done) break;
+                if (x.done) {
+                  break;
+                }
                 bytes += x.value.byteLength;
                 if (bytes > limit) {
                   await r.cancel();
@@ -838,14 +1192,20 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
             }
           } else {
             html = await response.text();
-            if (new TextEncoder().encode(html).length > limit) B.fail("RESOURCE_LIMIT", "검색 HTML 응답이 3MB를 넘었습니다.");
+            if (new TextEncoder().encode(html).length > limit) {
+              B.fail("RESOURCE_LIMIT", "검색 HTML 응답이 3MB를 넘었습니다.");
+            }
           }
-          if (controller.signal.aborted) B.fail("ABORTED", "검색을 취소했습니다.");
+          if (controller.signal.aborted) {
+            B.fail("ABORTED", "검색을 취소했습니다.");
+          }
           const t = g.document.createElement("template");
           t.innerHTML = html;
           return t.content;
         } catch (e) {
-          if (controller.signal.aborted) B.fail(signal?.aborted ? "ABORTED" : "TIMEOUT", signal?.aborted ? "검색을 취소했습니다." : "검색 시간이 초과되었습니다.");
+          if (controller.signal.aborted) {
+            B.fail(signal?.aborted ? "ABORTED" : "TIMEOUT", signal?.aborted ? "검색을 취소했습니다." : "검색 시간이 초과되었습니다.");
+          }
           throw e;
         } finally {
           g.clearTimeout(timer);
@@ -858,20 +1218,42 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
           __name(this, "BoardSearch");
         }
         constructor({ origin = g.location.origin, readHTML = readSearchHTML, ttl = 6e4, now = /* @__PURE__ */ __name(() => Date.now(), "now") } = {}) {
-          Object.assign(this, { origin, readHTML, ttl, now, cache: /* @__PURE__ */ new Map(), pending: /* @__PURE__ */ new Map(), stopped: false });
+          Object.assign(this, {
+            origin,
+            readHTML,
+            ttl,
+            now,
+            cache: /* @__PURE__ */ new Map(),
+            pending: /* @__PURE__ */ new Map(),
+            stopped: false
+          });
         }
         search(query, page = 1, { force = false } = {}) {
-          if (this.stopped) return Promise.reject(Object.assign(new Error("생성기를 다시 열어 주세요."), { code: "ABORTED" }));
+          if (this.stopped) {
+            return Promise.reject(Object.assign(new Error("생성기를 다시 열어 주세요."), {
+              code: "ABORTED"
+            }));
+          }
           const url = searchUrl(query, page, this.origin), hit = this.cache.get(url);
-          if (!force && hit && this.now() - hit.time < this.ttl) return Promise.resolve(B.clone(hit.result));
-          if (this.pending.has(url)) return this.pending.get(url).promise;
-          if (this.pending.size) B.fail("SEARCH_BUSY", "진행 중인 검색을 취소한 뒤 다시 검색해 주세요.");
+          if (!force && hit && this.now() - hit.time < this.ttl) {
+            return Promise.resolve(B.clone(hit.result));
+          }
+          if (this.pending.has(url)) {
+            return this.pending.get(url).promise;
+          }
+          if (this.pending.size) {
+            B.fail("SEARCH_BUSY", "진행 중인 검색을 취소한 뒤 다시 검색해 주세요.");
+          }
           const controller = new g.AbortController();
           const readSearchPage = /* @__PURE__ */ __name(async () => {
             const doc = await this.readHTML(url, { signal: controller.signal });
-            if (controller.signal.aborted) B.fail("ABORTED", "검색을 취소했습니다.");
+            if (controller.signal.aborted) {
+              B.fail("ABORTED", "검색을 취소했습니다.");
+            }
             const result2 = parseSearch(doc, { query, page, origin: this.origin });
-            if (this.cache.size >= 20) this.cache.delete(this.cache.keys().next().value);
+            if (this.cache.size >= 20) {
+              this.cache.delete(this.cache.keys().next().value);
+            }
             this.cache.set(url, { time: this.now(), result: result2 });
             return B.clone(result2);
           }, "readSearchPage");
@@ -880,7 +1262,9 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
           return promise;
         }
         cancel() {
-          for (const p of this.pending.values()) p.controller.abort();
+          for (const p of this.pending.values()) {
+            p.controller.abort();
+          }
         }
         destroy() {
           this.stopped = true;
@@ -908,19 +1292,32 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
         }
         click(index, { shiftKey = false, ctrlKey = false, metaKey = false, checkbox = false } = {}) {
           const item = this.items[index];
-          if (!item) return;
+          if (!item) {
+            return;
+          }
           if (shiftKey && this.anchor !== null) {
-            if (!ctrlKey && !metaKey && !checkbox) this.selected.clear();
-            for (let i = Math.min(index, this.anchor); i <= Math.max(index, this.anchor); i++) this.selected.set(this.items[i].articleId, this.items[i]);
+            if (!ctrlKey && !metaKey && !checkbox) {
+              this.selected.clear();
+            }
+            for (let i = Math.min(index, this.anchor); i <= Math.max(index, this.anchor); i++) {
+              this.selected.set(this.items[i].articleId, this.items[i]);
+            }
           } else {
-            if (!ctrlKey && !metaKey && !checkbox) this.selected.clear();
-            if ((ctrlKey || metaKey || checkbox) && this.selected.has(item.articleId)) this.selected.delete(item.articleId);
-            else this.selected.set(item.articleId, item);
+            if (!ctrlKey && !metaKey && !checkbox) {
+              this.selected.clear();
+            }
+            if ((ctrlKey || metaKey || checkbox) && this.selected.has(item.articleId)) {
+              this.selected.delete(item.articleId);
+            } else {
+              this.selected.set(item.articleId, item);
+            }
             this.anchor = index;
           }
         }
         all() {
-          for (const item of this.items) this.selected.set(item.articleId, item);
+          for (const item of this.items) {
+            this.selected.set(item.articleId, item);
+          }
         }
         clear() {
           this.selected.clear();
@@ -930,16 +1327,29 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
           return [...this.selected.values()].sort((a, b) => a.page - b.page || a.index - b.index);
         }
       }
-      Object.assign(B, { searchUrl, parseSearch, readSearchHTML, BoardSearch, SearchSelection });
+      Object.assign(B, {
+        searchUrl,
+        parseSearch,
+        readSearchHTML,
+        BoardSearch,
+        SearchSelection
+      });
     }, "initializeBoardSearch");
     initializeBoardSearch(environment);
-    return { "bundle": selectModuleExports(bundle, ["searchUrl", "parseSearch", "readSearchHTML", "BoardSearch", "SearchSelection"]) };
+    return {
+      bundle: selectModuleExports(bundle, [
+        "searchUrl",
+        "parseSearch",
+        "readSearchHTML",
+        "BoardSearch",
+        "SearchSelection"
+      ])
+    };
   }
   __name(createBundleSearch, "createBundleSearch");
 
   // docs/source/bundle-generator/search-ui.mjs
-  function createBundleSearchUi({ environment = globalThis, dependencies = {} } = {}) {
-    const setTimeout2 = typeof environment.setTimeout === "function" ? (...args) => environment.setTimeout(...args) : void 0;
+  function createBundleSearchUi({ environment = defaultEnvironment, dependencies = {} } = {}) {
     let bundle = createModuleScope(dependencies.bundle, ["BoardSearch", "SearchSelection", "fail"], ["SearchPanel"]);
     const initializeBundleSearchUi = /* @__PURE__ */ __name(function(g) {
       "use strict";
@@ -949,7 +1359,14 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
           __name(this, "SearchPanel");
         }
         constructor(panel, searcher = new B.BoardSearch()) {
-          Object.assign(this, { panel, searcher, selection: new B.SearchSelection(), busy: false, result: null, batchStop: false });
+          Object.assign(this, {
+            panel,
+            searcher,
+            selection: new B.SearchSelection(),
+            busy: false,
+            result: null,
+            batchStop: false
+          });
           const d = panel.doc;
           this.node = d.createElement("section");
           this.node.className = "article-search";
@@ -983,31 +1400,51 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
           this.controls();
         }
         message(text, error = false) {
-          if (this.panel.closed) return;
+          if (this.panel.closed) {
+            return;
+          }
           this.q(".search-status").textContent = text;
           this.q(".search-status").classList.toggle("error", error);
         }
         controls() {
-          if (this.panel.closed) return;
+          if (this.panel.closed) {
+            return;
+          }
           const blocked = !this.panel.ready || this.busy || this.panel.busy;
-          for (const s of [".query", ".search-run", ".select-all", ".select-clear", ".batch-add", ".search-prev", ".search-next"]) this.q(s).disabled = blocked;
+          for (const s of [
+            ".query",
+            ".search-run",
+            ".select-all",
+            ".select-clear",
+            ".batch-add",
+            ".search-prev",
+            ".search-next"
+          ]) {
+            this.q(s).disabled = blocked;
+          }
           this.q(".search-cancel").disabled = !this.busy;
           this.q(".select-all").disabled = blocked || !this.selection.items.length;
           this.q(".select-clear").disabled = blocked || !this.selection.selected.size;
           this.q(".batch-add").disabled = blocked || !this.selection.selected.size;
           this.q(".search-prev").disabled = blocked || !this.result?.hasPrevious;
           this.q(".search-next").disabled = blocked || !this.result?.hasNext;
-          for (const n of this.node.querySelectorAll(".search-row input")) n.disabled = blocked;
+          for (const n of this.node.querySelectorAll(".search-row input")) {
+            n.disabled = blocked;
+          }
         }
         async search(page = 1, paging = false) {
-          if (this.busy || this.panel.busy || !this.panel.ready) return;
+          if (this.busy || this.panel.busy || !this.panel.ready) {
+            return;
+          }
           this.busy = true;
           this.message("게시판 제목 검색 중…");
           this.controls();
           try {
             const query = paging ? this.result.query : this.q(".query").value;
             const result2 = await this.searcher.search(query, page);
-            if (this.panel.closed) return;
+            if (this.panel.closed) {
+              return;
+            }
             this.result = result2;
             this.selection.set(result2);
             this.render();
@@ -1020,7 +1457,9 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
           }
         }
         render() {
-          if (this.panel.closed) return;
+          if (this.panel.closed) {
+            return;
+          }
           const p = this.panel, d = p.doc, list = this.q(".search-results");
           list.replaceChildren();
           for (const [i, item] of this.selection.items.entries()) {
@@ -1048,8 +1487,9 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
               thumbnail.replaceChildren(img);
               img.onerror = () => {
                 const next = item.thumbnails?.[++attempt];
-                if (next) img.src = next;
-                else {
+                if (next) {
+                  img.src = next;
+                } else {
                   thumbnail.textContent = "팩";
                   thumbnail.title = "대표 썸네일 로딩 실패";
                 }
@@ -1061,14 +1501,28 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
             body.append(title, info);
             row.append(check, thumbnail, body);
             row.onclick = (e) => {
-              if (this.busy || p.busy) return;
-              this.selection.click(i, { shiftKey: e.shiftKey, ctrlKey: e.ctrlKey, metaKey: e.metaKey, checkbox: e.target === check });
+              if (this.busy || p.busy) {
+                return;
+              }
+              this.selection.click(i, {
+                shiftKey: e.shiftKey,
+                ctrlKey: e.ctrlKey,
+                metaKey: e.metaKey,
+                checkbox: e.target === check
+              });
               this.paintSelection();
             };
             row.onkeydown = (e) => {
-              if (e.target !== row || ![" ", "Enter"].includes(e.key) || this.busy || p.busy) return;
+              if (e.target !== row || ![" ", "Enter"].includes(e.key) || this.busy || p.busy) {
+                return;
+              }
               e.preventDefault();
-              this.selection.click(i, { shiftKey: e.shiftKey, ctrlKey: e.ctrlKey, metaKey: e.metaKey, checkbox: true });
+              this.selection.click(i, {
+                shiftKey: e.shiftKey,
+                ctrlKey: e.ctrlKey,
+                metaKey: e.metaKey,
+                checkbox: true
+              });
               this.paintSelection();
             };
             list.append(row);
@@ -1088,9 +1542,13 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
         }
         async batch() {
           const p = this.panel;
-          if (this.busy || p.busy || !p.ready) return;
+          if (this.busy || p.busy || !p.ready) {
+            return;
+          }
           const selected = this.selection.ordered();
-          if (!selected.length) return;
+          if (!selected.length) {
+            return;
+          }
           this.busy = true;
           p.busy = true;
           this.batchStop = false;
@@ -1100,26 +1558,53 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
           try {
             for (const [index, item] of selected.entries()) {
               if (this.batchStop || p.closed) {
-                for (const rest of selected.slice(index)) this.outcomes.push({ articleId: rest.articleId, status: "cancelled", message: "미조회 · 취소" });
+                for (const rest of selected.slice(index)) {
+                  this.outcomes.push({
+                    articleId: rest.articleId,
+                    status: "cancelled",
+                    message: "미조회 · 취소"
+                  });
+                }
                 break;
               }
               if (p.draft.rows.some((r) => r.slave.articleId === item.articleId)) {
-                this.outcomes.push({ articleId: item.articleId, status: "duplicate", message: "이미 등록됨 · 중복 제외" });
+                this.outcomes.push({
+                  articleId: item.articleId,
+                  status: "duplicate",
+                  message: "이미 등록됨 · 중복 제외"
+                });
                 continue;
               }
               this.message("일괄 추가 " + (index + 1) + "/" + selected.length + " · " + item.title);
               try {
-                if (item.articleId === p.articleId) B.fail("SELF_REFERENCE", "대표 게시글은 원본으로 참조할 수 없습니다.");
+                if (item.articleId === p.articleId) {
+                  B.fail("SELF_REFERENCE", "대표 게시글은 원본으로 참조할 수 없습니다.");
+                }
                 const summary = await p.reader.read(item.url);
-                if (this.batchStop || p.closed) B.fail("ABORTED", "조회를 취소했습니다.");
+                if (this.batchStop || p.closed) {
+                  B.fail("ABORTED", "조회를 취소했습니다.");
+                }
                 p.draft.add(summary);
-                this.outcomes.push({ articleId: item.articleId, status: "added", message: summary.title + " · " + summary.icons + "개 추가" });
+                this.outcomes.push({
+                  articleId: item.articleId,
+                  status: "added",
+                  message: summary.title + " · " + summary.icons + "개 추가"
+                });
                 this.selection.selected.delete(item.articleId);
               } catch (e) {
-                this.outcomes.push({ articleId: item.articleId, status: e.code === "ABORTED" ? "cancelled" : "failed", code: e.code || "READ_FAILED", message: e.message });
-                if (["ACCESS_DENIED", "ABORTED"].includes(e.code)) this.batchStop = true;
+                this.outcomes.push({
+                  articleId: item.articleId,
+                  status: e.code === "ABORTED" ? "cancelled" : "failed",
+                  code: e.code || "READ_FAILED",
+                  message: e.message
+                });
+                if (["ACCESS_DENIED", "ABORTED"].includes(e.code)) {
+                  this.batchStop = true;
+                }
               }
-              if (index < selected.length - 1 && !this.batchStop) await new Promise((resolve) => g.setTimeout(resolve, 300));
+              if (index < selected.length - 1 && !this.batchStop) {
+                await new Promise((resolve) => g.setTimeout(resolve, 300));
+              }
             }
           } finally {
             this.busy = false;
@@ -1151,16 +1636,22 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
       Object.assign(B, { SearchPanel });
     }, "initializeBundleSearchUi");
     initializeBundleSearchUi(environment);
-    return { "bundle": selectModuleExports(bundle, ["SearchPanel"]) };
+    return { bundle: selectModuleExports(bundle, ["SearchPanel"]) };
   }
   __name(createBundleSearchUi, "createBundleSearchUi");
 
   // docs/source/bundle-generator/ui.mjs
-  function createBundleUi({ environment = globalThis, dependencies = {} } = {}) {
-    const { document, browser, MutationObserver } = environment;
-    const setTimeout2 = typeof environment.setTimeout === "function" ? (...args) => environment.setTimeout(...args) : void 0;
-    const clearTimeout2 = typeof environment.clearTimeout === "function" ? (...args) => environment.clearTimeout(...args) : void 0;
-    let bundle = createModuleScope(dependencies.bundle, ["Browser", "SourceReader", "Draft", "SearchPanel", "articleUrl", "fail", "encode", "clone"], ["Panel"]);
+  function createBundleUi({ environment = defaultEnvironment, dependencies = {} } = {}) {
+    let bundle = createModuleScope(dependencies.bundle, [
+      "Browser",
+      "SourceReader",
+      "Draft",
+      "SearchPanel",
+      "articleUrl",
+      "fail",
+      "encode",
+      "clone"
+    ], ["Panel"]);
     let icons = createModuleScope(dependencies.icons, ["DesignSystem", "Metadata"], []);
     const initializeBundleUi = /* @__PURE__ */ __name(function(g) {
       "use strict";
@@ -1170,15 +1661,33 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
         static {
           __name(this, "Panel");
         }
-        constructor({ document: document2 = g.document, client, token, browser: browser2 = B.Browser, reader = new B.SourceReader(), searcher, onClose = /* @__PURE__ */ __name(() => {
+        constructor({ document = g.document, client, token, browser = B.Browser, reader = new B.SourceReader(), searcher, onClose = /* @__PURE__ */ __name(() => {
         }, "onClose") }) {
-          Object.assign(this, { doc: document2, client, token, browser: browser2, reader, onClose, draft: new B.Draft(), busy: false, closed: false, ready: false, preview: null, dragId: null, page: 0, pageSize: 50 });
+          Object.assign(this, {
+            doc: document,
+            client,
+            token,
+            browser,
+            reader,
+            onClose,
+            draft: new B.Draft(),
+            busy: false,
+            closed: false,
+            ready: false,
+            preview: null,
+            dragId: null,
+            page: 0,
+            pageSize: 50
+          });
           this.host = this.doc.createElement("div");
           this.host.dataset.aruBundlePanel = "";
           this.shadow = this.host.attachShadow({ mode: "open" });
           this.shadow.innerHTML = `<style>${CSS}</style><div class="shade"><section class="dialog" role="dialog" aria-modal="true" aria-label="아이콘 통합"><header><strong>아이콘 통합</strong><button type="button" class="close" aria-label="닫기"><svg class="aru-ui-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m6 6 12 12M18 6 6 18"/></svg></button></header><main><p class="hint">원본 게시글을 모아 통합팩을 만듭니다. 게시글 저장은 직접 진행하세요.</p><p class="context hint"></p><label>통합팩 제목<input class="name" maxlength="240" placeholder="통합 아이콘팩 제목"></label><label for="aru-bundle-url">원본 아이콘 공유 게시글 URL</label><div class="lookup"><input id="aru-bundle-url" class="url" type="url" placeholder="https://bbs.ruliweb.com/community/board/98/read/…"><button type="button" class="add">조회 · 추가</button><button type="button" class="cancel" disabled>조회 취소</button></div><div class="status" role="status" aria-live="polite">에디터 확인 중…</div><p class="hint">드래그하거나 위·아래 버튼으로 순서를 바꾸세요.</p><ul class="refs" aria-label="원본 글별 그룹"></ul><div class="preview" hidden></div></main><footer><button type="button" class="save">초안 저장</button><button type="button" class="load">초안 불러오기</button><button type="button" class="generate">변경 미리보기</button><button type="button" class="apply primary" disabled>편집기에 적용</button></footer></section></div>`;
           this.uiCleanup = icons?.DesignSystem?.attach(this.shadow);
-          icons?.DesignSystem?.modalHeader(this.shadow.querySelector("header"), { kind: "bundle", description: "아이콘 공유 게시글을 통합팩으로 구성합니다." });
+          icons?.DesignSystem?.modalHeader(this.shadow.querySelector("header"), {
+            kind: "bundle",
+            description: "아이콘 공유 게시글을 통합팩으로 구성합니다."
+          });
           this.doc.body.append(this.host);
           this.q = (s) => this.shadow.querySelector(s);
           this.search = new B.SearchPanel(this, searcher);
@@ -1189,7 +1698,9 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
           reason.setAttribute("role", "status");
           this.q("footer").append(reason);
           this.q("footer").append(this.button("에디터 다시 연결", () => {
-            if (!this.busy) this.init();
+            if (!this.busy) {
+              this.init();
+            }
           }, "에디터 다시 연결"));
           this.q(".close").onclick = () => this.close();
           this.q(".name").oninput = () => {
@@ -1212,22 +1723,29 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
           paging.className = "pages";
           this.pageLabel = this.doc.createElement("small");
           paging.append(this.button("이전 목록", () => {
-            if (this.busy || this.page === 0) return;
+            if (this.busy || this.page === 0) {
+              return;
+            }
             this.page--;
             this.render();
           }), this.pageLabel, this.button("다음 목록", () => {
-            if (this.busy || this.page + 1 >= Math.ceil(this.draft.rows.length / this.pageSize)) return;
+            if (this.busy || this.page + 1 >= Math.ceil(this.draft.rows.length / this.pageSize)) {
+              return;
+            }
             this.page++;
             this.render();
           }));
           this.q(".refs").after(paging);
-          this.key = (e) => {
+          this.key = (event) => {
+            const e = event;
             if (e.key === "Escape") {
               e.preventDefault();
               this.close();
             }
             if (e.key === "Tab") {
-              const nodes = [...this.shadow.querySelectorAll("button,input,summary,textarea")].filter((n) => !n.disabled && !n.closest("[hidden]"));
+              const nodes = [
+                ...this.shadow.querySelectorAll("button,input,summary,textarea")
+              ].filter((n) => !n.disabled && !n.closest("[hidden]"));
               const first = nodes[0], last = nodes.at(-1), active = this.shadow.activeElement;
               if (e.shiftKey && active === first) {
                 e.preventDefault();
@@ -1243,8 +1761,10 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
           this.init();
         }
         async init() {
-          if (this.session) await this.client.request("release", { session: this.session }).catch(() => {
-          });
+          if (this.session) {
+            await this.client.request("release", { session: this.session }).catch(() => {
+            });
+          }
           this.ready = false;
           this.controls();
           try {
@@ -1275,7 +1795,9 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
           }
         }
         message(text, error = false) {
-          if (this.closed) return;
+          if (this.closed) {
+            return;
+          }
           const n = this.q(".status");
           n.textContent = text;
           n.classList.toggle("error", error);
@@ -1283,13 +1805,30 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
         watchEditor() {
           this.editorObserver?.disconnect();
           const root = this.doc.querySelector('[data-aru-bundle-target="' + this.token + '"]');
-          if (!root) return;
+          if (!root) {
+            return;
+          }
           this.editorObserver = new g.MutationObserver(() => {
-            if (this.closed || this.busy) return;
+            if (this.closed || this.busy) {
+              return;
+            }
             this.invalidate();
             this.message("에디터 변경을 감지했습니다. 최신 본문에서 미리보기를 다시 확인합니다.");
           });
-          this.editorObserver.observe(root, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ["class", "hidden", "contenteditable", "src", "data-aru-id", "data-aru-tags"] });
+          this.editorObserver.observe(root, {
+            subtree: true,
+            childList: true,
+            characterData: true,
+            attributes: true,
+            attributeFilter: [
+              "class",
+              "hidden",
+              "contenteditable",
+              "src",
+              "data-aru-id",
+              "data-aru-tags"
+            ]
+          });
         }
         invalidate() {
           this.revision++;
@@ -1300,16 +1839,31 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
           this.invalidReason = "변경 미리보기를 확인해 주세요.";
           this.q(".preview").hidden = true;
           this.controls();
-          if (this.ready && !this.busy && this.draft.name.trim() && this.draft.rows.length) this.previewTimer = g.setTimeout(() => this.generate({ automatic: true }), 350);
+          if (this.ready && !this.busy && this.draft.name.trim() && this.draft.rows.length) {
+            this.previewTimer = g.setTimeout(() => this.generate({ automatic: true }), 350);
+          }
         }
         controls() {
-          if (this.closed) return;
-          for (const s of [".name", ".url", ".add", ".save", ".load", ".generate"]) this.q(s).disabled = !this.ready || this.busy;
+          if (this.closed) {
+            return;
+          }
+          for (const s of [
+            ".name",
+            ".url",
+            ".add",
+            ".save",
+            ".load",
+            ".generate"
+          ]) {
+            this.q(s).disabled = !this.ready || this.busy;
+          }
           this.q(".cancel").disabled = !this.busy || !this.reader.pending.size;
           const reason = !this.ready ? this.invalidReason : this.busy ? "작업 중…" : !this.draft.name.trim() ? "통합팩 제목을 입력해 주세요." : !this.draft.rows.length ? "원본 게시글을 하나 이상 추가하세요." : this.preview?.changed === false ? "편집기에 적용할 변경사항이 없습니다." : !this.preview ? this.invalidReason : "";
           this.q(".apply").disabled = !!reason;
           this.q(".apply-reason").textContent = reason || "변경 미리보기를 확인한 뒤 편집기에 적용해 주세요.";
-          for (const n of this.shadow.querySelectorAll(".actions button,.pages button")) n.disabled = this.busy;
+          for (const n of this.shadow.querySelectorAll(".actions button,.pages button")) {
+            n.disabled = this.busy;
+          }
           this.search?.controls();
         }
         async query(url) {
@@ -1326,13 +1880,21 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
           }
         }
         async add() {
-          if (!this.ready || this.busy) return;
+          if (!this.ready || this.busy) {
+            return;
+          }
           try {
             const ref = B.articleUrl(this.q(".url").value.trim());
-            if (this.draft.rows.some((r) => r.slave.articleId === ref.articleId)) B.fail("DUPLICATE_REFERENCE", "이미 추가한 게시글입니다.");
-            if (ref.articleId === this.articleId) B.fail("SELF_REFERENCE", "대표 게시글은 원본으로 참조할 수 없습니다.");
+            if (this.draft.rows.some((r) => r.slave.articleId === ref.articleId)) {
+              B.fail("DUPLICATE_REFERENCE", "이미 추가한 게시글입니다.");
+            }
+            if (ref.articleId === this.articleId) {
+              B.fail("SELF_REFERENCE", "대표 게시글은 원본으로 참조할 수 없습니다.");
+            }
             const summary = await this.query(ref.url);
-            if (this.closed) return;
+            if (this.closed) {
+              return;
+            }
             this.draft.add(summary);
             this.q(".url").value = "";
             this.invalidate();
@@ -1343,10 +1905,14 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
           }
         }
         async refresh(articleId) {
-          if (this.busy) return;
+          if (this.busy) {
+            return;
+          }
           try {
             const summary = await this.query(icons.Metadata.publicArticleUrl(articleId));
-            if (this.closed) return;
+            if (this.closed) {
+              return;
+            }
             this.draft.refresh(summary);
             this.invalidate();
             this.render();
@@ -1359,7 +1925,9 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
           const n = this.doc.createElement("button");
           n.type = "button";
           n.textContent = text;
-          if (label) n.setAttribute("aria-label", label);
+          if (label) {
+            n.setAttribute("aria-label", label);
+          }
           n.onclick = fn;
           return n;
         }
@@ -1389,12 +1957,32 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
             title.textContent = summary?.title || "원본 글 " + s.articleId;
             const actions = this.doc.createElement("div");
             actions.className = "actions";
-            for (const [text, fn, label] of [["위", () => this.move(s.articleId, -1), "원본 " + s.articleId + " 위로"], ["아래", () => this.move(s.articleId, 1), "원본 " + s.articleId + " 아래로"], ["새로고침", () => this.refresh(s.articleId)], ["제거", () => {
-              if (this.busy) return;
-              this.draft.remove(this.draft.rows.findIndex((r) => r.slave.articleId === s.articleId));
-              this.invalidate();
-              this.render();
-            }]]) actions.append(this.button(text, fn, label));
+            for (const [text, fn, label] of [
+              [
+                "위",
+                () => this.move(s.articleId, -1),
+                "원본 " + s.articleId + " 위로"
+              ],
+              [
+                "아래",
+                () => this.move(s.articleId, 1),
+                "원본 " + s.articleId + " 아래로"
+              ],
+              ["새로고침", () => this.refresh(s.articleId)],
+              [
+                "제거",
+                () => {
+                  if (this.busy) {
+                    return;
+                  }
+                  this.draft.remove(this.draft.rows.findIndex((r) => r.slave.articleId === s.articleId));
+                  this.invalidate();
+                  this.render();
+                }
+              ]
+            ]) {
+              actions.append(this.button(text, fn, label));
+            }
             head.append(drag, title, actions);
             n.append(head);
             const info = this.doc.createElement("small");
@@ -1440,13 +2028,19 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
             n.ondragleave = () => n.classList.remove("drag-over");
             n.ondragend = () => {
               this.dragId = null;
-              for (const row2 of list.children) row2.classList.remove("drag-over");
+              for (const row2 of list.children) {
+                row2.classList.remove("drag-over");
+              }
             };
             n.ondrop = (e) => {
               e.preventDefault();
-              if (this.busy || !this.dragId) return;
+              if (this.busy || !this.dragId) {
+                return;
+              }
               const from = this.draft.rows.findIndex((r) => r.slave.articleId === this.dragId), to = this.draft.rows.findIndex((r) => r.slave.articleId === s.articleId);
-              if (from < 0 || to < 0) return;
+              if (from < 0 || to < 0) {
+                return;
+              }
               this.draft.move(from, to);
               this.dragId = null;
               this.invalidate();
@@ -1457,15 +2051,21 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
           this.controls();
         }
         move(articleId, offset) {
-          if (this.busy) return;
+          if (this.busy) {
+            return;
+          }
           const from = this.draft.rows.findIndex((r) => r.slave.articleId === articleId), to = from + offset;
-          if (to < 0 || to >= this.draft.rows.length) return;
+          if (to < 0 || to >= this.draft.rows.length) {
+            return;
+          }
           this.draft.move(from, to);
           this.invalidate();
           this.render();
         }
-        async generate({ automatic = false } = {}) {
-          if (this.busy || !this.ready) return;
+        async generate({ automatic: _automatic = false } = {}) {
+          if (this.busy || !this.ready) {
+            return;
+          }
           g.clearTimeout(this.previewTimer);
           this.busy = true;
           const revision = this.revision;
@@ -1485,16 +2085,27 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
               list.append(item);
             }
             n.append(list);
-            const value = this.draft.value(this.articleId), encoded = B.encode(value), p = await this.client.request("preview", { session: this.session, encoded });
-            if (this.closed) return;
+            const value = this.draft.value(this.articleId), encoded = B.encode(value), p = await this.client.request("preview", {
+              session: this.session,
+              encoded
+            });
+            if (this.closed) {
+              return;
+            }
             this.watchEditor();
-            if (!this.articleId) this.q(".context").textContent = "새 게시글입니다. 저장 후 글 번호가 연결됩니다. 이전 선택기에서는 읽지 못할 수 있습니다.";
-            if (revision !== this.revision) return;
+            if (!this.articleId) {
+              this.q(".context").textContent = "새 게시글입니다. 저장 후 글 번호가 연결됩니다. 이전 선택기에서는 읽지 못할 수 있습니다.";
+            }
+            if (revision !== this.revision) {
+              return;
+            }
             this.preview = p;
             this.currentValue = value;
             g.clearTimeout(this.expiryTimer);
             this.expiryTimer = g.setTimeout(() => {
-              if (this.closed) return;
+              if (this.closed) {
+                return;
+              }
               this.preview = null;
               this.invalidReason = "미리보기가 만료되었습니다. 다시 생성해 주세요.";
               this.controls();
@@ -1521,12 +2132,19 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
           }
         }
         async apply() {
-          if (this.busy || !this.preview || this.preview.changed === false) return;
+          if (this.busy || !this.preview || this.preview.changed === false) {
+            return;
+          }
           this.busy = true;
           this.controls();
           try {
-            await this.client.request("apply", { session: this.session, previewId: this.preview.previewId });
-            if (this.closed) return;
+            await this.client.request("apply", {
+              session: this.session,
+              previewId: this.preview.previewId
+            });
+            if (this.closed) {
+              return;
+            }
             this.draft.base = B.clone(this.currentValue);
             this.preview = null;
             this.invalidReason = "적용했습니다. 새 변경사항이 없습니다.";
@@ -1542,7 +2160,9 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
           }
         }
         async save() {
-          if (this.busy || !this.ready) return;
+          if (this.busy || !this.ready) {
+            return;
+          }
           this.busy = true;
           this.controls();
           try {
@@ -1557,13 +2177,19 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
           }
         }
         async load() {
-          if (this.busy || !this.ready) return;
+          if (this.busy || !this.ready) {
+            return;
+          }
           this.busy = true;
           this.controls();
           try {
             const draft = await this.browser.loadDraft();
-            if (draft.base?.mainArticleId > 0 && draft.base.mainArticleId !== this.articleId) B.fail("ARTICLE_ID_MISMATCH", "다른 대표 글의 수정 초안입니다. 해당 글에서 불러와 주세요.");
-            if (this.draft.base) B.fail("DRAFT_CONFLICT", "본문에 통합팩이 있습니다. 기존 구성은 저장 초안으로 덮어쓰지 않습니다.");
+            if (draft.base?.mainArticleId > 0 && draft.base.mainArticleId !== this.articleId) {
+              B.fail("ARTICLE_ID_MISMATCH", "다른 대표 글의 수정 초안입니다. 해당 글에서 불러와 주세요.");
+            }
+            if (this.draft.base) {
+              B.fail("DRAFT_CONFLICT", "본문에 통합팩이 있습니다. 기존 구성은 저장 초안으로 덮어쓰지 않습니다.");
+            }
             this.draft = draft;
             this.q(".name").value = draft.name;
             this.invalidate();
@@ -1574,24 +2200,32 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
           } finally {
             this.busy = false;
             this.controls();
-            if (this.ready) this.schedulePreview();
+            if (this.ready) {
+              this.schedulePreview();
+            }
           }
         }
         schedulePreview() {
-          if (this.closed || this.busy || !this.ready || !this.draft.name.trim() || !this.draft.rows.length) return;
+          if (this.closed || this.busy || !this.ready || !this.draft.name.trim() || !this.draft.rows.length) {
+            return;
+          }
           g.clearTimeout(this.previewTimer);
           this.previewTimer = g.setTimeout(() => this.generate({ automatic: true }), 350);
         }
         close() {
-          if (this.closed) return;
+          if (this.closed) {
+            return;
+          }
           this.closed = true;
           this.editorObserver?.disconnect();
           g.clearTimeout(this.previewTimer);
           g.clearTimeout(this.expiryTimer);
           this.search.destroy();
           this.reader.destroy();
-          if (this.session) this.client.request("release", { session: this.session }).catch(() => {
-          });
+          if (this.session) {
+            this.client.request("release", { session: this.session }).catch(() => {
+            });
+          }
           this.uiCleanup?.();
           this.host.remove();
           this.onClose();
@@ -1600,15 +2234,12 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
       Object.assign(B, { Panel });
     }, "initializeBundleUi");
     initializeBundleUi(environment);
-    return { "bundle": selectModuleExports(bundle, ["Panel"]) };
+    return { bundle: selectModuleExports(bundle, ["Panel"]) };
   }
   __name(createBundleUi, "createBundleUi");
 
   // docs/source/bundle-generator/controller.mjs
-  function createBundleController({ environment = globalThis, dependencies = {} } = {}) {
-    const { document, location, browser, MutationObserver, crypto } = environment;
-    const setTimeout2 = typeof environment.setTimeout === "function" ? (...args) => environment.setTimeout(...args) : void 0;
-    const clearTimeout2 = typeof environment.clearTimeout === "function" ? (...args) => environment.clearTimeout(...args) : void 0;
+  function createBundleController({ environment = defaultEnvironment, dependencies = {} } = {}) {
     let bundle = createModuleScope(dependencies.bundle, ["Browser", "Client", "Panel"], ["Controller"]);
     let icons = createModuleScope(dependencies.icons, ["DesignSystem"], []);
     const initializeBundleController = /* @__PURE__ */ __name(function(g) {
@@ -1618,10 +2249,10 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
         static {
           __name(this, "Controller");
         }
-        constructor({ document: document2 = g.document, browser: browser2 = B.Browser } = {}) {
-          this.doc = document2;
-          this.browser = browser2;
-          this.client = new B.Client(document2);
+        constructor({ document = g.document, browser = B.Browser } = {}) {
+          this.doc = document;
+          this.browser = browser;
+          this.client = new B.Client(document);
           this.entries = /* @__PURE__ */ new Map();
           this.active = false;
           this.disposed = false;
@@ -1633,10 +2264,15 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
         }
         async options() {
           const n = ++this.generation, active = await this.browser.active();
-          if (this.disposed || n !== this.generation || active === this.active) return;
+          if (this.disposed || n !== this.generation || active === this.active) {
+            return;
+          }
           this.active = active;
-          if (active) this.enable();
-          else this.disable();
+          if (active) {
+            this.enable();
+          } else {
+            this.disable();
+          }
         }
         enable() {
           this.observer = new g.MutationObserver((records) => {
@@ -1645,31 +2281,58 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
               this.timer = g.setTimeout(() => this.discover(), 160);
             }
           });
-          this.observer.observe(this.doc.body, { childList: true, subtree: true });
+          this.observer.observe(this.doc.body, {
+            childList: true,
+            subtree: true
+          });
           this.discover();
         }
         discover() {
-          if (!this.active) return;
-          for (const [root, r] of this.entries) if (!root.isConnected || root.querySelector(".note-editable") !== r.input || root.querySelector(".note-toolbar") !== r.toolbar || root.querySelector("#ReactSummernoteLite") !== r.source || !r.host.isConnected) this.remove(root);
+          if (!this.active) {
+            return;
+          }
+          for (const [root, r] of this.entries) {
+            if (!root.isConnected || root.querySelector(".note-editable") !== r.input || root.querySelector(".note-toolbar") !== r.toolbar || root.querySelector("#ReactSummernoteLite") !== r.source || !r.host.isConnected) {
+              this.remove(root);
+            }
+          }
           for (const root of this.doc.querySelectorAll("#editor_v2 .seditor")) {
-            if (this.entries.has(root)) continue;
+            if (this.entries.has(root)) {
+              continue;
+            }
             const input = root.querySelector('.note-editable[contenteditable="true"]'), source = root.querySelector("#ReactSummernoteLite"), toolbar = root.querySelector(".note-toolbar"), camera = toolbar?.querySelector(".icon-camera")?.closest("button");
-            if (!input || !source || !camera) continue;
+            if (!input || !source || !camera) {
+              continue;
+            }
             const token = g.crypto.randomUUID().replaceAll("-", "");
             root.dataset.aruBundleTarget = token;
             const host = this.doc.createElement("span");
             host.dataset.aruBundleEntry = "";
             const shadow = host.attachShadow({ mode: "open" });
             shadow.innerHTML = '<style>:host{display:inline-block;margin:3px;vertical-align:middle}button{font:12px system-ui;padding:6px;border:1px solid #bea3df;border-radius:5px;background:#f3ebff;color:#52337b;cursor:pointer}button:focus-visible{outline:3px solid #b58ee6}</style><button type="button">아이콘 통합</button>';
-            const uiCleanup = icons?.DesignSystem?.entry(shadow, { label: "아이콘 통합", tooltip: "여러 아이콘 공유 게시글을 하나의 통합팩으로 구성합니다." });
+            const uiCleanup = icons?.DesignSystem?.entry(shadow, {
+              label: "아이콘 통합",
+              tooltip: "여러 아이콘 공유 게시글을 하나의 통합팩으로 구성합니다."
+            });
             camera.after(host);
-            const rec = { root, input, source, toolbar, token, host, uiCleanup, button: shadow.querySelector("button") };
+            const rec = {
+              root,
+              input,
+              source,
+              toolbar,
+              token,
+              host,
+              uiCleanup,
+              button: shadow.querySelector("button")
+            };
             this.entries.set(root, rec);
             rec.button.onclick = () => this.open(rec);
           }
         }
         open(rec) {
-          if (!this.active) return;
+          if (!this.active) {
+            return;
+          }
           if (this.panel) {
             this.panel.q(".name").focus();
             return;
@@ -1678,25 +2341,41 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
             rec.button.title = "다른 아루 편집 창을 닫고 통합팩 생성기를 열어 주세요.";
             return;
           }
-          this.panel = new B.Panel({ document: this.doc, client: this.client, token: rec.token, browser: this.browser, onClose: /* @__PURE__ */ __name(() => {
-            this.panel = null;
-            if (rec.root.isConnected) rec.button.focus();
-          }, "onClose") });
+          this.panel = new B.Panel({
+            document: this.doc,
+            client: this.client,
+            token: rec.token,
+            browser: this.browser,
+            onClose: /* @__PURE__ */ __name(() => {
+              this.panel = null;
+              if (rec.root.isConnected) {
+                rec.button.focus();
+              }
+            }, "onClose")
+          });
         }
         remove(root) {
           const r = this.entries.get(root);
-          if (!r) return;
-          if (this.panel?.token === r.token) this.panel.close();
+          if (!r) {
+            return;
+          }
+          if (this.panel?.token === r.token) {
+            this.panel.close();
+          }
           r.uiCleanup?.();
           r.host.remove();
-          if (root.dataset.aruBundleTarget === r.token) delete root.dataset.aruBundleTarget;
+          if (root.dataset.aruBundleTarget === r.token) {
+            delete root.dataset.aruBundleTarget;
+          }
           this.entries.delete(root);
         }
         disable() {
           this.observer?.disconnect();
           g.clearTimeout(this.timer);
           this.panel?.close();
-          for (const root of [...this.entries.keys()]) this.remove(root);
+          for (const root of [...this.entries.keys()]) {
+            this.remove(root);
+          }
         }
         destroy() {
           this.disposed = true;
@@ -1711,11 +2390,13 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
       if (!g.__aruBundleNoAutoStart && g.document && /^https:\/\/(bbs|m)\.ruliweb\.com\/community\/board\/98\/(write|modify)(?:\/|\?|$)/.test(g.location.href) && !g.__aruBundleController) {
         g.__aruBundleController = new Controller();
         g.__aruBundleController.start();
-        g.addEventListener("pagehide", () => g.__aruBundleController?.destroy(), { once: true });
+        g.addEventListener("pagehide", () => g.__aruBundleController?.destroy(), {
+          once: true
+        });
       }
     }, "initializeBundleController");
     initializeBundleController(environment);
-    return { "bundle": selectModuleExports(bundle, ["Controller"]) };
+    return { bundle: selectModuleExports(bundle, ["Controller"]) };
   }
   __name(createBundleController, "createBundleController");
 
@@ -1755,29 +2436,58 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
       const groupMap = /* @__PURE__ */ new Map();
       const makeGroup = /* @__PURE__ */ __name((id, name, aliases, sourceId) => {
         if (!groupMap.has(id)) {
-          const group = { id, name, aliases: aliases || [], sourceId, entries: [], seen: /* @__PURE__ */ new Set(), fields: [name, ...aliases || []].map(normalize) };
+          const group = {
+            id,
+            name,
+            aliases: aliases || [],
+            sourceId,
+            entries: [],
+            seen: /* @__PURE__ */ new Set(),
+            fields: [name, ...aliases || []].map(normalize)
+          };
           groupMap.set(id, group);
           this.groups.push(group);
         }
         return groupMap.get(id);
       }, "makeGroup");
-      for (const category of categories.values()) makeGroup(category.id, category.name, category.aliases || []);
+      for (const category of categories.values()) {
+        makeGroup(category.id, category.name, category.aliases || []);
+      }
       const seenIcons = /* @__PURE__ */ new Set();
       for (const [position, icon] of (pack.icons || []).entries()) {
         const id = icon.id || icon.iconId;
-        if (!id || seenIcons.has(id)) continue;
+        if (!id || seenIcons.has(id)) {
+          continue;
+        }
         seenIcons.add(id);
         const sourceId = icon.sourceId || icon.origin && icon.origin.sourceId || "unclassified";
         const tagIds = new Set(icon.tagIds || []);
-        const entry = { icon, id, position, sourceId, tagIds, fields: [icon.name, ...icon.keywords || [], ...[...tagIds].map((tag) => tags.get(tag) || "")].map(normalize) };
+        const entry = {
+          icon,
+          id,
+          position,
+          sourceId,
+          tagIds,
+          fields: [
+            icon.name,
+            ...icon.keywords || [],
+            ...[...tagIds].map((tag) => tags.get(tag) || "")
+          ].map(normalize)
+        };
         for (const tag of tagIds) {
-          if (!this.tagIndex.has(tag)) this.tagIndex.set(tag, /* @__PURE__ */ new Set());
+          if (!this.tagIndex.has(tag)) {
+            this.tagIndex.set(tag, /* @__PURE__ */ new Set());
+          }
           this.tagIndex.get(tag).add(id);
         }
         const memberships = [...new Set(icon.categoryIds || [])].filter((cat) => categories.has(cat));
-        const groups = memberships.length ? memberships.map((cat) => groupMap.get(cat)) : [makeGroup("source:" + sourceId, sources.get(sourceId)?.title || (icon.origin?.articleId ? "원본 글 " + icon.origin.articleId : "미분류"), [], sourceId)];
+        const groups = memberships.length ? memberships.map((cat) => groupMap.get(cat)) : [
+          makeGroup("source:" + sourceId, sources.get(sourceId)?.title || (icon.origin?.articleId ? "원본 글 " + icon.origin.articleId : "미분류"), [], sourceId)
+        ];
         for (const group of groups) {
-          if (group.seen.has(id)) continue;
+          if (group.seen.has(id)) {
+            continue;
+          }
           group.seen.add(id);
           group.entries.push(entry);
         }
@@ -1793,8 +2503,17 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
       const sourceIds = new Set(state.sourceFilterIds || []);
       const mode = state.tagMatch === "all" ? "all" : "any";
       const sort = state.sort || "source";
-      const key = JSON.stringify([tokens, selected, mode, [...categoryIds].sort(), [...sourceIds].sort(), sort]);
-      if (this.cache.has(key)) return this.cache.get(key);
+      const key = JSON.stringify([
+        tokens,
+        selected,
+        mode,
+        [...categoryIds].sort(),
+        [...sourceIds].sort(),
+        sort
+      ]);
+      if (this.cache.has(key)) {
+        return this.cache.get(key);
+      }
       let tagCandidates = null;
       if (selected.length) {
         const sets = selected.map((tag) => this.tagIndex.get(tag) || /* @__PURE__ */ new Set());
@@ -1804,21 +2523,45 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
       let membershipCount = 0;
       const groups = [];
       for (const group of this.groups) {
-        if (categoryIds.size && !categoryIds.has(group.id)) continue;
+        if (categoryIds.size && !categoryIds.has(group.id)) {
+          continue;
+        }
         const groupMatches = tokens.map((token) => group.fields.some((field) => field.includes(token)));
         const matches = group.entries.filter((entry) => {
-          if (tagCandidates && !tagCandidates.has(entry.id)) return false;
-          if (sourceIds.size && !sourceIds.has(entry.sourceId)) return false;
+          if (tagCandidates && !tagCandidates.has(entry.id)) {
+            return false;
+          }
+          if (sourceIds.size && !sourceIds.has(entry.sourceId)) {
+            return false;
+          }
           return tokens.every((token, index) => groupMatches[index] || entry.fields.some((field) => field.includes(token)));
         });
-        if (!matches.length) continue;
+        if (!matches.length) {
+          continue;
+        }
         matches.sort((a, b) => sort === "name" ? String(a.icon.name).localeCompare(String(b.icon.name), "ko-KR") || a.position - b.position : (a.icon.sortOrder ?? a.position) - (b.icon.sortOrder ?? b.position) || a.position - b.position);
-        for (const entry of matches) unique.add(entry.id);
+        for (const entry of matches) {
+          unique.add(entry.id);
+        }
         membershipCount += matches.length;
-        groups.push({ id: group.id, name: group.name, aliases: group.aliases, sourceId: group.sourceId, icons: matches.map((entry) => entry.icon), count: matches.length });
+        groups.push({
+          id: group.id,
+          name: group.name,
+          aliases: group.aliases,
+          sourceId: group.sourceId,
+          icons: matches.map((entry) => entry.icon),
+          count: matches.length
+        });
       }
-      const result2 = { groups, uniqueCount: unique.size, membershipCount, active: hasCriteria(state) };
-      if (this.cache.size >= 32) this.cache.delete(this.cache.keys().next().value);
+      const result2 = {
+        groups,
+        uniqueCount: unique.size,
+        membershipCount,
+        active: hasCriteria(state)
+      };
+      if (this.cache.size >= 32) {
+        this.cache.delete(this.cache.keys().next().value);
+      }
       this.cache.set(key, result2);
       return result2;
     }
@@ -1832,8 +2575,15 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
       this.searchSession = null;
     }
     update(active) {
-      if (active && !this.searchSession) this.searchSession = { snapshot: new Map(this.baseCollapsed), overrides: /* @__PURE__ */ new Map() };
-      if (!active && this.searchSession) this.reset();
+      if (active && !this.searchSession) {
+        this.searchSession = {
+          snapshot: new Map(this.baseCollapsed),
+          overrides: /* @__PURE__ */ new Map()
+        };
+      }
+      if (!active && this.searchSession) {
+        this.reset();
+      }
       return this;
     }
     isCollapsed(id) {
@@ -1846,10 +2596,14 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
     }
     setAll(ids, collapsed) {
       const target = this.searchSession ? this.searchSession.overrides : this.baseCollapsed;
-      for (const id of ids) target.set(id, !!collapsed);
+      for (const id of ids) {
+        target.set(id, !!collapsed);
+      }
     }
     reset() {
-      if (this.searchSession) this.baseCollapsed = new Map(this.searchSession.snapshot);
+      if (this.searchSession) {
+        this.baseCollapsed = new Map(this.searchSession.snapshot);
+      }
       this.searchSession = null;
       return this;
     }
@@ -1895,7 +2649,9 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
     const result2 = [];
     const seen = /* @__PURE__ */ new Set();
     for (const value of values) {
-      if (typeof value !== "string") fail("TAGS_INVALID", "태그는 문자열이어야 합니다.");
+      if (typeof value !== "string") {
+        fail("TAGS_INVALID", "태그는 문자열이어야 합니다.");
+      }
       const tag = value.replace(/\s+/gu, " ").trim();
       if (tag.length > 512 || /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/u.test(tag)) {
         fail("TAGS_INVALID", "태그 길이 또는 제어 문자를 확인해 주세요.");
@@ -1909,7 +2665,9 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
   }
   __name(normalize2, "normalize");
   function decode(raw) {
-    if (raw == null || raw === "") return [];
+    if (raw == null || raw === "") {
+      return [];
+    }
     if (raw.length > 65536) {
       fail("TAGS_INVALID", "기존 태그 속성이 너무 큽니다. 원본은 변경하지 않았습니다.");
     }
@@ -1931,7 +2689,9 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
     try {
       raw = PREFIX + encodeURIComponent(JSON.stringify(normalize2(values)));
     } catch (error) {
-      if (error.code) throw error;
+      if (error.code) {
+        throw error;
+      }
       fail("TAGS_INVALID", "태그에 올바르지 않은 유니코드 문자가 있습니다.");
     }
     if (raw.length > 65536) {
@@ -1942,8 +2702,12 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
   __name(encode, "encode");
 
   // docs/source/ruliweb-icons/metadata-core.mjs
-  function createMetadataCore(environment = globalThis) {
-    const LIMITS = Object.freeze({ decodedBytes: 1048576, icons: 1e4, sources: 512 });
+  function createMetadataCore(environment = defaultEnvironment) {
+    const LIMITS = Object.freeze({
+      decodedBytes: 1048576,
+      icons: 1e4,
+      sources: 512
+    });
     const LOCAL_ID = /^[A-Za-z0-9_-]{1,64}$/;
     const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
     const MEDIA_KINDS = ["image", "video", "animated", "unknown"];
@@ -1962,26 +2726,42 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
     }
     __name(fail2, "fail");
     function object(value, label, allowed, required = allowed) {
-      if (!value || typeof value !== "object" || Array.isArray(value)) fail2("INVALID_STRUCTURE", label + ": 객체가 필요합니다.");
-      if (allowed && Object.keys(value).some((key) => !allowed.includes(key))) fail2("UNKNOWN_FIELD", label + ": 지원하지 않는 필드가 있습니다.");
-      if (required.some((key) => !Object.prototype.hasOwnProperty.call(value, key))) fail2("MISSING_FIELD", label + ": 필수 필드가 없습니다.");
+      if (!value || typeof value !== "object" || Array.isArray(value)) {
+        fail2("INVALID_STRUCTURE", label + ": 객체가 필요합니다.");
+      }
+      if (allowed && Object.keys(value).some((key) => !allowed.includes(key))) {
+        fail2("UNKNOWN_FIELD", label + ": 지원하지 않는 필드가 있습니다.");
+      }
+      if (required.some((key) => !Object.prototype.hasOwnProperty.call(value, key))) {
+        fail2("MISSING_FIELD", label + ": 필수 필드가 없습니다.");
+      }
     }
     __name(object, "object");
     function integer(value, min, max, label) {
-      if (!Number.isSafeInteger(value) || value < min || value > max) fail2("INVALID_NUMBER", label + ": 숫자 범위가 올바르지 않습니다.");
+      if (!Number.isSafeInteger(value) || value < min || value > max) {
+        fail2("INVALID_NUMBER", label + ": 숫자 범위가 올바르지 않습니다.");
+      }
     }
     __name(integer, "integer");
     function text(value, min, max, label) {
-      if (typeof value !== "string" || [...value].length < min || [...value].length > max || min && !value.trim()) fail2("INVALID_TEXT", label + ": 텍스트 길이/내용이 올바르지 않습니다.");
+      if (typeof value !== "string" || [...value].length < min || [...value].length > max || min && !value.trim()) {
+        fail2("INVALID_TEXT", label + ": 텍스트 길이/내용이 올바르지 않습니다.");
+      }
     }
     __name(text, "text");
     function array(value, min, max, label, unique = false) {
-      if (!Array.isArray(value) || value.length < min || value.length > max) fail2("INVALID_ARRAY", label + ": 항목 수가 올바르지 않습니다.");
-      if (unique && new Set(value.map((item) => JSON.stringify(item))).size !== value.length) fail2("DUPLICATE_VALUE", label + ": 중복 항목이 있습니다.");
+      if (!Array.isArray(value) || value.length < min || value.length > max) {
+        fail2("INVALID_ARRAY", label + ": 항목 수가 올바르지 않습니다.");
+      }
+      if (unique && new Set(value.map((item) => JSON.stringify(item))).size !== value.length) {
+        fail2("DUPLICATE_VALUE", label + ": 중복 항목이 있습니다.");
+      }
     }
     __name(array, "array");
     function localId(value, label) {
-      if (typeof value !== "string" || !LOCAL_ID.test(value)) fail2("INVALID_ID", label + ": 식별자가 올바르지 않습니다.");
+      if (typeof value !== "string" || !LOCAL_ID.test(value)) {
+        fail2("INVALID_ID", label + ": 식별자가 올바르지 않습니다.");
+      }
     }
     __name(localId, "localId");
     function articleId(value, label) {
@@ -1989,18 +2769,24 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
     }
     __name(articleId, "articleId");
     function uuid(value, label) {
-      if (typeof value !== "string" || !UUID.test(value)) fail2("INVALID_ID", label + ": UUID가 올바르지 않습니다.");
+      if (typeof value !== "string" || !UUID.test(value)) {
+        fail2("INVALID_ID", label + ": UUID가 올바르지 않습니다.");
+      }
     }
     __name(uuid, "uuid");
     function mediaUrl(value) {
-      if (typeof value !== "string" || value.length > 2048 || /[\u0000-\u0020\u007f\\]/u.test(value) || !/^https:\/\/i[123]\.ruliweb\.com\//u.test(value)) fail2("UNSAFE_URL", "허용된 HTTPS 루리웹 CDN URL이 아닙니다.");
+      if (typeof value !== "string" || value.length > 2048 || /[\u0000-\u0020\u007f\\]/u.test(value) || !/^https:\/\/i[123]\.ruliweb\.com\//u.test(value)) {
+        fail2("UNSAFE_URL", "허용된 HTTPS 루리웹 CDN URL이 아닙니다.");
+      }
       let parsed;
       try {
         parsed = new URL(value);
       } catch (_) {
         fail2("UNSAFE_URL", "미디어 URL을 해석할 수 없습니다.");
       }
-      if (parsed.protocol !== "https:" || !/^i[123]\.ruliweb\.com$/u.test(parsed.hostname) || parsed.username || parsed.password || parsed.port || parsed.hash) fail2("UNSAFE_URL", "미디어 URL에 허용되지 않은 주소 요소가 있습니다.");
+      if (parsed.protocol !== "https:" || !/^i[123]\.ruliweb\.com$/u.test(parsed.hostname) || parsed.username || parsed.password || parsed.port || parsed.hash) {
+        fail2("UNSAFE_URL", "미디어 URL에 허용되지 않은 주소 요소가 있습니다.");
+      }
       return value;
     }
     __name(mediaUrl, "mediaUrl");
@@ -2010,11 +2796,17 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
     }
     __name(publicArticleUrl, "publicArticleUrl");
     function decodeCarrier(encoded) {
-      if (typeof encoded !== "string" || encoded.length > Math.ceil(LIMITS.decodedBytes * 4 / 3) + 65536) fail2("RESOURCE_LIMIT", "메타데이터 크기 상한을 초과했습니다.");
+      if (typeof encoded !== "string" || encoded.length > Math.ceil(LIMITS.decodedBytes * 4 / 3) + 65536) {
+        fail2("RESOURCE_LIMIT", "메타데이터 크기 상한을 초과했습니다.");
+      }
       const compact = encoded.replace(/\s/gu, "");
-      if (!compact || !/^[A-Za-z0-9_+\/-]+={0,2}$/u.test(compact)) fail2("INVALID_BASE64", "메타데이터 base64 형식이 올바르지 않습니다.");
+      if (!compact || !/^[A-Za-z0-9_+/-]+={0,2}$/u.test(compact)) {
+        fail2("INVALID_BASE64", "메타데이터 base64 형식이 올바르지 않습니다.");
+      }
       const unpadded = compact.replace(/=+$/u, "").replace(/-/gu, "+").replace(/_/gu, "/");
-      if (unpadded.length % 4 === 1) fail2("INVALID_BASE64", "메타데이터 base64 길이가 올바르지 않습니다.");
+      if (unpadded.length % 4 === 1) {
+        fail2("INVALID_BASE64", "메타데이터 base64 길이가 올바르지 않습니다.");
+      }
       const padded = unpadded + "=".repeat((4 - unpadded.length % 4) % 4);
       let binary;
       try {
@@ -2022,7 +2814,9 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
       } catch (_) {
         fail2("INVALID_BASE64", "메타데이터를 디코딩할 수 없습니다.");
       }
-      if (binary.length > LIMITS.decodedBytes) fail2("RESOURCE_LIMIT", "메타데이터 decoded 크기 상한을 초과했습니다.");
+      if (binary.length > LIMITS.decodedBytes) {
+        fail2("RESOURCE_LIMIT", "메타데이터 decoded 크기 상한을 초과했습니다.");
+      }
       const decodedBytes = Uint8Array.from(binary, (char) => char.charCodeAt(0));
       let decodedText;
       try {
@@ -2040,42 +2834,100 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
     }
     __name(decodeCarrier, "decodeCarrier");
     function validateV1(value, { allowUnbound = false } = {}) {
-      object(value, "v1", null, ["version", "name", "boardId", "mainArticleId", "slaves"]);
-      if (value.version !== 1) fail2("UNSUPPORTED_VERSION", "지원하지 않는 ruricon 버전입니다.");
-      if (value.boardId !== 98) fail2("INVALID_BOARD", "아이콘 게시판 98의 메타데이터가 아닙니다.");
+      object(value, "v1", null, [
+        "version",
+        "name",
+        "boardId",
+        "mainArticleId",
+        "slaves"
+      ]);
+      if (value.version !== 1) {
+        fail2("UNSUPPORTED_VERSION", "지원하지 않는 ruricon 버전입니다.");
+      }
+      if (value.boardId !== 98) {
+        fail2("INVALID_BOARD", "아이콘 게시판 98의 메타데이터가 아닙니다.");
+      }
       text(value.name, 1, 120, "v1.name");
-      if (!(allowUnbound && value.mainArticleId === 0)) articleId(value.mainArticleId, "v1.mainArticleId");
+      if (!(allowUnbound && value.mainArticleId === 0)) {
+        articleId(value.mainArticleId, "v1.mainArticleId");
+      }
       array(value.slaves, 1, LIMITS.sources, "v1.slaves");
       const pages = /* @__PURE__ */ new Set();
       let count = 0;
       for (const slave of value.slaves) {
         object(slave, "v1.slave", null, ["page", "articleId", "images"]);
         integer(slave.page, 1, 512, "v1.page");
-        if (pages.has(slave.page)) fail2("DUPLICATE_PAGE", "통합팩의 page가 중복되었습니다.");
+        if (pages.has(slave.page)) {
+          fail2("DUPLICATE_PAGE", "통합팩의 page가 중복되었습니다.");
+        }
         pages.add(slave.page);
         articleId(slave.articleId, "v1.articleId");
         array(slave.images, 0, LIMITS.icons, "v1.images");
         count += slave.images.length;
-        if (count > LIMITS.icons) fail2("RESOURCE_LIMIT", "통합팩 아이콘 수 상한을 초과했습니다.");
+        if (count > LIMITS.icons) {
+          fail2("RESOURCE_LIMIT", "통합팩 아이콘 수 상한을 초과했습니다.");
+        }
         slave.images.forEach(mediaUrl);
       }
-      if (!count) fail2("EMPTY_PACK", "통합팩에 선언된 아이콘이 없습니다.");
+      if (!count) {
+        fail2("EMPTY_PACK", "통합팩에 선언된 아이콘이 없습니다.");
+      }
       return value;
     }
     __name(validateV1, "validateV1");
     function validateV2(value) {
-      object(value, "v2", ["format", "version", "kind", "packId", "boardId", "mainArticleId", "revision", "name", "description", "v1Digest", "tags", "categories", "sources", "icons"], ["format", "version", "kind", "packId", "boardId", "mainArticleId", "revision", "name", "tags", "categories", "sources", "icons"]);
-      if (value.format !== "aru-icons" || value.version !== 2) fail2("UNSUPPORTED_VERSION", "지원하지 않는 aru-icons 형식/버전입니다.");
-      if (!["TAGGED", "BUNDLE"].includes(value.kind)) fail2("INVALID_KIND", "지원하지 않는 아이콘팩 유형입니다.");
-      if (value.boardId !== 98) fail2("INVALID_BOARD", "아이콘 게시판 98의 메타데이터가 아닙니다.");
+      object(value, "v2", [
+        "format",
+        "version",
+        "kind",
+        "packId",
+        "boardId",
+        "mainArticleId",
+        "revision",
+        "name",
+        "description",
+        "v1Digest",
+        "tags",
+        "categories",
+        "sources",
+        "icons"
+      ], [
+        "format",
+        "version",
+        "kind",
+        "packId",
+        "boardId",
+        "mainArticleId",
+        "revision",
+        "name",
+        "tags",
+        "categories",
+        "sources",
+        "icons"
+      ]);
+      if (value.format !== "aru-icons" || value.version !== 2) {
+        fail2("UNSUPPORTED_VERSION", "지원하지 않는 aru-icons 형식/버전입니다.");
+      }
+      if (!["TAGGED", "BUNDLE"].includes(value.kind)) {
+        fail2("INVALID_KIND", "지원하지 않는 아이콘팩 유형입니다.");
+      }
+      if (value.boardId !== 98) {
+        fail2("INVALID_BOARD", "아이콘 게시판 98의 메타데이터가 아닙니다.");
+      }
       uuid(value.packId, "packId");
       articleId(value.mainArticleId, "mainArticleId");
       integer(value.revision, 1, 2147483647, "revision");
       text(value.name, 1, 120, "name");
-      if ("description" in value) text(value.description, 0, 2e3, "description");
+      if ("description" in value) {
+        text(value.description, 0, 2e3, "description");
+      }
       if (value.kind === "BUNDLE") {
-        if (typeof value.v1Digest !== "string" || !/^[0-9a-f]{64}$/u.test(value.v1Digest)) fail2("INVALID_DIGEST", "BUNDLE의 v1Digest가 올바르지 않습니다.");
-      } else if ("v1Digest" in value) fail2("INVALID_DIGEST", "TAGGED에는 v1Digest를 둘 수 없습니다.");
+        if (typeof value.v1Digest !== "string" || !/^[0-9a-f]{64}$/u.test(value.v1Digest)) {
+          fail2("INVALID_DIGEST", "BUNDLE의 v1Digest가 올바르지 않습니다.");
+        }
+      } else if ("v1Digest" in value) {
+        fail2("INVALID_DIGEST", "TAGGED에는 v1Digest를 둘 수 없습니다.");
+      }
       const labelMap = /* @__PURE__ */ __name((values, category) => {
         array(values, 0, 512, category ? "categories" : "tags");
         const map = /* @__PURE__ */ new Map();
@@ -2083,7 +2935,9 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
           object(label, "label", category ? ["id", "name", "aliases"] : ["id", "name"], ["id", "name"]);
           localId(label.id, "label.id");
           text(label.name, 1, 80, "label.name");
-          if (map.has(label.id)) fail2("DUPLICATE_ID", "태그/카테고리 ID가 중복되었습니다.");
+          if (map.has(label.id)) {
+            fail2("DUPLICATE_ID", "태그/카테고리 ID가 중복되었습니다.");
+          }
           if (category && "aliases" in label) {
             array(label.aliases, 0, 32, "aliases", true);
             label.aliases.forEach((alias) => text(alias, 1, 80, "alias"));
@@ -2101,7 +2955,9 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
         localId(source.sourceId, "sourceId");
         articleId(source.articleId, "source.articleId");
         text(source.title, 1, 200, "source.title");
-        if (sources.has(source.sourceId)) fail2("DUPLICATE_ID", "출처 ID가 중복되었습니다.");
+        if (sources.has(source.sourceId)) {
+          fail2("DUPLICATE_ID", "출처 ID가 중복되었습니다.");
+        }
         sources.set(source.sourceId, source);
       }
       const origin = /* @__PURE__ */ __name((item) => {
@@ -2109,60 +2965,108 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
         localId(item.sourceId, "origin.sourceId");
         articleId(item.articleId, "origin.articleId");
         integer(item.originalIndex, 0, 9999, "origin.originalIndex");
-        if (!sources.has(item.sourceId) || sources.get(item.sourceId).articleId !== item.articleId) fail2("INVALID_REFERENCE", "아이콘 출처 참조가 올바르지 않습니다.");
+        if (!sources.has(item.sourceId) || sources.get(item.sourceId).articleId !== item.articleId) {
+          fail2("INVALID_REFERENCE", "아이콘 출처 참조가 올바르지 않습니다.");
+        }
       }, "origin");
       const variants = /* @__PURE__ */ __name((items) => {
         array(items, 1, 8, "variants");
         for (const variant of items) {
           object(variant, "variant", ["role", "url", "articleId"], ["role", "url"]);
-          if (!["body", "editor", "selection", "thumbnail"].includes(variant.role)) fail2("INVALID_ROLE", "미디어 variant 역할이 올바르지 않습니다.");
+          if (!["body", "editor", "selection", "thumbnail"].includes(variant.role)) {
+            fail2("INVALID_ROLE", "미디어 variant 역할이 올바르지 않습니다.");
+          }
           mediaUrl(variant.url);
-          if ("articleId" in variant) articleId(variant.articleId, "variant.articleId");
+          if ("articleId" in variant) {
+            articleId(variant.articleId, "variant.articleId");
+          }
         }
       }, "variants");
       array(value.icons, 1, LIMITS.icons, "icons");
       const ids = /* @__PURE__ */ new Set();
       const refs = /* @__PURE__ */ new Set();
       for (const icon of value.icons) {
-        object(icon, "icon", ["iconId", "name", "keywords", "tagIds", "categoryIds", "sortOrder", "origin", "mediaKind", "alsoFrom", "ref", "media", "variants", "publishedSlot"], ["iconId", "name", "keywords", "tagIds", "categoryIds", "sortOrder", "origin", "mediaKind"]);
+        object(icon, "icon", [
+          "iconId",
+          "name",
+          "keywords",
+          "tagIds",
+          "categoryIds",
+          "sortOrder",
+          "origin",
+          "mediaKind",
+          "alsoFrom",
+          "ref",
+          "media",
+          "variants",
+          "publishedSlot"
+        ], [
+          "iconId",
+          "name",
+          "keywords",
+          "tagIds",
+          "categoryIds",
+          "sortOrder",
+          "origin",
+          "mediaKind"
+        ]);
         uuid(icon.iconId, "iconId");
         text(icon.name, 1, 120, "icon.name");
         integer(icon.sortOrder, -1e9, 1e9, "sortOrder");
-        if (ids.has(icon.iconId)) fail2("DUPLICATE_ID", "아이콘 ID가 중복되었습니다.");
+        if (ids.has(icon.iconId)) {
+          fail2("DUPLICATE_ID", "아이콘 ID가 중복되었습니다.");
+        }
         ids.add(icon.iconId);
         array(icon.keywords, 0, 32, "keywords", true);
         icon.keywords.forEach((keyword) => text(keyword, 1, 80, "keyword"));
-        for (const [key, maximum, dictionary] of [["tagIds", 64, tags], ["categoryIds", 32, categories]]) {
+        for (const [key, maximum, dictionary] of [
+          ["tagIds", 64, tags],
+          ["categoryIds", 32, categories]
+        ]) {
           array(icon[key], 0, maximum, key, true);
           for (const id of icon[key]) {
             localId(id, key);
-            if (!dictionary.has(id)) fail2("INVALID_REFERENCE", key + ": 존재하지 않는 참조입니다.");
+            if (!dictionary.has(id)) {
+              fail2("INVALID_REFERENCE", key + ": 존재하지 않는 참조입니다.");
+            }
           }
         }
         origin(icon.origin);
-        if (!MEDIA_KINDS.includes(icon.mediaKind)) fail2("INVALID_MEDIA", "아이콘 미디어 유형이 올바르지 않습니다.");
+        if (!MEDIA_KINDS.includes(icon.mediaKind)) {
+          fail2("INVALID_MEDIA", "아이콘 미디어 유형이 올바르지 않습니다.");
+        }
         if ("alsoFrom" in icon) {
           array(icon.alsoFrom, 1, 64, "alsoFrom", true);
           icon.alsoFrom.forEach(origin);
         }
-        if ("variants" in icon) variants(icon.variants);
+        if ("variants" in icon) {
+          variants(icon.variants);
+        }
         if ("publishedSlot" in icon) {
           object(icon.publishedSlot, "publishedSlot", ["articleId", "index"]);
           articleId(icon.publishedSlot.articleId, "publishedSlot.articleId");
           integer(icon.publishedSlot.index, 0, 9999, "publishedSlot.index");
         }
         if (value.kind === "BUNDLE") {
-          if ("media" in icon) fail2("INVALID_MEDIA", "BUNDLE 아이콘에는 media를 둘 수 없습니다.");
+          if ("media" in icon) {
+            fail2("INVALID_MEDIA", "BUNDLE 아이콘에는 media를 둘 수 없습니다.");
+          }
           object(icon.ref, "ref", ["page", "index"]);
           integer(icon.ref.page, 1, 512, "ref.page");
           integer(icon.ref.index, 0, 9999, "ref.index");
           const slot = icon.ref.page + ":" + icon.ref.index;
-          if (refs.has(slot)) fail2("DUPLICATE_REFERENCE", "BUNDLE metadata 슬롯이 중복되었습니다.");
+          if (refs.has(slot)) {
+            fail2("DUPLICATE_REFERENCE", "BUNDLE metadata 슬롯이 중복되었습니다.");
+          }
           refs.add(slot);
         } else {
-          if ("ref" in icon) fail2("INVALID_MEDIA", "TAGGED 아이콘에는 ref를 둘 수 없습니다.");
+          if ("ref" in icon) {
+            fail2("INVALID_MEDIA", "TAGGED 아이콘에는 ref를 둘 수 없습니다.");
+          }
           object(icon.media, "media", ["kind", "variants"]);
-          if (!MEDIA_KINDS.includes(icon.media.kind) || icon.media.kind !== icon.mediaKind) fail2("INVALID_MEDIA", "media.kind와 mediaKind가 다릅니다.");
+          if (!MEDIA_KINDS.includes(icon.media.kind) || icon.media.kind !== icon.mediaKind) {
+            fail2("INVALID_MEDIA", "media.kind와 mediaKind가 다릅니다.");
+          }
           variants(icon.media.variants);
         }
       }
@@ -2172,15 +3076,21 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
     function parseCarrier(encoded, options = {}) {
       const decoded = decodeCarrier(encoded);
       const type = options.type || (decoded.value?.format === "aru-icons" ? "v2" : "v1");
-      if (type === "v1" || type === "ruricon:v1") validateV1(decoded.value);
-      else if (type === "v2" || type === "aru-icons:v2") validateV2(decoded.value);
-      else fail2("UNKNOWN_CARRIER", "지원하지 않는 carrier입니다.");
+      if (type === "v1" || type === "ruricon:v1") {
+        validateV1(decoded.value);
+      } else if (type === "v2" || type === "aru-icons:v2") {
+        validateV2(decoded.value);
+      } else {
+        fail2("UNKNOWN_CARRIER", "지원하지 않는 carrier입니다.");
+      }
       return decoded;
     }
     __name(parseCarrier, "parseCarrier");
     function urlKey(url) {
       let hash = 2166136261;
-      for (let i = 0; i < url.length; i++) hash = Math.imul(hash ^ url.charCodeAt(i), 16777619);
+      for (let i = 0; i < url.length; i++) {
+        hash = Math.imul(hash ^ url.charCodeAt(i), 16777619);
+      }
       return (hash >>> 0).toString(16);
     }
     __name(urlKey, "urlKey");
@@ -2189,53 +3099,140 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
       const icons = [];
       for (const slave of value.slaves) {
         const sourceId = "source-" + slave.articleId;
-        if (!sources.has(sourceId)) sources.set(sourceId, { sourceId, articleId: slave.articleId, title: "원본 글 " + slave.articleId, availability: "declared" });
+        if (!sources.has(sourceId)) {
+          sources.set(sourceId, {
+            sourceId,
+            articleId: slave.articleId,
+            title: "원본 글 " + slave.articleId,
+            availability: "declared"
+          });
+        }
         for (const [index, url] of slave.images.entries()) {
-          const id = ["v1", value.mainArticleId, slave.articleId, slave.page, index, urlKey(url)].join(":");
-          icons.push({ id, iconId: id, name: "아이콘 " + (index + 1), keywords: [], tagIds: [], categoryIds: [], sourceId, url, mediaKind: "unknown", variants: [{ role: "body", url, articleId: slave.articleId }], sortOrder: icons.length, origin: { sourceId, articleId: slave.articleId, originalIndex: index }, ref: { page: slave.page, index }, availability: "declared" });
+          const id = [
+            "v1",
+            value.mainArticleId,
+            slave.articleId,
+            slave.page,
+            index,
+            urlKey(url)
+          ].join(":");
+          icons.push({
+            id,
+            iconId: id,
+            name: "아이콘 " + (index + 1),
+            keywords: [],
+            tagIds: [],
+            categoryIds: [],
+            sourceId,
+            url,
+            mediaKind: "unknown",
+            variants: [{ role: "body", url, articleId: slave.articleId }],
+            sortOrder: icons.length,
+            origin: {
+              sourceId,
+              articleId: slave.articleId,
+              originalIndex: index
+            },
+            ref: { page: slave.page, index },
+            availability: "declared"
+          });
         }
       }
-      return { kind: "BUNDLE", metadataVersion: 1, packId: "v1:" + value.boardId + ":" + value.mainArticleId, name: value.name, boardId: value.boardId, mainArticleId: value.mainArticleId, categories: [], tags: [], sources: [...sources.values()], icons };
+      return {
+        kind: "BUNDLE",
+        metadataVersion: 1,
+        packId: "v1:" + value.boardId + ":" + value.mainArticleId,
+        name: value.name,
+        boardId: value.boardId,
+        mainArticleId: value.mainArticleId,
+        categories: [],
+        tags: [],
+        sources: [...sources.values()],
+        icons
+      };
     }
     __name(fromV1, "fromV1");
     function preferredUrl(variants) {
       for (const role of ["selection", "editor", "body", "thumbnail"]) {
         const found = variants.find((variant) => variant.role === role);
-        if (found) return found.url;
+        if (found) {
+          return found.url;
+        }
       }
       return variants[0].url;
     }
     __name(preferredUrl, "preferredUrl");
     function fromTagged(value) {
-      return { ...value, metadataVersion: 2, categories: value.categories.map((category) => ({ ...category, aliases: category.aliases || [] })), icons: value.icons.map((icon) => ({ ...icon, id: icon.iconId, sourceId: icon.origin.sourceId, variants: icon.media.variants, url: preferredUrl(icon.media.variants) })) };
+      return {
+        ...value,
+        metadataVersion: 2,
+        categories: value.categories.map((category) => ({
+          ...category,
+          aliases: category.aliases || []
+        })),
+        icons: value.icons.map((icon) => ({
+          ...icon,
+          id: icon.iconId,
+          sourceId: icon.origin.sourceId,
+          variants: icon.media.variants,
+          url: preferredUrl(icon.media.variants)
+        }))
+      };
     }
     __name(fromTagged, "fromTagged");
     async function sha256(bytes) {
-      if (!environment.crypto?.subtle) fail2("DIGEST_UNAVAILABLE", "SHA-256 검증을 실행할 수 없어 v1으로 표시합니다.");
+      if (!environment.crypto?.subtle) {
+        fail2("DIGEST_UNAVAILABLE", "SHA-256 검증을 실행할 수 없어 v1으로 표시합니다.");
+      }
       const digest = await environment.crypto.subtle.digest("SHA-256", bytes);
       return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
     }
     __name(sha256, "sha256");
     async function fromBundle(value, v1) {
-      if (value.mainArticleId !== v1.value.mainArticleId || value.boardId !== v1.value.boardId) fail2("BUNDLE_ID_MISMATCH", "v1과 v2 대표 글 식별자가 다릅니다.");
-      if (await sha256(v1.decodedBytes) !== value.v1Digest) fail2("DIGEST_MISMATCH", "v1 원본 바이트와 v2 digest가 일치하지 않습니다.");
+      if (value.mainArticleId !== v1.value.mainArticleId || value.boardId !== v1.value.boardId) {
+        fail2("BUNDLE_ID_MISMATCH", "v1과 v2 대표 글 식별자가 다릅니다.");
+      }
+      if (await sha256(v1.decodedBytes) !== value.v1Digest) {
+        fail2("DIGEST_MISMATCH", "v1 원본 바이트와 v2 digest가 일치하지 않습니다.");
+      }
       const pages = new Map(v1.value.slaves.map((slave) => [slave.page, slave]));
       for (const icon of value.icons) {
         const slave = pages.get(icon.ref.page);
-        if (!slave || icon.ref.index >= slave.images.length) fail2("INVALID_REFERENCE", "v2 ref가 v1 아이콘 범위를 벗어났습니다.");
+        if (!slave || icon.ref.index >= slave.images.length) {
+          fail2("INVALID_REFERENCE", "v2 ref가 v1 아이콘 범위를 벗어났습니다.");
+        }
       }
       const base = fromV1(v1.value);
       const overrides = new Map(value.icons.map((icon) => [icon.ref.page + ":" + icon.ref.index, icon]));
       const icons = base.icons.map((icon) => {
         const metadata = overrides.get(icon.ref.page + ":" + icon.ref.index);
-        if (!metadata) return icon;
+        if (!metadata) {
+          return icon;
+        }
         const variants = metadata.variants || icon.variants;
-        return { ...metadata, id: metadata.iconId, sourceId: metadata.origin.sourceId, url: icon.url, variants, declaredUrl: icon.url, availability: "declared" };
+        return {
+          ...metadata,
+          id: metadata.iconId,
+          sourceId: metadata.origin.sourceId,
+          url: icon.url,
+          variants,
+          declaredUrl: icon.url,
+          availability: "declared"
+        };
       });
       const usedSources = new Set(icons.map((icon) => icon.sourceId));
       const sources = new Map(base.sources.map((source) => [source.sourceId, source]));
       value.sources.forEach((source) => sources.set(source.sourceId, source));
-      return { ...value, metadataVersion: 2, categories: value.categories.map((category) => ({ ...category, aliases: category.aliases || [] })), sources: [...sources.values()].filter((source) => usedSources.has(source.sourceId) || value.sources.some((item) => item.sourceId === source.sourceId)), icons };
+      return {
+        ...value,
+        metadataVersion: 2,
+        categories: value.categories.map((category) => ({
+          ...category,
+          aliases: category.aliases || []
+        })),
+        sources: [...sources.values()].filter((source) => usedSources.has(source.sourceId) || value.sources.some((item) => item.sourceId === source.sourceId)),
+        icons
+      };
     }
     __name(fromBundle, "fromBundle");
     async function parseCarriers(carriers = {}, options = {}) {
@@ -2244,34 +3241,61 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
       const decoded = {};
       for (const type of ["v1", "v2"]) {
         const entries = Array.isArray(carriers[type]) ? carriers[type] : [];
-        rawMetadata[type] = entries.map((encoded) => ({ encoded: typeof encoded === "string" ? encoded : "", decodedText: null, decodedBytes: null }));
+        rawMetadata[type] = entries.map((encoded) => ({
+          encoded: typeof encoded === "string" ? encoded : "",
+          decodedText: null,
+          decodedBytes: null
+        }));
         if (entries.length > 1) {
-          warnings.push({ code: "DUPLICATE_CARRIER", message: type + " carrier가 여러 개여서 해당 metadata를 사용하지 않습니다." });
+          warnings.push({
+            code: "DUPLICATE_CARRIER",
+            message: type + " carrier가 여러 개여서 해당 metadata를 사용하지 않습니다."
+          });
           continue;
         }
-        if (!entries.length) continue;
+        if (!entries.length) {
+          continue;
+        }
         try {
           const raw = decodeCarrier(entries[0]);
-          rawMetadata[type][0] = { encoded: raw.encoded, decodedText: raw.decodedText, decodedBytes: raw.decodedBytes };
-          if (type === "v1") validateV1(raw.value, { allowUnbound: options.boardId === 98 && Number.isSafeInteger(options.articleId) && options.articleId > 0 });
-          else validateV2(raw.value);
+          rawMetadata[type][0] = {
+            encoded: raw.encoded,
+            decodedText: raw.decodedText,
+            decodedBytes: raw.decodedBytes
+          };
+          if (type === "v1") {
+            validateV1(raw.value, {
+              allowUnbound: options.boardId === 98 && Number.isSafeInteger(options.articleId) && options.articleId > 0
+            });
+          } else {
+            validateV2(raw.value);
+          }
           decoded[type] = raw;
         } catch (error) {
-          warnings.push({ code: error.code || "INVALID_METADATA", message: error.message });
+          warnings.push({
+            code: error.code || "INVALID_METADATA",
+            message: error.message
+          });
         }
       }
       let pack = null;
       let metadataVersion = null;
       if (decoded.v2) {
         try {
-          if (decoded.v2.value.kind === "TAGGED") pack = fromTagged(decoded.v2.value);
-          else {
-            if (!decoded.v1) fail2("MISSING_V1", "BUNDLE v2의 유효한 원본 v1을 찾을 수 없습니다.");
+          if (decoded.v2.value.kind === "TAGGED") {
+            pack = fromTagged(decoded.v2.value);
+          } else {
+            if (!decoded.v1) {
+              fail2("MISSING_V1", "BUNDLE v2의 유효한 원본 v1을 찾을 수 없습니다.");
+            }
             pack = await fromBundle(decoded.v2.value, decoded.v1);
           }
           metadataVersion = 2;
         } catch (error) {
-          warnings.push({ code: error.code || "INVALID_METADATA", message: error.message });
+          warnings.push({
+            code: error.code || "INVALID_METADATA",
+            message: error.message
+          });
         }
       }
       if (!pack && decoded.v1) {
@@ -2279,42 +3303,101 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
         if (value.mainArticleId === 0) {
           value = { ...value, mainArticleId: options.articleId };
           if (value.slaves.some((slave) => slave.articleId === value.mainArticleId)) {
-            warnings.push({ code: "SELF_REFERENCE", message: "현재 글을 원본으로 참조하는 통합팩은 읽을 수 없습니다." });
+            warnings.push({
+              code: "SELF_REFERENCE",
+              message: "현재 글을 원본으로 참조하는 통합팩은 읽을 수 없습니다."
+            });
             value = null;
-          } else warnings.push({ code: "REPRESENTATIVE_BOUND", message: "신규 통합팩의 대표 번호를 현재 저장된 글 번호로 판독했습니다. 원본 저장값 0은 변경하지 않습니다." });
+          } else {
+            warnings.push({
+              code: "REPRESENTATIVE_BOUND",
+              message: "신규 통합팩의 대표 번호를 현재 저장된 글 번호로 판독했습니다. 원본 저장값 0은 변경하지 않습니다."
+            });
+          }
         }
         if (value) {
           pack = fromV1(value);
           metadataVersion = 1;
         }
       }
-      if (pack && options.articleId != null && Number(options.articleId) !== pack.mainArticleId) warnings.push({ code: "ARTICLE_ID_MISMATCH", message: "현재 글 ID와 metadata의 대표 글 ID가 다릅니다. 원본 metadata는 수정하지 않습니다." });
-      if (pack && options.boardId != null && Number(options.boardId) !== pack.boardId) warnings.push({ code: "BOARD_ID_MISMATCH", message: "현재 게시판과 metadata의 게시판 ID가 다릅니다." });
-      return { kind: pack ? pack.kind : "NORMAL", metadataVersion, pack, warnings, limited: !pack && warnings.length > 0, rawMetadata, v1Slaves: decoded.v1 ? decoded.v1.value.slaves.map((slave) => ({ page: slave.page, articleId: slave.articleId, images: [...slave.images], url: publicArticleUrl(slave.articleId) })) : [] };
+      if (pack && options.articleId != null && Number(options.articleId) !== pack.mainArticleId) {
+        warnings.push({
+          code: "ARTICLE_ID_MISMATCH",
+          message: "현재 글 ID와 metadata의 대표 글 ID가 다릅니다. 원본 metadata는 수정하지 않습니다."
+        });
+      }
+      if (pack && options.boardId != null && Number(options.boardId) !== pack.boardId) {
+        warnings.push({
+          code: "BOARD_ID_MISMATCH",
+          message: "현재 게시판과 metadata의 게시판 ID가 다릅니다."
+        });
+      }
+      return {
+        kind: pack ? pack.kind : "NORMAL",
+        metadataVersion,
+        pack,
+        warnings,
+        limited: !pack && warnings.length > 0,
+        rawMetadata,
+        v1Slaves: decoded.v1 ? decoded.v1.value.slaves.map((slave) => ({
+          page: slave.page,
+          articleId: slave.articleId,
+          images: [...slave.images],
+          url: publicArticleUrl(slave.articleId)
+        })) : []
+      };
     }
     __name(parseCarriers, "parseCarriers");
-    return Object.freeze({ MetadataError, LIMITS, mediaUrl, publicArticleUrl, decodeCarrier, validateV1, validateV2, parseCarrier, parseCarriers, fromV1, fromTagged, sha256 });
+    return Object.freeze({
+      MetadataError,
+      LIMITS,
+      mediaUrl,
+      publicArticleUrl,
+      decodeCarrier,
+      validateV1,
+      validateV2,
+      parseCarrier,
+      parseCarriers,
+      fromV1,
+      fromTagged,
+      sha256
+    });
   }
   __name(createMetadataCore, "createMetadataCore");
 
   // docs/source/ruliweb-icons/metadata.mjs
-  function createMetadata({ environment: global = globalThis } = {}) {
+  function createMetadata({ environment: global = defaultEnvironment } = {}) {
     const core = createMetadataCore(global);
     const { LIMITS, parseCarriers } = core;
     const fail2 = /* @__PURE__ */ __name((code, message) => {
       throw new core.MetadataError(code, message);
     }, "fail");
     function readDocumentCarriers(root) {
-      if (!root || typeof root.querySelectorAll !== "function") fail2("INVALID_DOCUMENT", "읽을 수 있는 DOM이 필요합니다.");
+      if (!root || typeof root.querySelectorAll !== "function") {
+        fail2("INVALID_DOCUMENT", "읽을 수 있는 DOM이 필요합니다.");
+      }
       const result2 = { v1: [], v2: [] };
-      for (const [type, marker, stateMarker] of [["v1", "ruricon:v1", "ruricon-state"], ["v2", "aru-icons:v2", "aru-icons-state"]]) {
-        const markers = [...root.querySelectorAll('[data-meta="' + marker + '"]')];
-        if (root.matches?.('[data-meta="' + marker + '"]')) markers.unshift(root);
+      for (const [type, marker, stateMarker] of [
+        ["v1", "ruricon:v1", "ruricon-state"],
+        ["v2", "aru-icons:v2", "aru-icons-state"]
+      ]) {
+        const markers = [
+          ...root.querySelectorAll('[data-meta="' + marker + '"]')
+        ];
+        if (root.matches?.('[data-meta="' + marker + '"]')) {
+          markers.unshift(root);
+        }
         for (const markerNode of markers) {
-          const states = [...markerNode.querySelectorAll('[data-meta="' + stateMarker + '"]')];
-          if (states.length === 1) result2[type].push(states[0].textContent || "");
-          else if (states.length === 0) result2[type].push("");
-          else result2[type].push(...states.map((node) => node.textContent || ""));
+          const states = [
+            ...markerNode.querySelectorAll('[data-meta="' + stateMarker + '"]')
+          ];
+          if (states.length === 1) {
+            result2[type].push(states[0].textContent || "");
+          } else if (states.length === 0) {
+            result2[type].push("");
+          } else {
+            result2[type].push(...states.map((node) => node.textContent || ""));
+          }
         }
       }
       return result2;
@@ -2325,26 +3408,53 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
     }
     __name(parseDocument, "parseDocument");
     async function parseMetadata(rootOrHtml, options = {}) {
-      if (typeof rootOrHtml !== "string") return parseDocument(rootOrHtml, options);
-      if (typeof global.DOMParser !== "function") fail2("DOM_PARSER_UNAVAILABLE", "HTML 판독에는 DOMParser가 필요합니다. 데이터 테스트는 parseCarriers를 사용하세요.");
-      if (rootOrHtml.length > 8 * LIMITS.decodedBytes) fail2("RESOURCE_LIMIT", "본문 HTML의 로컬 처리 상한을 초과했습니다.");
+      if (typeof rootOrHtml !== "string") {
+        return parseDocument(rootOrHtml, options);
+      }
+      if (typeof global.DOMParser !== "function") {
+        fail2("DOM_PARSER_UNAVAILABLE", "HTML 판독에는 DOMParser가 필요합니다. 데이터 테스트는 parseCarriers를 사용하세요.");
+      }
+      if (rootOrHtml.length > 8 * LIMITS.decodedBytes) {
+        fail2("RESOURCE_LIMIT", "본문 HTML의 로컬 처리 상한을 초과했습니다.");
+      }
       const doc = new global.DOMParser().parseFromString(rootOrHtml, "text/html");
       const body = doc.querySelector(".view_content") || doc.querySelector('[itemprop="articleBody"]') || doc.body;
       return parseDocument(body, options);
     }
     __name(parseMetadata, "parseMetadata");
-    return { MetadataError: core.MetadataError, Metadata: Object.freeze({ supportsUnboundV1: true, LIMITS: core.LIMITS, mediaUrl: core.mediaUrl, publicArticleUrl: core.publicArticleUrl, decodeCarrier: core.decodeCarrier, validateV1: core.validateV1, validateV2: core.validateV2, parseCarrier: core.parseCarrier, parseCarriers: core.parseCarriers, fromV1: core.fromV1, fromTagged: core.fromTagged, sha256: core.sha256, parseDocument, parseMetadata, readDocumentCarriers }) };
+    return {
+      MetadataError: core.MetadataError,
+      Metadata: Object.freeze({
+        supportsUnboundV1: true,
+        LIMITS: core.LIMITS,
+        mediaUrl: core.mediaUrl,
+        publicArticleUrl: core.publicArticleUrl,
+        decodeCarrier: core.decodeCarrier,
+        validateV1: core.validateV1,
+        validateV2: core.validateV2,
+        parseCarrier: core.parseCarrier,
+        parseCarriers: core.parseCarriers,
+        fromV1: core.fromV1,
+        fromTagged: core.fromTagged,
+        sha256: core.sha256,
+        parseDocument,
+        parseMetadata,
+        readDocumentCarriers
+      })
+    };
   }
   __name(createMetadata, "createMetadata");
 
   // docs/source/ruliweb-icons/site-adapter.mjs
-  function createSiteAdapter({ environment: global = globalThis, metadata = createMetadata({ environment: global }).Metadata, attributeTags = tag_codec_exports, isSafeMediaUrl } = {}) {
+  function createSiteAdapter({ environment: global = defaultEnvironment, metadata = createMetadata({ environment: global }).Metadata, attributeTags = tag_codec_exports, isSafeMediaUrl } = {}) {
     const { DOMParser, AbortController, TextDecoder: TextDecoder2, TextEncoder } = global;
     const number = /* @__PURE__ */ __name((value) => Number.isSafeInteger(Number(value)) && Number(value) > 0 ? Number(value) : null, "number");
     const stopped = /* @__PURE__ */ __name(() => Object.assign(new Error("수집을 중지했습니다."), { code: "ABORTED" }), "stopped");
     function delay(ms, signal) {
       return new Promise((resolve, reject) => {
-        if (signal?.aborted) return reject(stopped());
+        if (signal?.aborted) {
+          return reject(stopped());
+        }
         const done = /* @__PURE__ */ __name(() => {
           signal?.removeEventListener("abort", cancel);
           resolve();
@@ -2379,7 +3489,9 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
           return false;
         }
       }
-      if (isSafeMediaUrl) return isSafeMediaUrl(url);
+      if (isSafeMediaUrl) {
+        return isSafeMediaUrl(url);
+      }
       try {
         const u = new URL(url);
         return u.protocol === "https:" && ["i1.ruliweb.com", "i2.ruliweb.com", "i3.ruliweb.com"].includes(u.hostname) && !u.username && !u.password && !u.port && !u.hash && !/[\u0000-\u0020\u007f\\]/.test(url);
@@ -2395,9 +3507,17 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
       const icons = [], seen = /* @__PURE__ */ new Set();
       for (let ordinal = 0; ordinal < media.length; ordinal++) {
         const node = media[ordinal], url = node.getAttribute("src") || node.querySelector("source")?.getAttribute("src");
-        if (!safeMedia(url) || seen.has(url)) continue;
+        if (!safeMedia(url) || seen.has(url)) {
+          continue;
+        }
         seen.add(url);
-        icons.push({ url, ordinal, node, mediaKind: node.tagName === "VIDEO" ? "video" : node.getAttribute("data-gifct") === "yes" ? "animated" : "image", format: new URL(url).pathname.split(".").pop() });
+        icons.push({
+          url,
+          ordinal,
+          node,
+          mediaKind: node.tagName === "VIDEO" ? "video" : node.getAttribute("data-gifct") === "yes" ? "animated" : "image",
+          format: new URL(url).pathname.split(".").pop()
+        });
       }
       const button = detail?.querySelector(".btn_icon_load_more");
       const next = moreInfo(button);
@@ -2429,22 +3549,51 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
         __name(this, "NativeLoadSession");
       }
       constructor(options) {
-        this.options = { intervalMs: 300, pollMs: 100, timeoutMs: 1e4, maxRequests: 256, maxIcons: 1e4, isCurrent: /* @__PURE__ */ __name(() => true, "isCurrent"), ...options };
+        this.options = {
+          intervalMs: 300,
+          pollMs: 100,
+          timeoutMs: 1e4,
+          maxRequests: 256,
+          maxIcons: 1e4,
+          isCurrent: /* @__PURE__ */ __name(() => true, "isCurrent"),
+          ...options
+        };
         this.running = false;
       }
       async run(signal) {
-        if (this.running) throw new Error("이미 수집 중입니다.");
+        if (this.running) {
+          throw new Error("이미 수집 중입니다.");
+        }
         this.running = true;
         let count = 0, lastOffset = -1;
         const read = /* @__PURE__ */ __name(() => this.options.read(), "read");
-        const report = /* @__PURE__ */ __name((s, status, message) => this.options.onProgress?.({ ...s, status, phase: "native", processed: s.rawCount, loaded: s.rawCount, total: s.declaredTotal, uniqueCount: s.icons.length, requests: count, message, busy: status === "loading" }), "report");
+        const report = /* @__PURE__ */ __name((s, status, message) => this.options.onProgress?.({
+          ...s,
+          status,
+          phase: "native",
+          processed: s.rawCount,
+          loaded: s.rawCount,
+          total: s.declaredTotal,
+          uniqueCount: s.icons.length,
+          requests: count,
+          message,
+          busy: status === "loading"
+        }), "report");
         try {
           let s = read();
-          if (!s.ready) throw Object.assign(new Error("정상 아이콘 목록을 찾을 수 없습니다. 원래 선택기를 다시 열어 주세요."), { code: "NATIVE_UNAVAILABLE" });
+          if (!s.ready) {
+            throw Object.assign(new Error("정상 아이콘 목록을 찾을 수 없습니다. 원래 선택기를 다시 열어 주세요."), { code: "NATIVE_UNAVAILABLE" });
+          }
           while (true) {
-            if (signal?.aborted) throw stopped();
-            if (!s.visible || !this.options.isCurrent?.()) throw stopped();
-            if (s.articleId !== this.options.articleId) throw stopped();
+            if (signal?.aborted) {
+              throw stopped();
+            }
+            if (!s.visible || !this.options.isCurrent?.()) {
+              throw stopped();
+            }
+            if (s.articleId !== this.options.articleId) {
+              throw stopped();
+            }
             report(s, "loading", "정상 사이트 버튼으로 순차 수집 중");
             if (s.done) {
               report(s, "complete", "사이트가 전체 로딩 완료를 표시했습니다.");
@@ -2458,22 +3607,34 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
               report(s, "partial", "수집 자원 상한입니다. 재시도로 이어서 수집할 수 있습니다.");
               return { ...s, status: "partial", requests: count };
             }
-            if (s.offset <= lastOffset) throw Object.assign(new Error("다음 로딩 위치가 증가하지 않아 중지했습니다."), { code: "OFFSET_STALLED" });
-            if (s.error) throw Object.assign(new Error("사이트가 아이콘 로딩 실패를 표시했습니다. 재시도를 눌러 주세요."), { code: "NATIVE_ERROR" });
+            if (s.offset <= lastOffset) {
+              throw Object.assign(new Error("다음 로딩 위치가 증가하지 않아 중지했습니다."), { code: "OFFSET_STALLED" });
+            }
+            if (s.error) {
+              throw Object.assign(new Error("사이트가 아이콘 로딩 실패를 표시했습니다. 재시도를 눌러 주세요."), { code: "NATIVE_ERROR" });
+            }
             const start = Date.now();
             if (s.loading) {
               do {
                 await delay(this.options.pollMs, signal);
                 s = read();
-                if (!s.visible || !this.options.isCurrent?.() || s.articleId !== this.options.articleId) throw stopped();
+                if (!s.visible || !this.options.isCurrent?.() || s.articleId !== this.options.articleId) {
+                  throw stopped();
+                }
               } while (s.loading && Date.now() - start < this.options.timeoutMs);
-              if (s.loading) throw Object.assign(new Error("기존 사이트 요청이 끝나지 않아 중지했습니다."), { code: "TIMEOUT" });
+              if (s.loading) {
+                throw Object.assign(new Error("기존 사이트 요청이 끝나지 않아 중지했습니다."), { code: "TIMEOUT" });
+              }
               continue;
             }
             await delay(this.options.intervalMs, signal);
-            if (!this.options.isCurrent?.() || signal?.aborted) throw stopped();
+            if (!this.options.isCurrent?.() || signal?.aborted) {
+              throw stopped();
+            }
             const fresh = read();
-            if (!fresh.visible || fresh.articleId !== this.options.articleId) throw stopped();
+            if (!fresh.visible || fresh.articleId !== this.options.articleId) {
+              throw stopped();
+            }
             if (fresh.loading || fresh.button !== s.button || fresh.offset !== s.offset || fresh.rawCount !== s.rawCount || fresh.done) {
               s = fresh;
               continue;
@@ -2486,12 +3647,22 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
             while (true) {
               await delay(this.options.pollMs, signal);
               s = read();
-              if (!s.visible || !this.options.isCurrent?.() || s.articleId !== this.options.articleId) throw stopped();
-              if (s.error) throw Object.assign(new Error("사이트 아이콘 로딩이 실패했습니다."), { code: "NATIVE_ERROR" });
-              if (!s.loading && (s.done || s.rawCount > before.rawCount || s.offset !== before.offset)) break;
-              if (Date.now() >= deadline) throw Object.assign(new Error("10초 동안 새 아이콘이 도착하지 않아 중지했습니다. 자동 재요청은 하지 않습니다."), { code: "TIMEOUT" });
+              if (!s.visible || !this.options.isCurrent?.() || s.articleId !== this.options.articleId) {
+                throw stopped();
+              }
+              if (s.error) {
+                throw Object.assign(new Error("사이트 아이콘 로딩이 실패했습니다."), { code: "NATIVE_ERROR" });
+              }
+              if (!s.loading && (s.done || s.rawCount > before.rawCount || s.offset !== before.offset)) {
+                break;
+              }
+              if (Date.now() >= deadline) {
+                throw Object.assign(new Error("10초 동안 새 아이콘이 도착하지 않아 중지했습니다. 자동 재요청은 하지 않습니다."), { code: "TIMEOUT" });
+              }
             }
-            if (!s.done && s.rawCount <= before.rawCount) throw Object.assign(new Error("목록 증가가 없어 수집을 중지했습니다."), { code: "NO_PROGRESS" });
+            if (!s.done && s.rawCount <= before.rawCount) {
+              throw Object.assign(new Error("목록 증가가 없어 수집을 중지했습니다."), { code: "NO_PROGRESS" });
+            }
           }
         } catch (error) {
           const s = read();
@@ -2503,15 +3674,31 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
       }
     }
     function imageAttributes(node) {
-      if (!["IMG", "VIDEO"].includes(node?.tagName?.toUpperCase())) return { metadataId: null, tags: [], tagError: null };
+      if (!["IMG", "VIDEO"].includes(node?.tagName?.toUpperCase())) {
+        return { metadataId: null, tags: [], tagError: null };
+      }
       const metadataId = node.getAttribute("data-aru-id"), raw = node.getAttribute("data-aru-tags");
       const id = typeof metadataId === "string" && metadataId.length <= 512 ? metadataId : null;
-      if (raw == null || raw === "") return { metadataId: id, tags: [], tagError: null };
+      if (raw == null || raw === "") {
+        return { metadataId: id, tags: [], tagError: null };
+      }
       try {
-        if (!attributeTags) throw Object.assign(new Error("Tag codec unavailable"), { code: "TAGS_CODEC_UNAVAILABLE" });
-        return { metadataId: id, tags: attributeTags.decode(raw), tagError: null };
+        if (!attributeTags) {
+          throw Object.assign(new Error("Tag codec unavailable"), {
+            code: "TAGS_CODEC_UNAVAILABLE"
+          });
+        }
+        return {
+          metadataId: id,
+          tags: attributeTags.decode(raw),
+          tagError: null
+        };
       } catch (error) {
-        return { metadataId: id, tags: [], tagError: error.code || "TAGS_INVALID" };
+        return {
+          metadataId: id,
+          tags: [],
+          tagError: error.code || "TAGS_INVALID"
+        };
       }
     }
     __name(imageAttributes, "imageAttributes");
@@ -2537,7 +3724,10 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
             categoryIds: [],
             tagIds: [],
             sourceId,
-            imageMetadata: { id: attributes.metadataId, tags: [...attributes.tags] },
+            imageMetadata: {
+              id: attributes.metadataId,
+              tags: [...attributes.tags]
+            },
             mediaKind: item.mediaKind,
             format: item.format,
             origin: { sourceId, articleId, originalIndex: item.ordinal }
@@ -2547,19 +3737,27 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
     }
     __name(normalPack, "normalPack");
     function findArticleBody(doc) {
-      let nodes = [...doc.querySelectorAll('.view_content[itemprop="articleBody"]')], selector = '.view_content[itemprop="articleBody"]';
+      let nodes = [
+        ...doc.querySelectorAll('.view_content[itemprop="articleBody"]')
+      ], selector = '.view_content[itemprop="articleBody"]';
       if (!nodes.length) {
         nodes = [...doc.querySelectorAll(".view_content article")];
         selector = ".view_content article";
       }
-      if (nodes.length !== 1) throw Object.assign(new Error("게시글 본문을 한 곳으로 식별할 수 없습니다. 페이지 전체는 수집하지 않습니다."), { code: "BODY_NOT_FOUND" });
+      if (nodes.length !== 1) {
+        throw Object.assign(new Error("게시글 본문을 한 곳으로 식별할 수 없습니다. 페이지 전체는 수집하지 않습니다."), { code: "BODY_NOT_FOUND" });
+      }
       return { element: nodes[0], selector };
     }
     __name(findArticleBody, "findArticleBody");
     function readArticlePack(doc, articleId, title, boardId = "98", options = {}) {
       const { element, selector } = findArticleBody(doc), base = readPath(articleId, "https://bbs.ruliweb.com", boardId);
-      const nodes = [...element.querySelectorAll("img,video,source[src],a[href]")];
-      if (nodes.length > 5e3) throw Object.assign(new Error("본문 미디어 탐색 상한 5,000개를 넘었습니다."), { code: "RESOURCE_LIMIT" });
+      const nodes = [
+        ...element.querySelectorAll("img,video,source[src],a[href]")
+      ];
+      if (nodes.length > 5e3) {
+        throw Object.assign(new Error("본문 미디어 탐색 상한 5,000개를 넘었습니다."), { code: "RESOURCE_LIMIT" });
+      }
       const media = nodes.filter((node) => ["IMG", "VIDEO"].includes(node.tagName.toUpperCase())), images = media.filter((node) => node.tagName.toUpperCase() === "IMG");
       const attributesByImage = /* @__PURE__ */ new WeakMap(), positions = /* @__PURE__ */ new WeakMap(), imagePositions = /* @__PURE__ */ new WeakMap();
       images.forEach((node, index) => imagePositions.set(node, index + 1));
@@ -2582,21 +3780,35 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
         positions.set(node, index + 1);
         const attrs = imageAttributes(node);
         attributesByImage.set(node, attrs);
-        if (node.getAttribute("data-aru-id") != null) metadataCounts.mediaIds++;
+        if (node.getAttribute("data-aru-id") != null) {
+          metadataCounts.mediaIds++;
+        }
         if (node.getAttribute("data-aru-tags") != null) {
           metadataCounts.mediaTagAttributes++;
-          if (attrs.tagError) metadataCounts.mediaDecodeFailed++;
-          else metadataCounts.mediaDecoded++;
+          if (attrs.tagError) {
+            metadataCounts.mediaDecodeFailed++;
+          } else {
+            metadataCounts.mediaDecoded++;
+          }
         }
-        if (attrs.tags.length) metadataCounts.taggedMedia++;
+        if (attrs.tags.length) {
+          metadataCounts.taggedMedia++;
+        }
         if (node.tagName.toUpperCase() === "IMG") {
-          if (node.getAttribute("data-aru-id") != null) metadataCounts.ids++;
+          if (node.getAttribute("data-aru-id") != null) {
+            metadataCounts.ids++;
+          }
           if (node.getAttribute("data-aru-tags") != null) {
             metadataCounts.tagAttributes++;
-            if (attrs.tagError) metadataCounts.decodeFailed++;
-            else metadataCounts.decoded++;
+            if (attrs.tagError) {
+              metadataCounts.decodeFailed++;
+            } else {
+              metadataCounts.decoded++;
+            }
           }
-          if (attrs.tags.length) metadataCounts.taggedImages++;
+          if (attrs.tags.length) {
+            metadataCounts.taggedImages++;
+          }
         }
       });
       const counts = {
@@ -2623,9 +3835,18 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
         counts.reasons[reason] = (counts.reasons[reason] || 0) + 1;
       }, "exclude");
       const scoped = /* @__PURE__ */ __name((n) => n.closest("[data-aru-icons-entry],[data-aru-icons-picker],[data-aru-body-download],.comment,.comment_view,.comment_wrapper,.comment_icon,.select_icon_box,.ad,.advertisement,[data-ad],.profile_image,.user_profile,.sidebar,.right_best,aside"), "scoped");
-      const stream = /* @__PURE__ */ __name((url, type = "") => /\.(?:m3u8|mpd|m4s|ts)$/i.test(new URL(url).pathname) || ["application/vnd.apple.mpegurl", "application/x-mpegurl", "audio/mpegurl", "audio/x-mpegurl", "application/dash+xml", "video/mp2t"].includes(type.split(";")[0].trim().toLowerCase()), "stream");
+      const stream = /* @__PURE__ */ __name((url, type = "") => /\.(?:m3u8|mpd|m4s|ts)$/i.test(new URL(url).pathname) || [
+        "application/vnd.apple.mpegurl",
+        "application/x-mpegurl",
+        "audio/mpegurl",
+        "audio/x-mpegurl",
+        "application/dash+xml",
+        "video/mp2t"
+      ].includes(type.split(";")[0].trim().toLowerCase()), "stream");
       const normalize3 = /* @__PURE__ */ __name((raw) => {
-        if (typeof raw !== "string" || !raw || raw.length > 2048 || /[\u0000-\u0020\u007f\\]/.test(raw)) return null;
+        if (typeof raw !== "string" || !raw || raw.length > 2048 || /[\u0000-\u0020\u007f\\]/.test(raw)) {
+          return null;
+        }
         try {
           const url = new URL(raw, base).href;
           return safeMedia(url) ? url : null;
@@ -2640,7 +3861,9 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
           exclude("outside-content");
           continue;
         }
-        if (tag === "SOURCE" && node.closest("video")) continue;
+        if (tag === "SOURCE" && node.closest("video")) {
+          continue;
+        }
         if (tag === "IMG" && node.closest("a.img_load[href]")) {
           counts.wrappedImages++;
           continue;
@@ -2655,15 +3878,20 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
           }
           candidates.push({ raw, type });
           const children = [...node.querySelectorAll?.("img") || []];
-          if (children.length === 1) owner = children[0];
+          if (children.length === 1) {
+            owner = children[0];
+          }
         }
         if (tag === "IMG") {
           let raw = node.getAttribute("src") || "";
-          if ((!raw || /^(?:data:|about:blank)/i.test(raw)) && node.getAttribute("data-src")) raw = node.getAttribute("data-src");
+          if ((!raw || /^(?:data:|about:blank)/i.test(raw)) && node.getAttribute("data-src")) {
+            raw = node.getAttribute("data-src");
+          }
           if (!raw) {
             const parts = (node.getAttribute("srcset") || "").split(",").map((x) => x.trim()).filter(Boolean);
-            if (parts.length === 1) raw = parts[0].split(/\s+/)[0];
-            else if (parts.length > 1) {
+            if (parts.length === 1) {
+              raw = parts[0].split(/\s+/)[0];
+            } else if (parts.length > 1) {
               counts.candidates++;
               exclude("ambiguous-srcset");
               continue;
@@ -2682,19 +3910,53 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
             exclude("streaming-media");
             continue;
           }
-          for (const raw of [node.currentSrc, node.getAttribute("src"), node.src]) if (raw) candidates.push({ raw });
-          for (const child of node.querySelectorAll("source[src]")) if (!scoped(child)) {
-            for (const raw of [child.getAttribute("src"), child.src]) if (raw) candidates.push({ raw, type: child.getAttribute("type") || "" });
+          for (const raw of [
+            node.currentSrc,
+            node.getAttribute("src"),
+            node.src
+          ]) {
+            if (raw) {
+              candidates.push({ raw });
+            }
           }
-          if (!candidates.length) candidates.push({ raw: "" });
+          for (const child of node.querySelectorAll("source[src]")) {
+            if (!scoped(child)) {
+              for (const raw of [
+                child.getAttribute("src"),
+                child.src
+              ]) {
+                if (raw) {
+                  candidates.push({
+                    raw,
+                    type: child.getAttribute("type") || ""
+                  });
+                }
+              }
+            }
+          }
+          if (!candidates.length) {
+            candidates.push({ raw: "" });
+          }
         }
         if (tag === "SOURCE") {
-          for (const raw of [node.getAttribute("src"), node.src]) if (raw) candidates.push({ raw, type: node.getAttribute("type") || "" });
+          for (const raw of [
+            node.getAttribute("src"),
+            node.src
+          ]) {
+            if (raw) {
+              candidates.push({ raw, type: node.getAttribute("type") || "" });
+            }
+          }
         }
-        const normalized = candidates.map((c) => ({ ...c, url: normalize3(c.raw) })), streams = new Set(normalized.filter((c) => c.url && stream(c.url, c.type)).map((c) => c.url)), local = /* @__PURE__ */ new Set();
+        const normalized = candidates.map((c) => ({
+          ...c,
+          url: normalize3(c.raw)
+        })), streams = new Set(normalized.filter((c) => c.url && stream(c.url, c.type)).map((c) => c.url)), local = /* @__PURE__ */ new Set();
         for (const candidate of normalized) {
           const key = candidate.url || candidate.raw;
-          if (local.has(key)) continue;
+          if (local.has(key)) {
+            continue;
+          }
           local.add(key);
           counts.candidates++;
           const url = candidate.url;
@@ -2719,8 +3981,15 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
               recordedOwners.set(owner, ownerUrls);
             }
             ownerUrls.add(url);
-            imageAttributesByUrl.push({ url, ...attributes, imageIndex: imagePositions.get(owner), mediaIndex: positions.get(owner) });
-            if (owner.getAttribute("data-aru-id") != null || owner.getAttribute("data-aru-tags") != null) counts.metadataImages++;
+            imageAttributesByUrl.push({
+              url,
+              ...attributes,
+              imageIndex: imagePositions.get(owner),
+              mediaIndex: positions.get(owner)
+            });
+            if (owner.getAttribute("data-aru-id") != null || owner.getAttribute("data-aru-tags") != null) {
+              counts.metadataImages++;
+            }
             if (attributes.tagError) {
               counts.tagErrors++;
               counts.tagErrorCodes[attributes.tagError] = (counts.tagErrorCodes[attributes.tagError] || 0) + 1;
@@ -2731,10 +4000,20 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
             continue;
           }
           seen.add(url);
-          if (owner) deliveredOwners.set(url, owner);
+          if (owner) {
+            deliveredOwners.set(url, owner);
+          }
           const video = ["mp4", "webm"].includes(format) || tag === "VIDEO" || tag === "SOURCE" || /^video\//i.test(candidate.type || "");
-          if (attributes.tags.length) counts.taggedIcons++;
-          icons.push({ url, ordinal: counts.candidates - 1, mediaKind: video ? "video" : format === "gif" ? "animated" : "image", format, attributes });
+          if (attributes.tags.length) {
+            counts.taggedIcons++;
+          }
+          icons.push({
+            url,
+            ordinal: counts.candidates - 1,
+            mediaKind: video ? "video" : format === "gif" ? "animated" : "image",
+            format,
+            attributes
+          });
         }
       }
       counts.finalIcons = icons.length;
@@ -2758,58 +4037,93 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
         source.boardId = String(boardId);
         source.articleUrl = base;
       }
-      for (const icon of pack.icons) icon.variants[0].role = "body";
+      for (const icon of pack.icons) {
+        icon.variants[0].role = "body";
+      }
       let metadataDiagnostics = null;
       if (options.diagnostics === true) {
         const recordsByImage = /* @__PURE__ */ new Map(), iconsByUrl = new Map(pack.icons.map((icon) => [icon.url, icon]));
         for (const record of imageAttributesByUrl) {
-          if (!recordsByImage.has(record.mediaIndex)) recordsByImage.set(record.mediaIndex, []);
+          if (!recordsByImage.has(record.mediaIndex)) {
+            recordsByImage.set(record.mediaIndex, []);
+          }
           recordsByImage.get(record.mediaIndex).push(record);
         }
-        metadataDiagnostics = { ...metadataCounts, mediaDetail: media.map((image, index) => {
-          const attrs = attributesByImage.get(image), records = recordsByImage.get(index + 1) || [];
-          const delivered = records.find((record) => deliveredOwners.get(record.url) === image);
-          const icon = delivered && iconsByUrl.get(delivered.url);
-          const wrapper = image.closest("a.img_load[href]");
-          const reason = icon ? attrs.tagError ? "decode-failed" : image.getAttribute("data-aru-tags") == null ? "tag-attribute-missing" : attrs.tags.length ? "mapped" : "empty-tags" : scoped(image) ? "outside-content" : records.length ? "duplicate-url" : wrapper && wrapper.querySelectorAll("img").length !== 1 ? "ambiguous-wrapper-owner" : "no-collected-url";
-          return {
-            position: index + 1,
-            imageIndex: imagePositions.get(image) || null,
-            element: image.tagName.toUpperCase(),
-            id: image.getAttribute("data-aru-id"),
-            url: delivered?.url || records[0]?.url || normalize3(wrapper?.getAttribute("href") || image.getAttribute("src") || image.getAttribute("data-src")),
-            rawTags: image.getAttribute("data-aru-tags"),
-            decodedTags: [...attrs.tags],
-            decodeError: attrs.tagError,
-            iconId: icon?.id || null,
-            reason
-          };
-        }) };
+        metadataDiagnostics = {
+          ...metadataCounts,
+          mediaDetail: media.map((image, index) => {
+            const attrs = attributesByImage.get(image), records = recordsByImage.get(index + 1) || [];
+            const delivered = records.find((record) => deliveredOwners.get(record.url) === image);
+            const icon = delivered && iconsByUrl.get(delivered.url);
+            const wrapper = image.closest("a.img_load[href]");
+            const reason = icon ? attrs.tagError ? "decode-failed" : image.getAttribute("data-aru-tags") == null ? "tag-attribute-missing" : attrs.tags.length ? "mapped" : "empty-tags" : scoped(image) ? "outside-content" : records.length ? "duplicate-url" : wrapper && wrapper.querySelectorAll("img").length !== 1 ? "ambiguous-wrapper-owner" : "no-collected-url";
+            return {
+              position: index + 1,
+              imageIndex: imagePositions.get(image) || null,
+              element: image.tagName.toUpperCase(),
+              id: image.getAttribute("data-aru-id"),
+              url: delivered?.url || records[0]?.url || normalize3(wrapper?.getAttribute("href") || image.getAttribute("src") || image.getAttribute("data-src")),
+              rawTags: image.getAttribute("data-aru-tags"),
+              decodedTags: [...attrs.tags],
+              decodeError: attrs.tagError,
+              iconId: icon?.id || null,
+              reason
+            };
+          })
+        };
         metadataDiagnostics.imagesDetail = metadataDiagnostics.mediaDetail.filter((row) => row.element === "IMG");
       }
-      return { pack, counts, selector, imageAttributesByUrl, metadataDiagnostics };
+      return {
+        pack,
+        counts,
+        selector,
+        imageAttributesByUrl,
+        metadataDiagnostics
+      };
     }
     __name(readArticlePack, "readArticlePack");
     function readPath(articleId, origin = global.location?.origin, boardId = "98") {
       const id = number(articleId);
-      if (!id || !/^[1-9]\d{0,11}$/.test(String(boardId)) || !["https://bbs.ruliweb.com", "https://m.ruliweb.com"].includes(origin)) throw new Error("허용되지 않은 공개 글 경로입니다.");
+      if (!id || !/^[1-9]\d{0,11}$/.test(String(boardId)) || !["https://bbs.ruliweb.com", "https://m.ruliweb.com"].includes(origin)) {
+        throw new Error("허용되지 않은 공개 글 경로입니다.");
+      }
       return origin + "/community/board/" + boardId + "/read/" + id;
     }
     __name(readPath, "readPath");
     async function getPublicDocument(articleId, { signal, origin = global.location?.origin, fetchFn = global.fetch, timeoutMs = 1e4, forceRead = false, boardId = "98" } = {}) {
       const url = readPath(articleId, origin, boardId);
       const current = global.document;
-      if (!forceRead && global.location?.href?.split(/[?#]/)[0] === url && current?.querySelector('.view_content[itemprop="articleBody"],.view_content article')) return current;
+      if (!forceRead && global.location?.href?.split(/[?#]/)[0] === url && current?.querySelector('.view_content[itemprop="articleBody"],.view_content article')) {
+        return current;
+      }
       const controller = new AbortController(), abort = /* @__PURE__ */ __name(() => controller.abort(), "abort");
       signal?.addEventListener("abort", abort, { once: true });
-      if (signal?.aborted) controller.abort();
+      if (signal?.aborted) {
+        controller.abort();
+      }
       const timer = setTimeout(abort, timeoutMs);
       try {
-        const response = await fetchFn(url, { method: "GET", credentials: "same-origin", mode: "same-origin", redirect: "error", cache: "no-cache", signal: controller.signal });
-        if (response.redirected || response.url && response.url !== url) throw Object.assign(new Error("공개 글이 다른 주소로 이동하여 읽기를 중지했습니다."), { code: "READ_REDIRECT" });
-        if (!response.ok) throw Object.assign(new Error("공개 글 " + articleId + " 조회 실패 (HTTP " + response.status + "). 접근 제한을 우회하지 않습니다."), { code: [401, 403, 429].includes(response.status) ? "ACCESS_DENIED" : "READ_FAILED", articleId });
+        const response = await fetchFn(url, {
+          method: "GET",
+          credentials: "same-origin",
+          mode: "same-origin",
+          redirect: "error",
+          cache: "no-cache",
+          signal: controller.signal
+        });
+        if (response.redirected || response.url && response.url !== url) {
+          throw Object.assign(new Error("공개 글이 다른 주소로 이동하여 읽기를 중지했습니다."), { code: "READ_REDIRECT" });
+        }
+        if (!response.ok) {
+          throw Object.assign(new Error("공개 글 " + articleId + " 조회 실패 (HTTP " + response.status + "). 접근 제한을 우회하지 않습니다."), {
+            code: [401, 403, 429].includes(response.status) ? "ACCESS_DENIED" : "READ_FAILED",
+            articleId
+          });
+        }
         const maxBytes = 3 * 1024 * 1024;
-        if (Number(response.headers?.get("content-length")) > maxBytes) throw new Error("공개 글 응답 크기 상한을 넘었습니다.");
+        if (Number(response.headers?.get("content-length")) > maxBytes) {
+          throw new Error("공개 글 응답 크기 상한을 넘었습니다.");
+        }
         let html = "";
         if (response.body?.getReader) {
           const reader = response.body.getReader(), decoder = new TextDecoder2();
@@ -2821,7 +4135,9 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
                 await reader.cancel();
                 throw stopped();
               }
-              if (r.done) break;
+              if (r.done) {
+                break;
+              }
               bytes += r.value.byteLength;
               if (bytes > maxBytes) {
                 await reader.cancel();
@@ -2835,14 +4151,22 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
           }
         } else {
           html = await response.text();
-          if (new TextEncoder().encode(html).length > maxBytes) throw new Error("공개 글 응답 크기 상한을 넘었습니다.");
+          if (new TextEncoder().encode(html).length > maxBytes) {
+            throw new Error("공개 글 응답 크기 상한을 넘었습니다.");
+          }
         }
-        if (controller.signal.aborted) throw stopped();
+        if (controller.signal.aborted) {
+          throw stopped();
+        }
         const doc = new DOMParser().parseFromString(html, "text/html");
-        if (!doc.querySelector('.view_content[itemprop="articleBody"],.view_content article')) throw Object.assign(new Error("글 본문을 확인할 수 없습니다. 정상 탭에서 해당 글을 열어 주세요."), { code: "READ_UNAVAILABLE" });
+        if (!doc.querySelector('.view_content[itemprop="articleBody"],.view_content article')) {
+          throw Object.assign(new Error("글 본문을 확인할 수 없습니다. 정상 탭에서 해당 글을 열어 주세요."), { code: "READ_UNAVAILABLE" });
+        }
         return doc;
       } catch (error) {
-        if (controller.signal.aborted) throw signal?.aborted ? stopped() : Object.assign(new Error("공개 글 조회 시간이 초과되어 중지했습니다."), { code: "TIMEOUT" });
+        if (controller.signal.aborted) {
+          throw signal?.aborted ? stopped() : Object.assign(new Error("공개 글 조회 시간이 초과되어 중지했습니다."), { code: "TIMEOUT" });
+        }
         throw error;
       } finally {
         clearTimeout(timer);
@@ -2857,10 +4181,14 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
       const iconsByReference = /* @__PURE__ */ new Map(), repeatCounts = /* @__PURE__ */ new Map(), readSources = /* @__PURE__ */ new Map();
       for (const icon of result2.pack.icons) {
         const key = icon.ref?.page + ":" + icon.origin?.articleId;
-        if (!iconsByReference.has(key)) iconsByReference.set(key, []);
+        if (!iconsByReference.has(key)) {
+          iconsByReference.set(key, []);
+        }
         iconsByReference.get(key).push(icon);
       }
-      for (const slave of slaves) repeatCounts.set(slave.articleId, (repeatCounts.get(slave.articleId) || 0) + 1);
+      for (const slave of slaves) {
+        repeatCounts.set(slave.articleId, (repeatCounts.get(slave.articleId) || 0) + 1);
+      }
       const progress = /* @__PURE__ */ __name((phase, message, status = "loading") => onProgress?.({
         status,
         phase,
@@ -2876,19 +4204,25 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
         busy: status === "loading"
       }), "progress");
       const check = /* @__PURE__ */ __name(() => {
-        if (signal?.aborted) throw stopped();
+        if (signal?.aborted) {
+          throw stopped();
+        }
       }, "check");
       for (const slave of slaves) {
         check();
         progress("references", "원본 글 " + slave.articleId + "을 확인하고 있어요.");
-        if (!readSources.has(slave.articleId)) await delay(intervalMs, signal);
+        if (!readSources.has(slave.articleId)) {
+          await delay(intervalMs, signal);
+        }
         try {
           let observed = readSources.get(slave.articleId);
           if (!observed) {
             const doc2 = await readDocument(slave.articleId, { signal });
             check();
             const body = doc2.querySelector('.view_content[itemprop="articleBody"],.view_content article');
-            if (!body) throw new Error("원본 본문 없음");
+            if (!body) {
+              throw new Error("원본 본문 없음");
+            }
             progress("tags", "원본 아이콘과 태그를 읽고 있어요.");
             let articleRead2 = null, attributeError2 = null;
             try {
@@ -2899,20 +4233,38 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
             const urls2 = new Set(articleRead2?.pack.icons.map((icon) => icon.url) || []);
             for (const node of body.querySelectorAll("img,video,video source,a[href]")) {
               const raw = node.getAttribute("src") || node.getAttribute("data-src") || node.getAttribute("href");
-              if (!raw) continue;
+              if (!raw) {
+                continue;
+              }
               try {
                 const absolute = new URL(raw, readPath(slave.articleId, "https://bbs.ruliweb.com", "98")).href;
-                if (safeMedia(absolute)) urls2.add(absolute);
+                if (safeMedia(absolute)) {
+                  urls2.add(absolute);
+                }
               } catch (_) {
               }
             }
-            const byUrl2 = /* @__PURE__ */ new Map(), mediaByUrl2 = new Map((articleRead2?.pack.icons || []).map((icon) => [icon.url, icon]));
+            const byUrl2 = /* @__PURE__ */ new Map(), mediaByUrl2 = new Map((articleRead2?.pack.icons || []).map((icon) => [
+              icon.url,
+              icon
+            ]));
             for (const item of articleRead2?.imageAttributesByUrl || []) {
-              if (!byUrl2.has(item.url)) byUrl2.set(item.url, []);
+              if (!byUrl2.has(item.url)) {
+                byUrl2.set(item.url, []);
+              }
               byUrl2.get(item.url).push(item);
             }
-            observed = { doc: doc2, articleRead: articleRead2, attributeError: attributeError2, urls: urls2, byUrl: byUrl2, mediaByUrl: mediaByUrl2 };
-            if (repeatCounts.get(slave.articleId) > 1) readSources.set(slave.articleId, observed);
+            observed = {
+              doc: doc2,
+              articleRead: articleRead2,
+              attributeError: attributeError2,
+              urls: urls2,
+              byUrl: byUrl2,
+              mediaByUrl: mediaByUrl2
+            };
+            if (repeatCounts.get(slave.articleId) > 1) {
+              readSources.set(slave.articleId, observed);
+            }
           }
           check();
           const { doc, articleRead, attributeError, urls, byUrl, mediaByUrl } = observed;
@@ -2930,27 +4282,42 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
                 continue;
               }
               const attrs = entries[0];
-              if (!attrs) continue;
-              icon.imageMetadata = { id: attrs.metadataId, tags: [...attrs.tags] };
-              icon.keywords = [.../* @__PURE__ */ new Set([...icon.keywords || [], ...attrs.tags])];
+              if (!attrs) {
+                continue;
+              }
+              icon.imageMetadata = {
+                id: attrs.metadataId,
+                tags: [...attrs.tags]
+              };
+              icon.keywords = [
+                .../* @__PURE__ */ new Set([...icon.keywords || [], ...attrs.tags])
+              ];
               const original = mediaByUrl.get(icon.url);
               if (original) {
                 icon.mediaKind = original.mediaKind;
                 icon.format = original.format;
               }
-              if (attrs.tags.length) tagged++;
+              if (attrs.tags.length) {
+                tagged++;
+              }
             }
           } catch (error) {
             metadataReadError = error.code || "ATTRIBUTES_UNAVAILABLE";
           }
           const title = doc.querySelector(".subject_text,.subject,.view_content h1")?.textContent?.trim().slice(0, 120) || "글 " + slave.articleId;
           const source = result2.pack.sources.find((s) => s.articleId === slave.articleId);
-          if (source) source.title = title;
+          if (source) {
+            source.title = title;
+          }
           const missing = [];
-          for (let index = 0; index < slave.images.length; index++) if (!urls.has(slave.images[index])) {
-            if (missing.length === 5) break;
-            const url = new URL(slave.images[index]);
-            missing.push({ index, url: url.origin + url.pathname });
+          for (let index = 0; index < slave.images.length; index++) {
+            if (!urls.has(slave.images[index])) {
+              if (missing.length === 5) {
+                break;
+              }
+              const url = new URL(slave.images[index]);
+              missing.push({ index, url: url.origin + url.pathname });
+            }
           }
           states.push({
             articleId: slave.articleId,
@@ -2967,17 +4334,37 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
             missing
           });
         } catch (error) {
-          if (error.code === "ABORTED" || signal?.aborted) throw stopped();
-          states.push({ articleId: slave.articleId, page: slave.page, status: "unavailable", message: error.message });
+          if (error.code === "ABORTED" || signal?.aborted) {
+            throw stopped();
+          }
+          states.push({
+            articleId: slave.articleId,
+            page: slave.page,
+            status: "unavailable",
+            message: error.message
+          });
           if (error.code === "ACCESS_DENIED" || error.code === "TIMEOUT") {
             progress("references", error.message, "partial");
-            return { states, verifiedCount: verified, processedCount: processed, status: "partial", stoppedByRestriction: true };
+            return {
+              states,
+              verifiedCount: verified,
+              processedCount: processed,
+              status: "partial",
+              stoppedByRestriction: true
+            };
           }
         }
         progress("references", "원본 " + states.length + "/" + slaves.length + "개를 확인했어요.");
       }
       const complete = states.every((x) => x.status === "verified" && x.metadataStatus !== "partial");
-      return { states, verifiedCount: verified, processedCount: processed, referencesProcessed: states.length, referencesTotal: slaves.length, status: complete ? "complete" : "partial" };
+      return {
+        states,
+        verifiedCount: verified,
+        processedCount: processed,
+        referencesProcessed: states.length,
+        referencesTotal: slaves.length,
+        status: complete ? "complete" : "partial"
+      };
     }
     __name(verifyReferences, "verifyReferences");
     function prepareInsertion(icon, context) {
@@ -2995,33 +4382,129 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
       };
     }
     __name(prepareInsertion, "prepareInsertion");
-    return { selectionId, moreInfo, snapshot, normalPack, imageAttributes, findArticleBody, readArticlePack, readPath, getPublicDocument, verifyReferences, prepareInsertion, NativeLoadSession, delay, safeMedia };
+    return {
+      selectionId,
+      moreInfo,
+      snapshot,
+      normalPack,
+      imageAttributes,
+      findArticleBody,
+      readArticlePack,
+      readPath,
+      getPublicDocument,
+      verifyReferences,
+      prepareInsertion,
+      NativeLoadSession,
+      delay,
+      safeMedia
+    };
   }
   __name(createSiteAdapter, "createSiteAdapter");
 
   // docs/source/runtime/icons.mjs
-  function createBundleUiRuntime({ environment = globalThis, initialIcons = {}, initialBundle = {} } = {}) {
+  function createBundleUiRuntime({ environment = defaultEnvironment, initialIcons = {}, initialBundle = {} } = {}) {
     const icons = { ...initialIcons }, bundle = { ...initialBundle };
     let part;
-    if (!icons.Metadata?.supportsUnboundV1) Object.assign(icons, createMetadata({ environment }));
-    if (!icons.SearchIndex) Object.assign(icons, core_exports);
-    if (!icons.AttributeTags) icons.AttributeTags = Object.freeze({ PREFIX, FIXED, normalize: normalize2, decode, encode });
-    if (!icons.SiteAdapter) icons.SiteAdapter = createSiteAdapter({ environment, metadata: icons.Metadata });
+    if (!icons.Metadata?.supportsUnboundV1) {
+      Object.assign(icons, createMetadata({ environment }));
+    }
+    if (!icons.SearchIndex) {
+      Object.assign(icons, core_exports);
+    }
+    if (!icons.AttributeTags) {
+      icons.AttributeTags = Object.freeze({
+        PREFIX,
+        FIXED,
+        normalize: normalize2,
+        decode,
+        encode
+      });
+    }
+    if (!icons.SiteAdapter) {
+      icons.SiteAdapter = createSiteAdapter({
+        environment,
+        metadata: icons.Metadata
+      });
+    }
     if (!icons.DesignSystem) {
-      part = createIconsDesignSystem({ environment, dependencies: { icons: { "DesignSystem": /* @__PURE__ */ __name(() => icons["DesignSystem"], "DesignSystem") } } });
+      part = createIconsDesignSystem({
+        environment,
+        dependencies: { icons: { DesignSystem: /* @__PURE__ */ __name(() => icons["DesignSystem"], "DesignSystem") } }
+      });
       Object.assign(icons, part.icons);
     }
-    part = createBundleCore({ environment, dependencies: { bundle: {}, icons: { "Metadata": /* @__PURE__ */ __name(() => icons["Metadata"], "Metadata"), "SiteAdapter": /* @__PURE__ */ __name(() => icons["SiteAdapter"], "SiteAdapter") } } });
+    part = createBundleCore({
+      environment,
+      dependencies: {
+        bundle: {},
+        icons: {
+          Metadata: /* @__PURE__ */ __name(() => icons["Metadata"], "Metadata"),
+          SiteAdapter: /* @__PURE__ */ __name(() => icons["SiteAdapter"], "SiteAdapter")
+        }
+      }
+    });
     Object.assign(bundle, part.bundle);
-    part = createBundleClient({ environment, dependencies: { bundle: { "fail": /* @__PURE__ */ __name(() => bundle["fail"], "fail"), "Draft": /* @__PURE__ */ __name(() => bundle["Draft"], "Draft") } } });
+    part = createBundleClient({
+      environment,
+      dependencies: {
+        bundle: { fail: /* @__PURE__ */ __name(() => bundle["fail"], "fail"), Draft: /* @__PURE__ */ __name(() => bundle["Draft"], "Draft") }
+      }
+    });
     Object.assign(bundle, part.bundle);
-    part = createBundleSearch({ environment, dependencies: { bundle: { "fail": /* @__PURE__ */ __name(() => bundle["fail"], "fail"), "articleUrl": /* @__PURE__ */ __name(() => bundle["articleUrl"], "articleUrl"), "clone": /* @__PURE__ */ __name(() => bundle["clone"], "clone") }, icons: { "Metadata": /* @__PURE__ */ __name(() => icons["Metadata"], "Metadata") } } });
+    part = createBundleSearch({
+      environment,
+      dependencies: {
+        bundle: {
+          fail: /* @__PURE__ */ __name(() => bundle["fail"], "fail"),
+          articleUrl: /* @__PURE__ */ __name(() => bundle["articleUrl"], "articleUrl"),
+          clone: /* @__PURE__ */ __name(() => bundle["clone"], "clone")
+        },
+        icons: { Metadata: /* @__PURE__ */ __name(() => icons["Metadata"], "Metadata") }
+      }
+    });
     Object.assign(bundle, part.bundle);
-    part = createBundleSearchUi({ environment, dependencies: { bundle: { "BoardSearch": /* @__PURE__ */ __name(() => bundle["BoardSearch"], "BoardSearch"), "SearchSelection": /* @__PURE__ */ __name(() => bundle["SearchSelection"], "SearchSelection"), "fail": /* @__PURE__ */ __name(() => bundle["fail"], "fail") } } });
+    part = createBundleSearchUi({
+      environment,
+      dependencies: {
+        bundle: {
+          BoardSearch: /* @__PURE__ */ __name(() => bundle["BoardSearch"], "BoardSearch"),
+          SearchSelection: /* @__PURE__ */ __name(() => bundle["SearchSelection"], "SearchSelection"),
+          fail: /* @__PURE__ */ __name(() => bundle["fail"], "fail")
+        }
+      }
+    });
     Object.assign(bundle, part.bundle);
-    part = createBundleUi({ environment, dependencies: { bundle: { "Browser": /* @__PURE__ */ __name(() => bundle["Browser"], "Browser"), "SourceReader": /* @__PURE__ */ __name(() => bundle["SourceReader"], "SourceReader"), "Draft": /* @__PURE__ */ __name(() => bundle["Draft"], "Draft"), "SearchPanel": /* @__PURE__ */ __name(() => bundle["SearchPanel"], "SearchPanel"), "articleUrl": /* @__PURE__ */ __name(() => bundle["articleUrl"], "articleUrl"), "fail": /* @__PURE__ */ __name(() => bundle["fail"], "fail"), "encode": /* @__PURE__ */ __name(() => bundle["encode"], "encode"), "clone": /* @__PURE__ */ __name(() => bundle["clone"], "clone") }, icons: { "DesignSystem": /* @__PURE__ */ __name(() => icons["DesignSystem"], "DesignSystem"), "Metadata": /* @__PURE__ */ __name(() => icons["Metadata"], "Metadata") } } });
+    part = createBundleUi({
+      environment,
+      dependencies: {
+        bundle: {
+          Browser: /* @__PURE__ */ __name(() => bundle["Browser"], "Browser"),
+          SourceReader: /* @__PURE__ */ __name(() => bundle["SourceReader"], "SourceReader"),
+          Draft: /* @__PURE__ */ __name(() => bundle["Draft"], "Draft"),
+          SearchPanel: /* @__PURE__ */ __name(() => bundle["SearchPanel"], "SearchPanel"),
+          articleUrl: /* @__PURE__ */ __name(() => bundle["articleUrl"], "articleUrl"),
+          fail: /* @__PURE__ */ __name(() => bundle["fail"], "fail"),
+          encode: /* @__PURE__ */ __name(() => bundle["encode"], "encode"),
+          clone: /* @__PURE__ */ __name(() => bundle["clone"], "clone")
+        },
+        icons: {
+          DesignSystem: /* @__PURE__ */ __name(() => icons["DesignSystem"], "DesignSystem"),
+          Metadata: /* @__PURE__ */ __name(() => icons["Metadata"], "Metadata")
+        }
+      }
+    });
     Object.assign(bundle, part.bundle);
-    part = createBundleController({ environment, dependencies: { bundle: { "Browser": /* @__PURE__ */ __name(() => bundle["Browser"], "Browser"), "Client": /* @__PURE__ */ __name(() => bundle["Client"], "Client"), "Panel": /* @__PURE__ */ __name(() => bundle["Panel"], "Panel") }, icons: { "DesignSystem": /* @__PURE__ */ __name(() => icons["DesignSystem"], "DesignSystem") } } });
+    part = createBundleController({
+      environment,
+      dependencies: {
+        bundle: {
+          Browser: /* @__PURE__ */ __name(() => bundle["Browser"], "Browser"),
+          Client: /* @__PURE__ */ __name(() => bundle["Client"], "Client"),
+          Panel: /* @__PURE__ */ __name(() => bundle["Panel"], "Panel")
+        },
+        icons: { DesignSystem: /* @__PURE__ */ __name(() => icons["DesignSystem"], "DesignSystem") }
+      }
+    });
     Object.assign(bundle, part.bundle);
     return { icons, bundle };
   }

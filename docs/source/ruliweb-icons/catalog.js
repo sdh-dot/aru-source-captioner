@@ -3,12 +3,21 @@
   var __defProp = Object.defineProperty;
   var __name = (target, value) => __defProp(target, "name", { value, configurable: true });
 
+  // docs/source/runtime/contracts.mjs
+  var defaultEnvironment = globalThis;
+
   // docs/source/runtime/module-scope.mjs
   function createModuleScope(resolvers = {}, names = [], own = []) {
     const scope = {};
     for (const name of names) {
-      if (own.includes(name)) scope[name] = resolvers[name]?.();
-      else Object.defineProperty(scope, name, { enumerable: true, get: /* @__PURE__ */ __name(() => resolvers[name]?.(), "get") });
+      if (own.includes(name)) {
+        scope[name] = resolvers[name]?.();
+      } else {
+        Object.defineProperty(scope, name, {
+          enumerable: true,
+          get: /* @__PURE__ */ __name(() => resolvers[name]?.(), "get")
+        });
+      }
     }
     return scope;
   }
@@ -19,14 +28,23 @@
   __name(selectModuleExports, "selectModuleExports");
 
   // docs/source/ruliweb-icons/catalog.mjs
-  function createIconsCatalog({ environment = globalThis, dependencies = {} } = {}) {
+  function createIconsCatalog({ environment = defaultEnvironment, dependencies = {} } = {}) {
     const { AbortController, URL, performance } = environment;
     const setTimeout = typeof environment.setTimeout === "function" ? (...args) => environment.setTimeout(...args) : void 0;
     const clearTimeout = typeof environment.clearTimeout === "function" ? (...args) => environment.clearTimeout(...args) : void 0;
     const requestAnimationFrame = typeof environment.requestAnimationFrame === "function" ? (...args) => environment.requestAnimationFrame(...args) : void 0;
     const cancelAnimationFrame = typeof environment.cancelAnimationFrame === "function" ? (...args) => environment.cancelAnimationFrame(...args) : void 0;
-    let icons2 = createModuleScope(dependencies.icons, ["packRegistry", "SiteAdapter", "SearchIndex", "DesignSystem", "Catalog", "CatalogView", "MediaBudget", "CatalogSources"], ["Catalog", "CatalogView", "MediaBudget", "CatalogSources"]);
-    const initializeIconsCatalog = /* @__PURE__ */ __name(function(global) {
+    let icons2 = createModuleScope(dependencies.icons, [
+      "packRegistry",
+      "SiteAdapter",
+      "SearchIndex",
+      "DesignSystem",
+      "Catalog",
+      "CatalogView",
+      "MediaBudget",
+      "CatalogSources"
+    ], ["Catalog", "CatalogView", "MediaBudget", "CatalogSources"]);
+    const initializeIconsCatalog = /* @__PURE__ */ __name(function(_global) {
       "use strict";
       const A = icons2 = icons2 || {}, MAX_ROWS = 16, ROW_HEIGHT = 76, MAX_INDEXED = 6;
       const error = /* @__PURE__ */ __name((code, message) => Object.assign(new Error(message), { code }), "error");
@@ -41,37 +59,51 @@
             throw error("ARTICLE_URL_INVALID", "공개 게시글 URL 또는 게시판 번호와 글 번호를 입력해 주세요.");
           }
           const match = url.pathname.match(/^\/community\/board\/([1-9]\d*)\/read\/([1-9]\d*)\/?$/);
-          if (url.protocol !== "https:" || !["bbs.ruliweb.com", "m.ruliweb.com"].includes(url.hostname) || url.port || url.username || url.password || url.hash || !match)
+          if (url.protocol !== "https:" || !["bbs.ruliweb.com", "m.ruliweb.com"].includes(url.hostname) || url.port || url.username || url.password || url.hash || !match) {
             throw error("ARTICLE_PATH_NOT_ALLOWED", "현재 권한의 루리웹 community/board 공개 읽기 URL만 지원합니다. 다른 게시판 경로의 권한은 확대하지 않습니다.");
+          }
           boardId = match[1];
           articleId = match[2];
           origin = url.origin;
         }
-        if (!/^[1-9]\d{0,11}$/.test(String(boardId)) || !Number.isSafeInteger(Number(articleId)) || Number(articleId) < 1 || String(articleId).length > 12)
+        if (!/^[1-9]\d{0,11}$/.test(String(boardId)) || !Number.isSafeInteger(Number(articleId)) || Number(articleId) < 1 || String(articleId).length > 12) {
           throw error("ARTICLE_ID_INVALID", "게시판 번호와 글 번호가 올바르지 않습니다.");
+        }
         boardId = String(boardId);
         articleId = Number(articleId);
-        return { boardId, articleId, url: origin + "/community/board/" + boardId + "/read/" + articleId };
+        return {
+          boardId,
+          articleId,
+          url: origin + "/community/board/" + boardId + "/read/" + articleId
+        };
       }
       __name(parseRef, "parseRef");
       const refKey = /* @__PURE__ */ __name((ref) => String(ref.boardId) + ":" + ref.articleId, "refKey");
       function developerPacks(registry = A.packRegistry) {
-        if (registry?.registryVersion !== 1 || !Array.isArray(registry.packs)) return [];
+        if (registry?.registryVersion !== 1 || !Array.isArray(registry.packs)) {
+          return [];
+        }
         const seen = /* @__PURE__ */ new Set(), list = [];
-        for (const item of registry.packs.slice(0, 100)) try {
-          if (item.enabled !== true) continue;
-          const ref = parseRef(item.url);
-          if (String(item.boardId) !== ref.boardId || Number(item.articleId) !== ref.articleId || seen.has(refKey(ref))) continue;
-          seen.add(refKey(ref));
-          list.push({
-            ...ref,
-            key: "developer:" + refKey(ref),
-            source: "developer",
-            title: String(item.name || "글 " + ref.articleId).slice(0, 160),
-            thumbnail: A.SiteAdapter.safeMedia(item.thumbnail) ? item.thumbnail : null,
-            expectedKind: ["NORMAL", "BUNDLE"].includes(item.expectedKind) ? item.expectedKind : null
-          });
-        } catch (_) {
+        for (const item of registry.packs.slice(0, 100)) {
+          try {
+            if (item.enabled !== true) {
+              continue;
+            }
+            const ref = parseRef(item.url);
+            if (String(item.boardId) !== ref.boardId || Number(item.articleId) !== ref.articleId || seen.has(refKey(ref))) {
+              continue;
+            }
+            seen.add(refKey(ref));
+            list.push({
+              ...ref,
+              key: "developer:" + refKey(ref),
+              source: "developer",
+              title: String(item.name || "글 " + ref.articleId).slice(0, 160),
+              thumbnail: A.SiteAdapter.safeMedia(item.thumbnail) ? item.thumbnail : null,
+              expectedKind: ["NORMAL", "BUNDLE"].includes(item.expectedKind) ? item.expectedKind : null
+            });
+          } catch (_) {
+          }
         }
         return list;
       }
@@ -79,11 +111,17 @@
       function favorites(panel) {
         const seen = /* @__PURE__ */ new Set(), list = [];
         for (const node of panel?.querySelectorAll(".icon_data_show_target[onclick]") || []) {
-          if (![...node.parentElement?.querySelectorAll("[onclick]") || []].some((n) => /^\s*(?:window\.)?app\.comment_icon_pick_remove\(/.test(n.getAttribute("onclick") || ""))) continue;
+          if (![...node.parentElement?.querySelectorAll("[onclick]") || []].some((n) => /^\s*(?:window\.)?app\.comment_icon_pick_remove\(/.test(n.getAttribute("onclick") || ""))) {
+            continue;
+          }
           const articleId = A.SiteAdapter.selectionId(node);
-          if (!articleId || seen.has(articleId)) continue;
+          if (!articleId || seen.has(articleId)) {
+            continue;
+          }
           seen.add(articleId);
-          if (list.length >= 100) break;
+          if (list.length >= 100) {
+            break;
+          }
           const ref = parseRef(String(articleId)), raw = node.querySelector("img")?.getAttribute("src");
           list.push({
             ...ref,
@@ -112,17 +150,23 @@
           const seen = /* @__PURE__ */ new Set();
           this.entries = entries.filter((e) => {
             const key = refKey(e);
-            if (seen.has(key)) return false;
+            if (seen.has(key)) {
+              return false;
+            }
             seen.add(key);
             return true;
           }).slice(0, 200);
         }
         remember(ref, pack) {
           const key = refKey(ref), old = this.indexed.get(key);
-          if (old?.pack === pack) return;
+          if (old?.pack === pack) {
+            return;
+          }
           this.indexed.delete(key);
           this.indexed.set(key, { pack, index: new A.SearchIndex(pack) });
-          while (this.indexed.size > MAX_INDEXED) this.indexed.delete(this.indexed.keys().next().value);
+          while (this.indexed.size > MAX_INDEXED) {
+            this.indexed.delete(this.indexed.keys().next().value);
+          }
         }
         search(query = this.query, scope = this.scope) {
           this.query = query;
@@ -132,13 +176,34 @@
           let indexed = 0;
           for (const entry of scoped) {
             const record = this.indexed.get(refKey(entry));
-            if (record) indexed++;
-            const fields = [entry.title, entry.boardId, String(entry.articleId), record?.pack.name, record?.pack.title].filter(Boolean).map((s) => s.normalize("NFKC").toLocaleLowerCase());
+            if (record) {
+              indexed++;
+            }
+            const fields = [
+              entry.title,
+              entry.boardId,
+              String(entry.articleId),
+              record?.pack.name,
+              record?.pack.title
+            ].filter(Boolean).map((s) => s.toString().normalize("NFKC").toLocaleLowerCase());
             const remaining = terms.filter((t) => !fields.some((f) => f.includes(t)));
             const matches = record && remaining.length ? record.index.search({ query: remaining.join(" ") }).uniqueCount : record?.pack.icons.length;
-            if (!remaining.length || matches > 0) rows.push({ ...entry, iconCount: record?.pack.icons.length ?? entry.knownIconCount, matches: terms.length ? matches : null, indexed: !!record });
+            if (!remaining.length || matches > 0) {
+              rows.push({
+                ...entry,
+                iconCount: record?.pack.icons.length ?? entry.knownIconCount,
+                matches: terms.length ? matches : null,
+                indexed: !!record
+              });
+            }
           }
-          return { rows, indexed, total: scoped.length, partial: indexed < scoped.length, unindexed: scoped.length - indexed };
+          return {
+            rows,
+            indexed,
+            total: scoped.length,
+            partial: indexed < scoped.length,
+            unindexed: scoped.length - indexed
+          };
         }
         destroy() {
           this.entries = [];
@@ -160,20 +225,35 @@
           this.peak = 0;
         }
         add(node, url, onTimeout, canStart = () => true, completion = null) {
-          if (this.closed) return;
-          const job = { node, url, onTimeout, canStart, completion, finish: null };
+          if (this.closed) {
+            return;
+          }
+          const job = {
+            node,
+            url,
+            onTimeout,
+            canStart,
+            completion,
+            finish: null
+          };
           this.jobs.add(job);
           this.queue.push(job);
-          if (!this.frame) this.frame = requestAnimationFrame(() => {
-            this.frame = 0;
-            this.pump();
-          });
+          if (!this.frame) {
+            this.frame = requestAnimationFrame(() => {
+              this.frame = 0;
+              this.pump();
+            });
+          }
         }
         pump() {
-          if (this.closed) return;
+          if (this.closed) {
+            return;
+          }
           while (this.running.size < this.limit && this.queue.length) {
             const next = this.queue.findIndex((j) => !j.node.isConnected || j.canStart());
-            if (next < 0) break;
+            if (next < 0) {
+              break;
+            }
             const job = this.queue.splice(next, 1)[0];
             if (!job.node.isConnected) {
               this.jobs.delete(job);
@@ -184,22 +264,32 @@
             this.started++;
             const doneEvents = job.completion ? [...job.completion.events, "error"] : job.node.tagName === "VIDEO" ? ["loadedmetadata", "error"] : ["load", "error"];
             const completed = /* @__PURE__ */ __name((event) => {
-              if (event.type === "error" || !job.completion || job.completion.isReady()) finish();
+              if (event.type === "error" || !job.completion || job.completion.isReady()) {
+                finish();
+              }
             }, "completed");
             let timer;
             const finish = /* @__PURE__ */ __name(() => {
-              if (!this.running.delete(job)) return;
+              if (!this.running.delete(job)) {
+                return;
+              }
               clearTimeout(timer);
-              for (const type of doneEvents) job.node.removeEventListener(type, completed);
+              for (const type of doneEvents) {
+                job.node.removeEventListener(type, completed);
+              }
               this.jobs.delete(job);
               this.pump();
             }, "finish");
             job.finish = finish;
-            for (const type of doneEvents) job.node.addEventListener(type, completed);
+            for (const type of doneEvents) {
+              job.node.addEventListener(type, completed);
+            }
             timer = setTimeout(() => {
               job.node.removeAttribute("src");
               try {
-                if (job.node.isConnected && !this.closed) job.onTimeout?.();
+                if (job.node.isConnected && !this.closed) {
+                  job.onTimeout?.();
+                }
               } finally {
                 finish();
               }
@@ -209,15 +299,19 @@
         }
         prune() {
           this.queue = this.queue.filter((j) => j.node.isConnected);
-          for (const j of [...this.jobs]) if (!j.node.isConnected) {
-            j.node.removeAttribute("src");
-            this.jobs.delete(j);
-            j.finish?.();
+          for (const j of [...this.jobs]) {
+            if (!j.node.isConnected) {
+              j.node.removeAttribute("src");
+              this.jobs.delete(j);
+              j.finish?.();
+            }
           }
           this.pump();
         }
         reset() {
-          if (this.frame) cancelAnimationFrame(this.frame);
+          if (this.frame) {
+            cancelAnimationFrame(this.frame);
+          }
           this.frame = 0;
           this.queue = [];
           for (const j of [...this.jobs]) {
@@ -232,7 +326,13 @@
           this.reset();
         }
         snapshot() {
-          return { active: this.running.size, queued: this.queue.length, peak: this.peak, started: this.started, limit: this.limit };
+          return {
+            active: this.running.size,
+            queued: this.queue.length,
+            peak: this.peak,
+            started: this.started,
+            limit: this.limit
+          };
         }
       }
       class CatalogView {
@@ -252,7 +352,9 @@
           this.failures = /* @__PURE__ */ new Map();
           const doc = container.ownerDocument, el = /* @__PURE__ */ __name((tag, text) => {
             const n = doc.createElement(tag);
-            if (text) n.textContent = text;
+            if (text) {
+              n.textContent = text;
+            }
             return n;
           }, "el");
           this.el = el;
@@ -273,7 +375,12 @@
           controls.className = "catalog-controls";
           this.scope = el("select");
           this.scope.setAttribute("aria-label", "팩 검색 범위");
-          for (const [value, label] of [["all", "전체"], ["developer", "기본 제공 팩"], ["favorite", "즐겨찾기"], ["direct", "직접 등록"]]) {
+          for (const [value, label] of [
+            ["all", "전체"],
+            ["developer", "기본 제공 팩"],
+            ["favorite", "즐겨찾기"],
+            ["direct", "직접 등록"]
+          ]) {
             const o = el("option", label);
             o.value = value;
             this.scope.append(o);
@@ -300,7 +407,9 @@
           this.loadingArt.setAttribute("aria-hidden", "true");
           this.loadingArt.hidden = true;
           const artURL = A.DesignSystem?.assetURL?.("assets/icons/aru-main-64.png");
-          if (artURL) this.loadingArt.src = artURL;
+          if (artURL) {
+            this.loadingArt.src = artURL;
+          }
           this.loadingArt.addEventListener("error", () => {
             this.artFailed = true;
             this.loadingArt.hidden = true;
@@ -342,22 +451,28 @@
           listen(this.input, "input", () => this.render());
           listen(this.scope, "change", () => this.render());
           listen(this.viewport, "scroll", () => {
-            if (!this.frame) this.frame = requestAnimationFrame(() => {
-              this.frame = 0;
-              this.renderRows();
-            });
+            if (!this.frame) {
+              this.frame = requestAnimationFrame(() => {
+                this.frame = 0;
+                this.renderRows();
+              });
+            }
           });
           listen(direct, "submit", (e) => {
             e.preventDefault();
             this.run(() => this.onDirect?.(this.url.value, this.board.value));
           });
           listen(this.retry, "click", () => {
-            if (this.lastRequest) this.run(this.lastRequest, this.lastRef);
+            if (this.lastRequest) {
+              this.run(this.lastRequest, this.lastRef);
+            }
           });
           this.render();
         }
         async run(request, ref = null) {
-          if (this.busy || this.closed) return;
+          if (this.busy || this.closed) {
+            return;
+          }
           const token = ++this.operation;
           this.lastRequest = request;
           this.lastRef = ref;
@@ -372,19 +487,31 @@
           this.loadStatus.focus({ preventScroll: true });
           try {
             const result2 = await request();
-            if (this.closed || token !== this.operation) return;
-            if (result2?.cancelled) return;
-            if (result2?.ok !== true) throw Object.assign(new Error(result2?.error?.message || "아이콘팩을 불러오지 못했습니다."), { code: result2?.error?.code || "READ_FAILED" });
-            if (ref) this.failures.delete(refKey(ref));
+            if (this.closed || token !== this.operation) {
+              return;
+            }
+            if (result2?.cancelled) {
+              return;
+            }
+            if (result2?.ok !== true) {
+              throw Object.assign(new Error(result2?.error?.message || "아이콘팩을 불러오지 못했습니다."), { code: result2?.error?.code || "READ_FAILED" });
+            }
+            if (ref) {
+              this.failures.delete(refKey(ref));
+            }
             this.loadStatus.textContent = "아이콘팩을 불러왔어요.";
           } catch (err) {
-            if (this.closed || token !== this.operation) return;
+            if (this.closed || token !== this.operation) {
+              return;
+            }
             const code = err.code || "READ_FAILED";
             this.errorCode = code;
             this.loadStatus.textContent = (code === "ACCESS_DENIED" ? "접근할 수 없는 게시글이에요. " : code === "ARTICLE_URL_INVALID" || code === "ARTICLE_PATH_NOT_ALLOWED" ? "게시글 주소를 확인해 주세요. " : "팩을 불러오지 못했어요. ") + err.message + " 다른 팩을 선택하거나 다시 시도해 주세요.";
             this.retry.hidden = false;
             this.retry.focus({ preventScroll: true });
-            if (ref) this.failures.set(refKey(ref), code);
+            if (ref) {
+              this.failures.set(refKey(ref), code);
+            }
           } finally {
             if (!this.closed && token === this.operation) {
               this.busy = false;
@@ -397,7 +524,9 @@
           }
         }
         setProgress(info = {}) {
-          if (this.closed) return;
+          if (this.closed) {
+            return;
+          }
           const busy = info.busy === void 0 ? info.status === "loading" : !!info.busy;
           this.progress.hidden = !busy;
           this.loadingArt.hidden = !busy || !this.artAvailable || this.artFailed;
@@ -425,14 +554,19 @@
           this.renderRows();
         }
         setEntries(entries, message = "", packs = null) {
-          this.catalog.setEntries(entries.map((ref) => ({ ...ref, knownIconCount: packs?.get(refKey(ref))?.pack?.icons.length ?? ref.knownIconCount })));
+          this.catalog.setEntries(entries.map((ref) => ({
+            ...ref,
+            knownIconCount: packs?.get(refKey(ref))?.pack?.icons?.length ?? ref.knownIconCount
+          })));
           const cached = this.catalog.entries.filter((ref) => packs?.has(refKey(ref))), indexed = cached.slice(-MAX_INDEXED);
           const active = cached.find((ref) => refKey(ref) === this.catalog.active);
           if (active && !indexed.includes(active)) {
             indexed.shift();
             indexed.push(active);
           }
-          for (const ref of indexed) this.catalog.remember(ref, packs.get(refKey(ref)).pack);
+          for (const ref of indexed) {
+            this.catalog.remember(ref, packs.get(refKey(ref)).pack);
+          }
           this.nativeStatus.textContent = message;
           this.render();
         }
@@ -445,7 +579,9 @@
           this.render();
         }
         render() {
-          if (this.closed) return;
+          if (this.closed) {
+            return;
+          }
           const started = performance.now();
           this.result = this.catalog.search(this.input.value, this.scope.value);
           this.notice.textContent = "팩 " + this.result.rows.length + "/" + this.result.total + "개 · " + (this.result.partial ? "선택한 팩만 불러옵니다." : "아이콘 수를 확인했습니다.");
@@ -453,7 +589,9 @@
           this.lastSearchMs = performance.now() - started;
         }
         renderRows() {
-          if (this.closed) return;
+          if (this.closed) {
+            return;
+          }
           this.media.reset();
           this.content.replaceChildren();
           const rows = this.result?.rows || [];
@@ -479,7 +617,9 @@
               thumbnail.alt = "";
               thumbnail.loading = "lazy";
               thumbnail.decoding = "async";
-              if (animated) thumbnail.dataset.animatedCatalogThumb = "true";
+              if (animated) {
+                thumbnail.dataset.animatedCatalogThumb = "true";
+              }
               thumbnail.addEventListener("error", () => {
                 const placeholder = this.el("span", "팩");
                 placeholder.className = "catalog-thumbnail";
@@ -495,11 +635,17 @@
             row.addEventListener("click", () => this.run(() => this.onChoose?.(entry), entry));
             row.addEventListener("keydown", (e) => {
               let next;
-              if (e.key === "ArrowDown") next = Math.min(rows.length - 1, i + 1);
-              else if (e.key === "ArrowUp") next = Math.max(0, i - 1);
-              else if (e.key === "Home") next = 0;
-              else if (e.key === "End") next = rows.length - 1;
-              else return;
+              if (e.key === "ArrowDown") {
+                next = Math.min(rows.length - 1, i + 1);
+              } else if (e.key === "ArrowUp") {
+                next = Math.max(0, i - 1);
+              } else if (e.key === "Home") {
+                next = 0;
+              } else if (e.key === "End") {
+                next = rows.length - 1;
+              } else {
+                return;
+              }
               e.preventDefault();
               this.viewport.scrollTop = next * ROW_HEIGHT;
               this.renderRows();
@@ -509,13 +655,26 @@
           }
         }
         snapshot() {
-          return { entries: this.catalog.entries.length, rows: this.content.children.length, indexed: this.catalog.indexed.size, active: this.catalog.active, partial: this.result.partial, busy: this.busy, pending: this.pending, errorCode: this.errorCode || null, lastSearchMs: this.lastSearchMs || 0, media: this.media.snapshot() };
+          return {
+            entries: this.catalog.entries.length,
+            rows: this.content.children.length,
+            indexed: this.catalog.indexed.size,
+            active: this.catalog.active,
+            partial: this.result.partial,
+            busy: this.busy,
+            pending: this.pending,
+            errorCode: this.errorCode || null,
+            lastSearchMs: this.lastSearchMs || 0,
+            media: this.media.snapshot()
+          };
         }
         destroy() {
           this.closed = true;
           this.operation++;
           this.events.abort();
-          if (this.frame) cancelAnimationFrame(this.frame);
+          if (this.frame) {
+            cancelAnimationFrame(this.frame);
+          }
           this.frame = 0;
           this.media.destroy();
           this.catalog.destroy();
@@ -525,10 +684,22 @@
       A.Catalog = Catalog;
       A.CatalogView = CatalogView;
       A.MediaBudget = MediaBudget;
-      A.CatalogSources = Object.freeze({ parseRef, refKey, developerPacks, favorites });
+      A.CatalogSources = Object.freeze({
+        parseRef,
+        refKey,
+        developerPacks,
+        favorites
+      });
     }, "initializeIconsCatalog");
     initializeIconsCatalog(environment);
-    return { "icons": selectModuleExports(icons2, ["Catalog", "CatalogView", "MediaBudget", "CatalogSources"]) };
+    return {
+      icons: selectModuleExports(icons2, [
+        "Catalog",
+        "CatalogView",
+        "MediaBudget",
+        "CatalogSources"
+      ])
+    };
   }
   __name(createIconsCatalog, "createIconsCatalog");
 

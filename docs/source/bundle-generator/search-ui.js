@@ -3,12 +3,21 @@
   var __defProp = Object.defineProperty;
   var __name = (target, value) => __defProp(target, "name", { value, configurable: true });
 
+  // docs/source/runtime/contracts.mjs
+  var defaultEnvironment = globalThis;
+
   // docs/source/runtime/module-scope.mjs
   function createModuleScope(resolvers = {}, names = [], own = []) {
     const scope = {};
     for (const name of names) {
-      if (own.includes(name)) scope[name] = resolvers[name]?.();
-      else Object.defineProperty(scope, name, { enumerable: true, get: /* @__PURE__ */ __name(() => resolvers[name]?.(), "get") });
+      if (own.includes(name)) {
+        scope[name] = resolvers[name]?.();
+      } else {
+        Object.defineProperty(scope, name, {
+          enumerable: true,
+          get: /* @__PURE__ */ __name(() => resolvers[name]?.(), "get")
+        });
+      }
     }
     return scope;
   }
@@ -19,8 +28,7 @@
   __name(selectModuleExports, "selectModuleExports");
 
   // docs/source/bundle-generator/search-ui.mjs
-  function createBundleSearchUi({ environment = globalThis, dependencies = {} } = {}) {
-    const setTimeout = typeof environment.setTimeout === "function" ? (...args) => environment.setTimeout(...args) : void 0;
+  function createBundleSearchUi({ environment = defaultEnvironment, dependencies = {} } = {}) {
     let bundle2 = createModuleScope(dependencies.bundle, ["BoardSearch", "SearchSelection", "fail"], ["SearchPanel"]);
     const initializeBundleSearchUi = /* @__PURE__ */ __name(function(g) {
       "use strict";
@@ -30,7 +38,14 @@
           __name(this, "SearchPanel");
         }
         constructor(panel, searcher = new B.BoardSearch()) {
-          Object.assign(this, { panel, searcher, selection: new B.SearchSelection(), busy: false, result: null, batchStop: false });
+          Object.assign(this, {
+            panel,
+            searcher,
+            selection: new B.SearchSelection(),
+            busy: false,
+            result: null,
+            batchStop: false
+          });
           const d = panel.doc;
           this.node = d.createElement("section");
           this.node.className = "article-search";
@@ -64,31 +79,51 @@
           this.controls();
         }
         message(text, error = false) {
-          if (this.panel.closed) return;
+          if (this.panel.closed) {
+            return;
+          }
           this.q(".search-status").textContent = text;
           this.q(".search-status").classList.toggle("error", error);
         }
         controls() {
-          if (this.panel.closed) return;
+          if (this.panel.closed) {
+            return;
+          }
           const blocked = !this.panel.ready || this.busy || this.panel.busy;
-          for (const s of [".query", ".search-run", ".select-all", ".select-clear", ".batch-add", ".search-prev", ".search-next"]) this.q(s).disabled = blocked;
+          for (const s of [
+            ".query",
+            ".search-run",
+            ".select-all",
+            ".select-clear",
+            ".batch-add",
+            ".search-prev",
+            ".search-next"
+          ]) {
+            this.q(s).disabled = blocked;
+          }
           this.q(".search-cancel").disabled = !this.busy;
           this.q(".select-all").disabled = blocked || !this.selection.items.length;
           this.q(".select-clear").disabled = blocked || !this.selection.selected.size;
           this.q(".batch-add").disabled = blocked || !this.selection.selected.size;
           this.q(".search-prev").disabled = blocked || !this.result?.hasPrevious;
           this.q(".search-next").disabled = blocked || !this.result?.hasNext;
-          for (const n of this.node.querySelectorAll(".search-row input")) n.disabled = blocked;
+          for (const n of this.node.querySelectorAll(".search-row input")) {
+            n.disabled = blocked;
+          }
         }
         async search(page = 1, paging = false) {
-          if (this.busy || this.panel.busy || !this.panel.ready) return;
+          if (this.busy || this.panel.busy || !this.panel.ready) {
+            return;
+          }
           this.busy = true;
           this.message("게시판 제목 검색 중…");
           this.controls();
           try {
             const query = paging ? this.result.query : this.q(".query").value;
             const result2 = await this.searcher.search(query, page);
-            if (this.panel.closed) return;
+            if (this.panel.closed) {
+              return;
+            }
             this.result = result2;
             this.selection.set(result2);
             this.render();
@@ -101,7 +136,9 @@
           }
         }
         render() {
-          if (this.panel.closed) return;
+          if (this.panel.closed) {
+            return;
+          }
           const p = this.panel, d = p.doc, list = this.q(".search-results");
           list.replaceChildren();
           for (const [i, item] of this.selection.items.entries()) {
@@ -129,8 +166,9 @@
               thumbnail.replaceChildren(img);
               img.onerror = () => {
                 const next = item.thumbnails?.[++attempt];
-                if (next) img.src = next;
-                else {
+                if (next) {
+                  img.src = next;
+                } else {
                   thumbnail.textContent = "팩";
                   thumbnail.title = "대표 썸네일 로딩 실패";
                 }
@@ -142,14 +180,28 @@
             body.append(title, info);
             row.append(check, thumbnail, body);
             row.onclick = (e) => {
-              if (this.busy || p.busy) return;
-              this.selection.click(i, { shiftKey: e.shiftKey, ctrlKey: e.ctrlKey, metaKey: e.metaKey, checkbox: e.target === check });
+              if (this.busy || p.busy) {
+                return;
+              }
+              this.selection.click(i, {
+                shiftKey: e.shiftKey,
+                ctrlKey: e.ctrlKey,
+                metaKey: e.metaKey,
+                checkbox: e.target === check
+              });
               this.paintSelection();
             };
             row.onkeydown = (e) => {
-              if (e.target !== row || ![" ", "Enter"].includes(e.key) || this.busy || p.busy) return;
+              if (e.target !== row || ![" ", "Enter"].includes(e.key) || this.busy || p.busy) {
+                return;
+              }
               e.preventDefault();
-              this.selection.click(i, { shiftKey: e.shiftKey, ctrlKey: e.ctrlKey, metaKey: e.metaKey, checkbox: true });
+              this.selection.click(i, {
+                shiftKey: e.shiftKey,
+                ctrlKey: e.ctrlKey,
+                metaKey: e.metaKey,
+                checkbox: true
+              });
               this.paintSelection();
             };
             list.append(row);
@@ -169,9 +221,13 @@
         }
         async batch() {
           const p = this.panel;
-          if (this.busy || p.busy || !p.ready) return;
+          if (this.busy || p.busy || !p.ready) {
+            return;
+          }
           const selected = this.selection.ordered();
-          if (!selected.length) return;
+          if (!selected.length) {
+            return;
+          }
           this.busy = true;
           p.busy = true;
           this.batchStop = false;
@@ -181,26 +237,53 @@
           try {
             for (const [index, item] of selected.entries()) {
               if (this.batchStop || p.closed) {
-                for (const rest of selected.slice(index)) this.outcomes.push({ articleId: rest.articleId, status: "cancelled", message: "미조회 · 취소" });
+                for (const rest of selected.slice(index)) {
+                  this.outcomes.push({
+                    articleId: rest.articleId,
+                    status: "cancelled",
+                    message: "미조회 · 취소"
+                  });
+                }
                 break;
               }
               if (p.draft.rows.some((r) => r.slave.articleId === item.articleId)) {
-                this.outcomes.push({ articleId: item.articleId, status: "duplicate", message: "이미 등록됨 · 중복 제외" });
+                this.outcomes.push({
+                  articleId: item.articleId,
+                  status: "duplicate",
+                  message: "이미 등록됨 · 중복 제외"
+                });
                 continue;
               }
               this.message("일괄 추가 " + (index + 1) + "/" + selected.length + " · " + item.title);
               try {
-                if (item.articleId === p.articleId) B.fail("SELF_REFERENCE", "대표 게시글은 원본으로 참조할 수 없습니다.");
+                if (item.articleId === p.articleId) {
+                  B.fail("SELF_REFERENCE", "대표 게시글은 원본으로 참조할 수 없습니다.");
+                }
                 const summary = await p.reader.read(item.url);
-                if (this.batchStop || p.closed) B.fail("ABORTED", "조회를 취소했습니다.");
+                if (this.batchStop || p.closed) {
+                  B.fail("ABORTED", "조회를 취소했습니다.");
+                }
                 p.draft.add(summary);
-                this.outcomes.push({ articleId: item.articleId, status: "added", message: summary.title + " · " + summary.icons + "개 추가" });
+                this.outcomes.push({
+                  articleId: item.articleId,
+                  status: "added",
+                  message: summary.title + " · " + summary.icons + "개 추가"
+                });
                 this.selection.selected.delete(item.articleId);
               } catch (e) {
-                this.outcomes.push({ articleId: item.articleId, status: e.code === "ABORTED" ? "cancelled" : "failed", code: e.code || "READ_FAILED", message: e.message });
-                if (["ACCESS_DENIED", "ABORTED"].includes(e.code)) this.batchStop = true;
+                this.outcomes.push({
+                  articleId: item.articleId,
+                  status: e.code === "ABORTED" ? "cancelled" : "failed",
+                  code: e.code || "READ_FAILED",
+                  message: e.message
+                });
+                if (["ACCESS_DENIED", "ABORTED"].includes(e.code)) {
+                  this.batchStop = true;
+                }
               }
-              if (index < selected.length - 1 && !this.batchStop) await new Promise((resolve) => g.setTimeout(resolve, 300));
+              if (index < selected.length - 1 && !this.batchStop) {
+                await new Promise((resolve) => g.setTimeout(resolve, 300));
+              }
             }
           } finally {
             this.busy = false;
@@ -232,7 +315,7 @@
       Object.assign(B, { SearchPanel });
     }, "initializeBundleSearchUi");
     initializeBundleSearchUi(environment);
-    return { "bundle": selectModuleExports(bundle2, ["SearchPanel"]) };
+    return { bundle: selectModuleExports(bundle2, ["SearchPanel"]) };
   }
   __name(createBundleSearchUi, "createBundleSearchUi");
 

@@ -1,3 +1,4 @@
+import type { RuntimeEnvironment } from "../src/runtime/contracts.ts";
 // DOM 메서드의 수신자는 실제 Window로 유지하고 파서만 명시적으로 주입한다.
 const boundMethods = new Set<PropertyKey>([
   "setTimeout",
@@ -15,7 +16,7 @@ const boundMethods = new Set<PropertyKey>([
   "atob",
   "btoa",
 ]);
-export function createEnvironment(parser: unknown) {
+export function createEnvironment(parser: unknown): RuntimeEnvironment {
   return new Proxy(globalThis, {
     get(target, key) {
       if (key === "exifr") {
@@ -26,5 +27,5 @@ export function createEnvironment(parser: unknown) {
         ? value.bind(target)
         : value;
     },
-  });
+  }) as unknown as RuntimeEnvironment;
 }

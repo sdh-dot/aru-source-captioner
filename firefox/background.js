@@ -3,19 +3,28 @@
   var __defProp = Object.defineProperty;
   var __name = (target, value) => __defProp(target, "name", { value, configurable: true });
 
+  // docs/source/runtime/contracts.mjs
+  var defaultEnvironment = globalThis;
+
   // docs/source/runtime/module-scope.mjs
   function createModuleScope(resolvers = {}, names = [], own = []) {
     const scope = {};
     for (const name of names) {
-      if (own.includes(name)) scope[name] = resolvers[name]?.();
-      else Object.defineProperty(scope, name, { enumerable: true, get: /* @__PURE__ */ __name(() => resolvers[name]?.(), "get") });
+      if (own.includes(name)) {
+        scope[name] = resolvers[name]?.();
+      } else {
+        Object.defineProperty(scope, name, {
+          enumerable: true,
+          get: /* @__PURE__ */ __name(() => resolvers[name]?.(), "get")
+        });
+      }
     }
     return scope;
   }
   __name(createModuleScope, "createModuleScope");
 
   // docs/source/platform/firefox/background.mjs
-  function installFirefoxBackground({ environment = globalThis, dependencies = {} } = {}) {
+  function installFirefoxBackground({ environment = defaultEnvironment, dependencies = {} } = {}) {
     const { chrome, console } = environment;
     let downloads2 = createModuleScope(dependencies.downloads, ["ownsDownload"], []);
     const DEFAULT_OPTIONS = Object.freeze({
@@ -66,17 +75,25 @@
     }
     __name(_getFileExt, "_getFileExt");
     function _extractPixivId(str) {
-      if (!str) return null;
+      if (!str) {
+        return null;
+      }
       const m = str.match(_PIXIV_CDN_RE);
       return m ? m[1] : null;
     }
     __name(_extractPixivId, "_extractPixivId");
     function _onDownloadComplete(item) {
-      if (downloads2?.ownsDownload(item)) return;
+      if (downloads2?.ownsDownload(item)) {
+        return;
+      }
       const ext = _getFileExt(item.filename);
-      if (!_IMAGE_EXTS.has(ext)) return;
+      if (!_IMAGE_EXTS.has(ext)) {
+        return;
+      }
       const artworkId = _extractPixivId(item.url) || _extractPixivId(item.referrer) || _extractPixivId(item.filename);
-      if (!artworkId) return;
+      if (!artworkId) {
+        return;
+      }
       const fileFormat = ext === "jpeg" ? "jpg" : ext;
       const metadata = {
         schema_version: "2.0",
@@ -84,32 +101,36 @@
         artwork_id: artworkId,
         artwork_url: `https://www.pixiv.net/artworks/${artworkId}`
       };
-      chrome.runtime.sendNativeMessage(
-        NATIVE_HOST_ID,
-        {
-          action: "embed_download_metadata",
-          request_id: `dl_${item.id}_${Date.now()}`,
-          payload: { file_path: item.filename, file_format: fileFormat, metadata }
-        },
-        (response) => {
-          if (chrome.runtime?.lastError) {
-            console.warn("[Aru] embed native message failed:", chrome.runtime.lastError.message);
-            return;
-          }
-          if (response?.success) {
-            console.info("[Aru] metadata embedded:", response.data?.message);
-          } else {
-            console.warn("[Aru] embed failed:", response?.error);
-          }
+      chrome.runtime.sendNativeMessage(NATIVE_HOST_ID, {
+        action: "embed_download_metadata",
+        request_id: `dl_${item.id}_${Date.now()}`,
+        payload: {
+          file_path: item.filename,
+          file_format: fileFormat,
+          metadata
         }
-      );
+      }, (response) => {
+        if (chrome.runtime?.lastError) {
+          console.warn("[Aru] embed native message failed:", chrome.runtime.lastError.message);
+          return;
+        }
+        if (response?.success) {
+          console.info("[Aru] metadata embedded:", response.data?.message);
+        } else {
+          console.warn("[Aru] embed failed:", response?.error);
+        }
+      });
     }
     __name(_onDownloadComplete, "_onDownloadComplete");
     if (typeof chrome !== "undefined" && chrome.downloads?.onChanged) {
       chrome.downloads.onChanged.addListener((delta) => {
-        if (delta.state?.current !== "complete") return;
+        if (delta.state?.current !== "complete") {
+          return;
+        }
         chrome.downloads.search({ id: delta.id }, (items) => {
-          if (items?.length) _onDownloadComplete(items[0]);
+          if (items?.length) {
+            _onDownloadComplete(items[0]);
+          }
         });
       });
     }

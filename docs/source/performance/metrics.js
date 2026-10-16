@@ -6,7 +6,6 @@
   // docs/source/performance/metrics.mjs
   function createPerformanceMetrics({ environment = globalThis } = {}) {
     const g = environment;
-    "use strict";
     const names = /* @__PURE__ */ new Set([
       "upload.discover",
       "upload.observer",
@@ -34,7 +33,17 @@
     let enabled = false, generation = 0;
     const clock = /* @__PURE__ */ __name(() => g.performance.now(), "clock");
     const row = /* @__PURE__ */ __name((name) => {
-      if (!stats.has(name)) stats.set(name, { count: 0, total: 0, max: 0, active: 0, peak: 0, samples: [], cursor: 0 });
+      if (!stats.has(name)) {
+        stats.set(name, {
+          count: 0,
+          total: 0,
+          max: 0,
+          active: 0,
+          peak: 0,
+          samples: [],
+          cursor: 0
+        });
+      }
       return stats.get(name);
     }, "row");
     const valid = /* @__PURE__ */ __name((name) => enabled && names.has(name), "valid");
@@ -42,20 +51,26 @@
       configure(options = {}) {
         enabled = options.enabled === true;
         generation++;
-        for (const value of stats.values()) value.active = 0;
+        for (const value of stats.values()) {
+          value.active = 0;
+        }
       },
       reset() {
         generation++;
         stats.clear();
       },
       start(name) {
-        if (!valid(name)) return;
+        if (!valid(name)) {
+          return;
+        }
         const value = row(name), started = clock(), epoch = generation;
         value.active++;
         value.peak = Math.max(value.peak, value.active);
         let finished = false;
         return () => {
-          if (finished || epoch !== generation || !enabled) return;
+          if (finished || epoch !== generation || !enabled) {
+            return;
+          }
           finished = true;
           const duration = Math.max(0, clock() - started);
           value.active--;
@@ -67,7 +82,9 @@
         };
       },
       count(name) {
-        if (valid(name)) row(name).count++;
+        if (valid(name)) {
+          row(name).count++;
+        }
       },
       gauge(name, number) {
         if (valid(name) && Number.isFinite(number) && number >= 0) {
@@ -93,7 +110,12 @@
             ...value.current === void 0 ? {} : { current: value.current }
           };
         }
-        return { enabled, windowSize, percentiles: "last 512 completed calls per metric; totals cover this reset interval", metrics };
+        return {
+          enabled,
+          windowSize,
+          percentiles: "last 512 completed calls per metric; totals cover this reset interval",
+          metrics
+        };
       }
     };
     return Object.freeze(api);

@@ -1,8 +1,9 @@
-import { createDownloadCore } from "../../docs/source/body-download/core.mjs";
-import { createDownloadBrowserApi } from "../../docs/source/body-download/browser-api.mjs";
-import { createDownloadEngine } from "../../docs/source/body-download/engine.mjs";
-import { createDownloadUi } from "../../docs/source/body-download/ui.mjs";
-const environment = globalThis;
+import { defaultEnvironment } from "../../src/runtime/contracts.ts";
+import { createDownloadCore } from "../../src/body-download/core.ts";
+import { createDownloadBrowserApi } from "../../src/body-download/browser-api.ts";
+import { createDownloadEngine } from "../../src/body-download/engine.ts";
+import { createDownloadUi } from "../../src/body-download/ui.ts";
+const environment = defaultEnvironment;
 const downloads = createDownloadCore({ environment }).downloads;
 const dependencies = {
   downloads: new Proxy(

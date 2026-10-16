@@ -27,10 +27,12 @@
     "dev:firefox": "wxt -b firefox",
     "typecheck": "tsc --noEmit",
     "compile": "tsc --noEmit",
-    "format:check": "oxfmt --check entrypoints runtime config wxt.config.ts oxlint.config.ts oxfmt.config.ts tsconfig.json package.json",
-    "lint": "oxlint entrypoints runtime config wxt.config.ts oxlint.config.ts oxfmt.config.ts",
+    "format:check": "oxfmt --check src entrypoints runtime config wxt.config.ts oxlint.config.ts oxfmt.config.ts tsconfig.json package.json",
+    "lint": "oxlint src entrypoints runtime config wxt.config.ts oxlint.config.ts oxfmt.config.ts",
     "prepare:wxt": "wxt prepare",
-    "verify:wxt": "node tools/verify-wxt.mjs"
+    "verify:wxt": "node tools/verify-wxt.mjs",
+    "verify:typescript": "node tools/compile-typescript.mjs --check",
+    "test:typescript": "node --test --test-concurrency=1 tests/typescript/*.test.ts"
   },
   "dependencies": {
     "exifr": "7.1.3"

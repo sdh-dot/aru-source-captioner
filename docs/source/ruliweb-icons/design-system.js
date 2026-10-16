@@ -3,12 +3,21 @@
   var __defProp = Object.defineProperty;
   var __name = (target, value) => __defProp(target, "name", { value, configurable: true });
 
+  // docs/source/runtime/contracts.mjs
+  var defaultEnvironment = globalThis;
+
   // docs/source/runtime/module-scope.mjs
   function createModuleScope(resolvers = {}, names = [], own = []) {
     const scope = {};
     for (const name of names) {
-      if (own.includes(name)) scope[name] = resolvers[name]?.();
-      else Object.defineProperty(scope, name, { enumerable: true, get: /* @__PURE__ */ __name(() => resolvers[name]?.(), "get") });
+      if (own.includes(name)) {
+        scope[name] = resolvers[name]?.();
+      } else {
+        Object.defineProperty(scope, name, {
+          enumerable: true,
+          get: /* @__PURE__ */ __name(() => resolvers[name]?.(), "get")
+        });
+      }
     }
     return scope;
   }
@@ -19,16 +28,49 @@
   __name(selectModuleExports, "selectModuleExports");
 
   // docs/source/ruliweb-icons/design-system.mjs
-  function createIconsDesignSystem({ environment = globalThis, dependencies = {} } = {}) {
-    const { chrome, browser, MutationObserver } = environment;
-    const getComputedStyle = typeof environment.getComputedStyle === "function" ? (...args) => environment.getComputedStyle(...args) : void 0;
-    const matchMedia = typeof environment.matchMedia === "function" ? (...args) => environment.matchMedia(...args) : void 0;
+  function createIconsDesignSystem({ environment = defaultEnvironment, dependencies = {} } = {}) {
     let icons2 = createModuleScope(dependencies.icons, ["DesignSystem"], ["DesignSystem"]);
     const initializeIconsDesignSystem = /* @__PURE__ */ __name(function(g) {
       "use strict";
       const A = icons2 = icons2 || {};
-      const LIGHT = Object.freeze({ background: "#FAF7F2", surface: "#FFFFFF", soft: "#F4EDE7", text: "#30252B", muted: "#69535D", wine: "#923F61", deepWine: "#642940", gold: "#C5A268", softGold: "#E5CFA7", border: "#B9A8AE", primary: "#923F61", primaryText: "#FFFFFF", accentText: "#FFFFFF", selected: "#F5E9D4", selectedText: "#642940", danger: "#8C2929", dangerBackground: "#FFF0E9" });
-      const DARK = Object.freeze({ background: "#21181E", surface: "#2E232A", soft: "#3B2C34", text: "#F7EEE9", muted: "#D2BDC6", wine: "#E59AB6", deepWine: "#F2B7CF", gold: "#D9B77F", softGold: "#E5CFA7", border: "#947E89", primary: "#C5A268", primaryText: "#21181E", accentText: "#2B1721", selected: "#4D392C", selectedText: "#F7E3BE", danger: "#FFC1B1", dangerBackground: "#482A2A" });
+      const LIGHT = Object.freeze({
+        background: "#FAF7F2",
+        surface: "#FFFFFF",
+        soft: "#F4EDE7",
+        text: "#30252B",
+        muted: "#69535D",
+        wine: "#923F61",
+        deepWine: "#642940",
+        gold: "#C5A268",
+        softGold: "#E5CFA7",
+        border: "#B9A8AE",
+        primary: "#923F61",
+        primaryText: "#FFFFFF",
+        accentText: "#FFFFFF",
+        selected: "#F5E9D4",
+        selectedText: "#642940",
+        danger: "#8C2929",
+        dangerBackground: "#FFF0E9"
+      });
+      const DARK = Object.freeze({
+        background: "#21181E",
+        surface: "#2E232A",
+        soft: "#3B2C34",
+        text: "#F7EEE9",
+        muted: "#D2BDC6",
+        wine: "#E59AB6",
+        deepWine: "#F2B7CF",
+        gold: "#D9B77F",
+        softGold: "#E5CFA7",
+        border: "#947E89",
+        primary: "#C5A268",
+        primaryText: "#21181E",
+        accentText: "#2B1721",
+        selected: "#4D392C",
+        selectedText: "#F7E3BE",
+        danger: "#FFC1B1",
+        dangerBackground: "#482A2A"
+      });
       const variables = /* @__PURE__ */ __name((palette) => Object.entries(palette).map(([name, value]) => "--aru-" + name.replace(/[A-Z]/g, (c) => "-" + c.toLowerCase()) + ":" + value + ";").join(""), "variables");
       const css = `:host{${variables(LIGHT)}font-family:"Aru Pretendard",Pretendard,system-ui,-apple-system,"Malgun Gothic",sans-serif!important;color:var(--aru-text)!important;color-scheme:light}
   @media(prefers-color-scheme:dark){:host{${variables(DARK)}color-scheme:dark}}
@@ -188,16 +230,32 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
           const detect = /* @__PURE__ */ __name(() => {
             for (const node of [doc.body, doc.documentElement]) {
               const c = node && g.getComputedStyle(node).backgroundColor, values = c?.match(/[\d.]+/g)?.map(Number);
-              if (values?.length >= 3 && (values.length < 4 || values[3] >= 0.95)) return 0.2126 * values[0] + 0.7152 * values[1] + 0.0722 * values[2] < 128 ? "dark" : "light";
+              if (values && values.length >= 3 && (values.length < 4 || values[3] >= 0.95)) {
+                return 0.2126 * values[0] + 0.7152 * values[1] + 0.0722 * values[2] < 128 ? "dark" : "light";
+              }
             }
             return mq?.matches ? "dark" : "light";
           }, "detect");
           const update = /* @__PURE__ */ __name(() => {
             const theme = detect();
-            for (const host of hosts) host.dataset.aruTheme = theme;
+            for (const host of hosts) {
+              host.dataset.aruTheme = theme;
+            }
           }, "update");
           const observer = g.MutationObserver ? new g.MutationObserver(update) : null;
-          for (const node of [doc.documentElement, doc.body]) if (node) observer?.observe(node, { attributes: true, attributeFilter: ["class", "style", "data-theme", "data-color-scheme"] });
+          for (const node of [doc.documentElement, doc.body]) {
+            if (node) {
+              observer?.observe(node, {
+                attributes: true,
+                attributeFilter: [
+                  "class",
+                  "style",
+                  "data-theme",
+                  "data-color-scheme"
+                ]
+              });
+            }
+          }
           mq?.addEventListener?.("change", update);
           watch = { hosts, update, observer, mq };
           themes.set(doc, watch);
@@ -224,9 +282,16 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
         button.dataset.priority = priority;
         button.textContent = label;
         button.title = tooltip;
-        const iconName = { "아이콘 선택": "editor-select", "아이콘 통합": "editor-bundle", "아이콘 태그": "editor-tags", "이미지 첨부": "editor-upload" }[label];
+        const iconName = {
+          "아이콘 선택": "editor-select",
+          "아이콘 통합": "editor-bundle",
+          "아이콘 태그": "editor-tags",
+          "이미지 첨부": "editor-upload"
+        }[label];
         const icon = iconName && assetImage(shadow.host.ownerDocument, "assets/icons/" + iconName + "-20.png", iconName, "aru-entry-icon");
-        if (icon) button.prepend(icon);
+        if (icon) {
+          button.prepend(icon);
+        }
         return cleanup;
       }
       __name(entry, "entry");
@@ -255,7 +320,9 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
       __name(assetURL, "assetURL");
       function assetImage(doc, file, kind, className, onFallback) {
         const url = file.startsWith("assets/icons/") ? assetURL("assets/icons/" + file.slice("assets/icons/".length)) : assetURL(file);
-        if (!url) return fallbackIcon(doc, kind, className);
+        if (!url) {
+          return fallbackIcon(doc, kind, className);
+        }
         const image = doc.createElement("img");
         image.className = className;
         image.alt = "";
@@ -289,11 +356,19 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
     @media(max-width:500px){.dialog .aru-modal-header .header-actions{flex-direction:column;align-items:flex-end;gap:4px}.dialog .aru-modal-header #catalog-dock{font-size:11px;padding:4px 6px}.dialog .aru-modal-description{font-size:11px}}
   `;
       function modalHeader(header, { kind, description } = {}) {
-        const file = { select: "modal-select", bundle: "modal-bundle", tags: "modal-tags" }[kind];
-        if (!header || !file || header.classList.contains("aru-modal-header")) return;
+        const file = {
+          select: "modal-select",
+          bundle: "modal-bundle",
+          tags: "modal-tags"
+        }[kind];
+        if (!header || !file || header.classList.contains("aru-modal-header")) {
+          return;
+        }
         const doc = header.ownerDocument, shadow = header.getRootNode();
         let heading = header.querySelector(".header-title,h1,h2,strong");
-        if (!heading) return;
+        if (!heading) {
+          return;
+        }
         if (!heading.classList.contains("header-title")) {
           const wrapper = doc.createElement("div");
           header.insertBefore(wrapper, heading);
@@ -321,13 +396,18 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
         const image = assetImage(doc, "assets/icons/" + file + "-256.png", kind, "aru-modal-character", compactFallback);
         image.setAttribute("width", "128");
         image.setAttribute("height", "128");
-        if (image.tagName.toLowerCase() === "svg") compactFallback(image);
-        else heading.after(image);
+        if (image.tagName.toLowerCase() === "svg") {
+          compactFallback(image);
+        } else {
+          heading.after(image);
+        }
       }
       __name(modalHeader, "modalHeader");
       function attach(shadow, { fontURL } = {}) {
-        if (!shadow || shadow.querySelector("[data-aru-design-tokens]")) return () => {
-        };
+        if (!shadow || shadow.querySelector("[data-aru-design-tokens]")) {
+          return () => {
+          };
+        }
         const doc = shadow.host.ownerDocument, style = doc.createElement("style");
         style.dataset.aruDesignTokens = "";
         style.textContent = css + polish + " .primary{background:var(--aru-primary);border-color:var(--aru-primary);color:var(--aru-primary-text)}";
@@ -356,10 +436,21 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
         return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
       }
       __name(contrast, "contrast");
-      A.DesignSystem = Object.freeze({ LIGHT, DARK, css: css + entryCss + polish, attach, entry, observeTheme, contrast, assetURL, assetImage, modalHeader });
+      A.DesignSystem = Object.freeze({
+        LIGHT,
+        DARK,
+        css: css + entryCss + polish,
+        attach,
+        entry,
+        observeTheme,
+        contrast,
+        assetURL,
+        assetImage,
+        modalHeader
+      });
     }, "initializeIconsDesignSystem");
     initializeIconsDesignSystem(environment);
-    return { "icons": selectModuleExports(icons2, ["DesignSystem"]) };
+    return { icons: selectModuleExports(icons2, ["DesignSystem"]) };
   }
   __name(createIconsDesignSystem, "createIconsDesignSystem");
 

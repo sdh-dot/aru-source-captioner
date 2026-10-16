@@ -4,7 +4,12 @@ export default defineConfig({
   rules: {
     "eslint/no-unused-vars": [
       "error",
-      { argsIgnorePattern: "^_", varsIgnorePattern: "^_" },
+      {
+        argsIgnorePattern: "^_",
+        varsIgnorePattern: "^_",
+        caughtErrorsIgnorePattern: "^_",
+        caughtErrors: "none",
+      },
     ],
     curly: ["error", "all"],
     "no-control-regex": "off",

@@ -3,12 +3,21 @@
   var __defProp = Object.defineProperty;
   var __name = (target, value) => __defProp(target, "name", { value, configurable: true });
 
+  // docs/source/runtime/contracts.mjs
+  var defaultEnvironment = globalThis;
+
   // docs/source/runtime/module-scope.mjs
   function createModuleScope(resolvers = {}, names = [], own = []) {
     const scope = {};
     for (const name of names) {
-      if (own.includes(name)) scope[name] = resolvers[name]?.();
-      else Object.defineProperty(scope, name, { enumerable: true, get: /* @__PURE__ */ __name(() => resolvers[name]?.(), "get") });
+      if (own.includes(name)) {
+        scope[name] = resolvers[name]?.();
+      } else {
+        Object.defineProperty(scope, name, {
+          enumerable: true,
+          get: /* @__PURE__ */ __name(() => resolvers[name]?.(), "get")
+        });
+      }
     }
     return scope;
   }
@@ -19,10 +28,22 @@
   __name(selectModuleExports, "selectModuleExports");
 
   // docs/source/ruliweb-icons/feature.mjs
-  function createIconsFeature({ environment = globalThis, dependencies = {} } = {}) {
-    const { document, location, browser, MutationObserver, AbortController, console } = environment;
+  function createIconsFeature({ environment = defaultEnvironment, dependencies = {} } = {}) {
+    const { MutationObserver, AbortController, console } = environment;
     const setTimeout = typeof environment.setTimeout === "function" ? (...args) => environment.setTimeout(...args) : void 0;
-    let icons2 = createModuleScope(dependencies.icons, ["SiteAdapter", "BrowserAdapter", "createPicker", "ComposerController", "ComposerAdapter", "CatalogSources", "LibrarySearchEngine", "LibraryPackReader", "Metadata", "IconFeature", "feature"], ["IconFeature", "feature"]);
+    let icons2 = createModuleScope(dependencies.icons, [
+      "SiteAdapter",
+      "BrowserAdapter",
+      "createPicker",
+      "ComposerController",
+      "ComposerAdapter",
+      "CatalogSources",
+      "LibrarySearchEngine",
+      "LibraryPackReader",
+      "Metadata",
+      "IconFeature",
+      "feature"
+    ], ["IconFeature", "feature"]);
     const initializeIconsFeature = /* @__PURE__ */ __name(function(global) {
       "use strict";
       const API = icons2 = icons2 || {};
@@ -31,9 +52,9 @@
         static {
           __name(this, "IconFeature");
         }
-        constructor({ document: document2 = global.document, browser: browser2 = API.BrowserAdapter, createPicker = API.createPicker, site = Site } = {}) {
-          this.document = document2;
-          this.browser = browser2;
+        constructor({ document = global.document, browser = API.BrowserAdapter, createPicker = API.createPicker, site = Site } = {}) {
+          this.document = document;
+          this.browser = browser;
           this.createPicker = createPicker;
           this.site = site;
           this.enabled = false;
@@ -48,7 +69,9 @@
           this.onNavigate = () => this.stopSession(true);
         }
         async start() {
-          if (this.unsubscribe || this.destroyed) return;
+          if (this.unsubscribe || this.destroyed) {
+            return;
+          }
           this.unsubscribe = this.browser.onChanged(() => this.applyOptions());
           await this.applyOptions();
         }
@@ -58,12 +81,19 @@
           try {
             opts = await this.browser.readOptions();
           } catch (_) {
-            opts = { active: false, aruIconsOptions: { enabled: false, autoLoad: true } };
+            opts = {
+              active: false,
+              aruIconsOptions: { enabled: false, autoLoad: true }
+            };
           }
-          if (this.destroyed || revision !== this.optionsRevision) return;
+          if (this.destroyed || revision !== this.optionsRevision) {
+            return;
+          }
           const active = opts.active === true;
           this.options = opts.aruIconsOptions;
-          if (active === this.enabled) return;
+          if (active === this.enabled) {
+            return;
+          }
           this.enabled = active;
           if (active) {
             this.document.addEventListener("click", this.onClick, true);
@@ -75,7 +105,9 @@
                 debug: this.options?.debug === true,
                 onOpen: /* @__PURE__ */ __name((entry) => this.openComposer(entry), "onOpen"),
                 onRemoved: /* @__PURE__ */ __name((root) => {
-                  if (this.current?.target?.root === root) this.stopSession(true);
+                  if (this.current?.target?.root === root) {
+                    this.stopSession(true);
+                  }
                 }, "onRemoved")
               });
               this.composers.start();
@@ -94,7 +126,9 @@
         addReadEntry() {
           const id = global.location?.pathname.match(/^\/community\/board\/98\/read\/(\d+)\/?$/)?.[1];
           const body = this.document.querySelector('.view_content[itemprop="articleBody"],.view_content article');
-          if (!id || !body) return;
+          if (!id || !body) {
+            return;
+          }
           const host = this.document.createElement("div");
           host.dataset.aruIconsEntry = "true";
           const shadow = host.attachShadow({ mode: "open" }), button = this.document.createElement("button");
@@ -105,21 +139,42 @@
           shadow.append(style, button);
           body.before(host);
           this.entry = host;
-          button.addEventListener("click", () => this.open({ articleId: Number(id), title: body.querySelector("h1")?.textContent || "글 " + id, panel: null, document: this.document, opener: button }));
+          button.addEventListener("click", () => this.open({
+            articleId: Number(id),
+            title: body.querySelector("h1")?.textContent || "글 " + id,
+            panel: null,
+            document: this.document,
+            opener: button
+          }));
         }
         onClick(event) {
-          if (API.ComposerController) return;
+          if (API.ComposerController) {
+            return;
+          }
           const target = event.target?.closest?.(".icon_data_show_target[onclick]");
-          if (!target) return;
+          if (!target) {
+            return;
+          }
           const articleId = this.site.selectionId(target), panel = target.closest(".comment_icon");
-          if (!articleId || !panel) return;
+          if (!articleId || !panel) {
+            return;
+          }
           const closingSame = this.current?.articleId === articleId && this.current?.panel === panel;
           this.stopSession(true);
-          const context = { articleId, panel, title: target.getAttribute("title") || "글 " + articleId, opener: target };
+          const context = {
+            articleId,
+            panel,
+            title: target.getAttribute("title") || "글 " + articleId,
+            opener: target
+          };
           const generation = this.generation;
           setTimeout(() => {
-            if (closingSame && panel.querySelector(".icon_share_data")?.style.display === "none") return;
-            if (this.enabled && generation === this.generation) this.open(context);
+            if (closingSame && panel.querySelector(".icon_share_data")?.style.display === "none") {
+              return;
+            }
+            if (this.enabled && generation === this.generation) {
+              this.open(context);
+            }
           }, 0);
         }
         stopSession(destroy = false) {
@@ -137,8 +192,12 @@
             this.catalogObserver?.disconnect();
             this.catalogObserver = null;
             const session = this.current?.target?.session?.session;
-            if (session) API.ComposerAdapter?.request(this.document, "release", { session }).catch(() => {
-            });
+            if (session) {
+              API.ComposerAdapter?.request(this.document, "release", {
+                session
+              }).catch(() => {
+              });
+            }
             this.picker?.destroy();
             this.picker = null;
             this.current = null;
@@ -146,9 +205,13 @@
           }
         }
         async openComposer(entry) {
-          if (!this.enabled) return;
+          if (!this.enabled) {
+            return;
+          }
           const panel = entry.kind === "post" ? this.document.querySelector("#editor_common_write_wrapper .comment_icon") : entry.root.querySelector(".comment_icon");
-          if (entry.kind !== "post" && panel && !panel.children.length) entry.anchor.click();
+          if (entry.kind !== "post" && panel && !panel.children.length) {
+            entry.anchor.click();
+          }
           await this.open({
             articleId: null,
             boardId: "98",
@@ -163,25 +226,47 @@
         }
         cancelPackSelection() {
           const task = this.packSelection;
-          if (!task) return;
+          if (!task) {
+            return;
+          }
           this.packSelection = null;
           this.stopCollection();
-          if (this.current === task.context) Object.assign(task.context, task.before);
+          if (this.current === task.context) {
+            Object.assign(task.context, task.before);
+          }
         }
-        chooseArticle(value, boardId = "98") {
-          if (!this.current || !this.picker) return Promise.resolve({ ok: false });
+        chooseArticle(value, boardId = "98", _query) {
+          if (!this.current || !this.picker) {
+            return Promise.resolve({ ok: false });
+          }
           let ref;
           try {
-            ref = API.CatalogSources ? typeof value === "object" ? { ...value, ...API.CatalogSources.parseRef(value.url) } : { ...API.CatalogSources.parseRef(value, boardId), source: "direct" } : { articleId: API.ComposerAdapter.parseArticle(value), boardId: "98" };
+            ref = API.CatalogSources ? typeof value === "object" ? { ...value, ...API.CatalogSources.parseRef(value.url) } : {
+              ...API.CatalogSources.parseRef(value, boardId),
+              source: "direct"
+            } : {
+              articleId: API.ComposerAdapter.parseArticle(value),
+              boardId: "98"
+            };
           } catch (error) {
             return Promise.reject(error);
           }
           ref.key = ref.key || "direct:" + ref.boardId + ":" + ref.articleId;
           const key = String(ref.boardId) + ":" + ref.articleId;
-          if (this.packSelection?.key === key && this.packSelection.context === this.current) return this.packSelection.promise;
+          if (this.packSelection?.key === key && this.packSelection.context === this.current) {
+            return this.packSelection.promise;
+          }
           this.cancelPackSelection();
           const context = this.current, picker = this.picker;
-          const before = Object.fromEntries(["articleId", "boardId", "catalogRef", "title", "document", "panel", "sourceQuery"].map((k) => [k, context[k]]));
+          const before = Object.fromEntries([
+            "articleId",
+            "boardId",
+            "catalogRef",
+            "title",
+            "document",
+            "panel",
+            "sourceQuery"
+          ].map((k) => [k, context[k]]));
           const task = { key, context, before };
           this.packSelection = task;
           task.promise = this.loadChosenArticle(ref, task, picker);
@@ -190,14 +275,35 @@
         async loadChosenArticle(ref, task, picker) {
           const { context, before } = task;
           if (this.librarySearch) {
-            if (ref.source === "direct") this.libraryDirect?.set(String(ref.boardId) + ":" + ref.articleId, ref);
-            this.librarySearch.setEntries([...this.librarySearch.entries.values(), ref]);
+            if (ref.source === "direct") {
+              this.libraryDirect?.set(String(ref.boardId) + ":" + ref.articleId, ref);
+            }
+            this.librarySearch.setEntries([
+              ...this.librarySearch.entries.values(),
+              ref
+            ]);
           }
-          if (ref.source === "direct") picker.setCatalog?.([...API.CatalogSources.developerPacks(), ...API.CatalogSources.favorites(context.nativePanel), ...this.libraryDirect.values()]);
+          if (ref.source === "direct") {
+            picker.setCatalog?.([
+              ...API.CatalogSources.developerPacks(),
+              ...API.CatalogSources.favorites(context.nativePanel),
+              ...this.libraryDirect.values()
+            ]);
+          }
           this.stopCollection();
-          Object.assign(context, { articleId: ref.articleId, boardId: ref.boardId, catalogRef: ref, title: ref.title || "글 " + ref.articleId, document: null, panel: null, sourceQuery: "" });
+          Object.assign(context, {
+            articleId: ref.articleId,
+            boardId: ref.boardId,
+            catalogRef: ref,
+            title: ref.title || "글 " + ref.articleId,
+            document: null,
+            panel: null,
+            sourceQuery: ""
+          });
           const result2 = await this.collect(false, false, true);
-          if (this.packSelection !== task || this.current !== context) return { ok: false, cancelled: true };
+          if (this.packSelection !== task || this.current !== context) {
+            return { ok: false, cancelled: true };
+          }
           this.packSelection = null;
           if (!result2?.ok) {
             Object.assign(context, before);
@@ -207,14 +313,30 @@
           return result2;
         }
         async insertSelection(icon, context) {
-          if (!this.enabled) throw Object.assign(new Error("아이콘 기능이 비활성화되었습니다."), { code: "FEATURE_DISABLED" });
-          if (this.current !== context) throw Object.assign(new Error("선택기 대상이 바뀌었습니다. 해당 작성기에서 다시 열어 주세요."), { code: "PICKER_TARGET_CHANGED" });
-          if (!context.target?.session) throw Object.assign(new Error(context.target?.error?.message || "삽입 세션이 없습니다. 작성기에서 다시 열어 주세요."), { code: context.target?.error?.code || "SESSION_UNAVAILABLE" });
-          if (this.inserting) throw new Error("아이콘을 첨부하는 중입니다.");
+          if (!this.enabled) {
+            throw Object.assign(new Error("아이콘 기능이 비활성화되었습니다."), {
+              code: "FEATURE_DISABLED"
+            });
+          }
+          if (this.current !== context) {
+            throw Object.assign(new Error("선택기 대상이 바뀌었습니다. 해당 작성기에서 다시 열어 주세요."), { code: "PICKER_TARGET_CHANGED" });
+          }
+          if (!context.target?.session) {
+            throw Object.assign(new Error(context.target?.error?.message || "삽입 세션이 없습니다. 작성기에서 다시 열어 주세요."), { code: context.target?.error?.code || "SESSION_UNAVAILABLE" });
+          }
+          if (this.inserting) {
+            throw new Error("아이콘을 첨부하는 중입니다.");
+          }
           this.inserting = true;
           try {
-            const result2 = await API.ComposerAdapter.request(this.document, "insert", { session: context.target.session.session, media: API.ComposerAdapter.selectedMedia(icon), debug: this.options?.debug === true });
-            if (this.current !== context) return result2;
+            const result2 = await API.ComposerAdapter.request(this.document, "insert", {
+              session: context.target.session.session,
+              media: API.ComposerAdapter.selectedMedia(icon),
+              debug: this.options?.debug === true
+            });
+            if (this.current !== context) {
+              return result2;
+            }
             const input = context.target.root.querySelector("textarea.comment_input,textarea.reply_input,.note-editable");
             this.stopSession(true);
             input?.focus({ preventScroll: true });
@@ -224,12 +346,22 @@
           }
         }
         async open(context) {
-          if (!this.enabled) return;
+          if (!this.enabled) {
+            return;
+          }
           const readBudget = this.current?.readBudget || { count: 0, max: 128 };
           this.stopSession(true);
           this.current = context;
           context.readBudget = readBudget;
-          if (API.LibrarySearchEngine && API.LibraryPackReader) this.librarySearch = new API.LibrarySearchEngine({ reader: new API.LibraryPackReader({ browser: this.browser, site: this.site, isActive: /* @__PURE__ */ __name(() => this.enabled, "isActive") }) });
+          if (API.LibrarySearchEngine && API.LibraryPackReader) {
+            this.librarySearch = new API.LibrarySearchEngine({
+              reader: new API.LibraryPackReader({
+                browser: this.browser,
+                site: this.site,
+                isActive: /* @__PURE__ */ __name(() => this.enabled, "isActive")
+              })
+            });
+          }
           this.libraryDirect = /* @__PURE__ */ new Map();
           this.picker = this.createPicker({
             opener: context.opener,
@@ -240,8 +372,11 @@
             targetValid: !context.target || !!context.target.session,
             librarySearch: this.librarySearch,
             onLibraryScope: /* @__PURE__ */ __name((scope) => {
-              if (scope === "all") this.stopCollection();
-              else if (context.articleId && !this.librarySearch?.packs.has(String(context.boardId) + ":" + context.articleId)) this.collect(false);
+              if (scope === "all") {
+                this.stopCollection();
+              } else if (context.articleId && !this.librarySearch?.packs.has(String(context.boardId) + ":" + context.articleId)) {
+                this.collect(false);
+              }
             }, "onLibraryScope"),
             onCatalogSource: /* @__PURE__ */ __name((ref, query) => this.chooseArticle(ref, ref.boardId, query), "onCatalogSource"),
             onDirectSource: /* @__PURE__ */ __name((value, board) => this.chooseArticle(value, board), "onDirectSource"),
@@ -251,17 +386,26 @@
             onClose: /* @__PURE__ */ __name(() => this.stopSession(true), "onClose"),
             onNativeReturn: /* @__PURE__ */ __name(() => {
               this.stopSession(true);
-              if (context.target?.kind === "post") this.document.querySelector("#iconImage")?.click();
-              else context.target?.anchor?.click();
+              if (context.target?.kind === "post") {
+                this.document.querySelector("#iconImage")?.click();
+              } else {
+                context.target?.anchor?.click();
+              }
             }, "onNativeReturn"),
             onStop: /* @__PURE__ */ __name(() => {
-              if (this.packSelection) this.cancelPackSelection();
-              else this.stopCollection();
+              if (this.packSelection) {
+                this.cancelPackSelection();
+              } else {
+                this.stopCollection();
+              }
             }, "onStop"),
             onRetry: /* @__PURE__ */ __name(() => this.collect(true, true), "onRetry"),
             onRefresh: /* @__PURE__ */ __name(() => this.collect(true), "onRefresh"),
             onSelect: context.target ? (icon) => this.insertSelection(icon, context) : (icon) => {
-              const prepared = this.site.prepareInsertion(icon, { panel: context.panel, kind: context.panel?.closest("#editor_common_write_wrapper") ? "post" : "comment" });
+              const prepared = this.site.prepareInsertion(icon, {
+                panel: context.panel,
+                kind: context.panel?.closest("#editor_common_write_wrapper") ? "post" : "comment"
+              });
               this.preparedSelection = prepared;
               return { message: prepared.message };
             }
@@ -269,73 +413,136 @@
           this.document.body.append(this.picker.element);
           if (context.target) {
             const update = /* @__PURE__ */ __name(() => {
-              if (this.current !== context) return;
+              if (this.current !== context) {
+                return;
+              }
               if (context.catalogMode) {
                 const favorites = API.CatalogSources.favorites(context.nativePanel);
-                const entries = [...API.CatalogSources.developerPacks(), ...favorites];
+                const entries = [
+                  ...API.CatalogSources.developerPacks(),
+                  ...favorites
+                ];
                 entries.push(...this.libraryDirect.values());
-                if (context.catalogRef && context.catalogRef.source !== "direct") entries.push(context.catalogRef);
-                const signature = JSON.stringify(entries.map((ref) => [ref.boardId, ref.articleId, ref.title, ref.url, ref.source]));
+                if (context.catalogRef && context.catalogRef.source !== "direct") {
+                  entries.push(context.catalogRef);
+                }
+                const signature = JSON.stringify(entries.map((ref) => [
+                  ref.boardId,
+                  ref.articleId,
+                  ref.title,
+                  ref.url,
+                  ref.source
+                ]));
                 if (signature !== this.libraryCatalogSignature) {
                   this.libraryCatalogSignature = signature;
                   this.librarySearch?.setEntries(entries);
                   this.picker?.refreshLibrary?.();
                 }
                 this.picker?.setCatalog?.(entries, favorites.length ? "즐겨찾기는 사이트 기본 목록의 현재 상태를 읽었습니다." : "즐겨찾기 목록을 아직 확인하지 못했습니다. 기존 아이콘 버튼의 로그인·목록 상태를 확인해 주세요.");
-              } else this.picker?.setSources?.(API.ComposerAdapter.packChoices(context.nativePanel));
+              } else {
+                this.picker?.setSources?.(API.ComposerAdapter.packChoices(context.nativePanel));
+              }
             }, "update");
             update();
             if (context.nativePanel) {
               this.catalogObserver = new MutationObserver(update);
-              this.catalogObserver.observe(context.nativePanel, { childList: true, subtree: true });
+              this.catalogObserver.observe(context.nativePanel, {
+                childList: true,
+                subtree: true
+              });
             }
             this.picker.setTargetState?.(!!context.target.session, context.target.error);
-            if (context.target.error) this.picker.setError("[" + (context.target.error.code || "CAPTURE_FAILED") + "] " + context.target.error.message);
+            if (context.target.error) {
+              this.picker.setError("[" + (context.target.error.code || "CAPTURE_FAILED") + "] " + context.target.error.message);
+            }
           }
           if (context.panel && typeof MutationObserver !== "undefined") {
             this.panelObserver = new MutationObserver(() => {
-              if (this.current !== context) return;
-              if (!context.panel.isConnected || context.panel.style.display === "none" || context.panel.querySelector(".icon_share_data")?.style.display === "none") this.stopCollection();
+              if (this.current !== context) {
+                return;
+              }
+              if (!context.panel.isConnected || context.panel.style.display === "none" || context.panel.querySelector(".icon_share_data")?.style.display === "none") {
+                this.stopCollection();
+              }
             });
-            this.panelObserver.observe(context.panel, { attributes: true, attributeFilter: ["style", "hidden"], subtree: true });
+            this.panelObserver.observe(context.panel, {
+              attributes: true,
+              attributeFilter: ["style", "hidden"],
+              subtree: true
+            });
           }
-          if (context.articleId) await this.collect(false);
-          else this.picker.setProgress({ status: "partial", message: "기본 목록에서 팩을 고르거나 아이콘 게시글 URL 또는 번호를 입력해 주세요.", busy: false });
+          if (context.articleId) {
+            await this.collect(false);
+          } else {
+            this.picker.setProgress({
+              status: "partial",
+              message: "기본 목록에서 팩을 고르거나 아이콘 게시글 URL 또는 번호를 입력해 주세요.",
+              busy: false
+            });
+          }
         }
         stopCollection() {
           this.generation++;
           this.controller?.abort();
           this.controller = null;
-          this.picker?.setProgress({ status: "stopped", message: "수집을 중지했습니다. 재시도로 이어서 수집할 수 있습니다.", busy: false });
+          this.picker?.setProgress({
+            status: "stopped",
+            message: "수집을 중지했습니다. 재시도로 이어서 수집할 수 있습니다.",
+            busy: false
+          });
         }
         collect(refresh, manualNative = false, transactional = false) {
-          if (!this.enabled || !this.current || !this.picker) return Promise.resolve();
-          const key = JSON.stringify([this.current.boardId, this.current.articleId, !!refresh, !!manualNative, !!transactional]);
-          if (this.collectionTask?.context === this.current && this.collectionTask.key === key && this.controller && !this.controller.signal.aborted) return this.collectionTask.promise;
+          if (!this.enabled || !this.current || !this.picker) {
+            return Promise.resolve();
+          }
+          const key = JSON.stringify([
+            this.current.boardId,
+            this.current.articleId,
+            !!refresh,
+            !!manualNative,
+            !!transactional
+          ]);
+          if (this.collectionTask?.context === this.current && this.collectionTask.key === key && this.controller && !this.controller.signal.aborted) {
+            return this.collectionTask.promise;
+          }
           const task = { key, context: this.current };
           this.collectionTask = task;
           task.promise = this.runCollection(refresh, manualNative, transactional).finally(() => {
-            if (this.collectionTask === task) this.collectionTask = null;
+            if (this.collectionTask === task) {
+              this.collectionTask = null;
+            }
           });
           return task.promise;
         }
         async runCollection(refresh, manualNative = false, transactional = false) {
-          if (!this.enabled || !this.current || !this.picker) return;
+          if (!this.enabled || !this.current || !this.picker) {
+            return;
+          }
           this.controller?.abort();
           const controller = new AbortController();
           this.controller = controller;
           const signal = controller.signal, token = ++this.generation, context = this.current, picker = this.picker;
           const current = /* @__PURE__ */ __name(() => !signal.aborted && this.enabled && this.generation === token && this.current === context, "current");
           const ensure = /* @__PURE__ */ __name(() => {
-            if (!current()) throw Object.assign(new Error("수집 중지"), { code: "ABORTED" });
+            if (!current()) {
+              throw Object.assign(new Error("수집 중지"), { code: "ABORTED" });
+            }
           }, "ensure");
           const diagnostics = /* @__PURE__ */ new Map();
           const log = /* @__PURE__ */ __name((stage, data) => {
-            if (!current() || this.options?.debug !== true) return;
+            if (!current() || this.options?.debug !== true) {
+              return;
+            }
             const key = JSON.stringify(data);
-            if (diagnostics.get(stage) === key) return;
+            if (diagnostics.get(stage) === key) {
+              return;
+            }
             diagnostics.set(stage, key);
-            global.console?.info?.("[Aru Icons]", { stage, articleId: context.articleId, ...data });
+            global.console?.info?.("[Aru Icons]", {
+              stage,
+              articleId: context.articleId,
+              ...data
+            });
           }, "log");
           let pendingPack = null, pendingData = null, latestProgress = null;
           const progress = /* @__PURE__ */ __name((info) => {
@@ -344,13 +551,24 @@
           }, "progress");
           const commit = /* @__PURE__ */ __name((pack, data = {}) => {
             if (this.librarySearch && context.articleId) {
-              const ref = context.catalogRef || { boardId: context.boardId || "98", articleId: context.articleId, title: context.title, source: "direct" };
-              this.librarySearch.remember(ref, pack, { stale: data.stale === true || pack.kind === "NORMAL" && pack.bodyCounts?.tagErrors > 0 || pack.kind === "BUNDLE" && (pack.attributeReaderVersion !== 2 || pack.mediaReaderVersion !== 1) });
-              this.librarySearch.setState({ currentKey: String(ref.boardId) + ":" + ref.articleId });
+              const ref = context.catalogRef || {
+                boardId: context.boardId || "98",
+                articleId: context.articleId,
+                title: context.title,
+                source: "direct"
+              };
+              this.librarySearch.remember(ref, pack, {
+                stale: data.stale === true || pack.kind === "NORMAL" && pack.bodyCounts?.tagErrors > 0 || pack.kind === "BUNDLE" && (pack.attributeReaderVersion !== 2 || pack.mediaReaderVersion !== 1)
+              });
+              this.librarySearch.setState({
+                currentKey: String(ref.boardId) + ":" + ref.articleId
+              });
             }
             picker.setCurrentSource?.(String(context.boardId) + ":" + context.articleId);
             picker.setPack(pack);
-            if (context.catalogRef) picker.setCatalogPack?.(context.catalogRef, pack);
+            if (context.catalogRef) {
+              picker.setCatalogPack?.(context.catalogRef, pack);
+            }
             const view = picker.getSnapshot?.();
             log("picker-delivery", {
               kind: pack.kind,
@@ -365,26 +583,49 @@
             if (transactional) {
               pendingPack = pack;
               pendingData = data;
-            } else commit(pack, data);
+            } else {
+              commit(pack, data);
+            }
           }, "publish");
-          const cacheArgs = { boardId: context.boardId || "98", articleId: String(context.articleId) };
-          const cacheFor = /* @__PURE__ */ __name((kind) => context.catalogRef ? { ...cacheArgs, catalogSource: context.catalogRef.source || "direct", packKind: kind, readerVersion: 2 } : cacheArgs, "cacheFor");
+          const cacheArgs = {
+            boardId: context.boardId || "98",
+            articleId: String(context.articleId)
+          };
+          const cacheFor = /* @__PURE__ */ __name((kind) => context.catalogRef ? {
+            ...cacheArgs,
+            catalogSource: context.catalogRef.source || "direct",
+            packKind: kind,
+            readerVersion: 2
+          } : cacheArgs, "cacheFor");
           const cacheWarning = /* @__PURE__ */ __name(() => {
-            if (current()) picker.setError("캐시를 사용할 수 없어 이번 세션에서만 표시합니다. 원래 기능은 계속 사용할 수 있습니다.");
+            if (current()) {
+              picker.setError("캐시를 사용할 수 없어 이번 세션에서만 표시합니다. 원래 기능은 계속 사용할 수 있습니다.");
+            }
           }, "cacheWarning");
           const readPublic = /* @__PURE__ */ __name(async (id, opts = {}) => {
             ensure();
             const budget = context.readBudget || { count: 0, max: 128 };
-            if (budget.count >= budget.max) throw Object.assign(new Error("이번 선택기의 공개 글 조회 상한 128회에 도달했습니다. 닫고 다시 열어 주세요."), { code: "REQUEST_LIMIT" });
+            if (budget.count >= budget.max) {
+              throw Object.assign(new Error("이번 선택기의 공개 글 조회 상한 128회에 도달했습니다. 닫고 다시 열어 주세요."), { code: "REQUEST_LIMIT" });
+            }
             budget.count++;
             return this.site.getPublicDocument(id, { ...opts, signal });
           }, "readPublic");
           try {
             picker.clearError();
-            progress({ status: "loading", phase: "cache", processed: null, total: null, message: "저장된 팩을 확인하고 있어요.", busy: true });
+            progress({
+              status: "loading",
+              phase: "cache",
+              processed: null,
+              total: null,
+              message: "저장된 팩을 확인하고 있어요.",
+              busy: true
+            });
             if (refresh) {
               try {
-                for (const kind of context.catalogRef ? ["BUNDLE", "NORMAL"] : ["NORMAL"]) await this.browser.requestCache("invalidate", cacheFor(kind));
+                for (const kind of context.catalogRef ? ["BUNDLE", "NORMAL"] : ["NORMAL"]) {
+                  await this.browser.requestCache("invalidate", cacheFor(kind));
+                }
               } catch (_) {
                 cacheWarning();
               }
@@ -395,7 +636,9 @@
                 for (const kind of context.catalogRef ? ["BUNDLE", "NORMAL"] : ["NORMAL"]) {
                   cached = await this.browser.requestCache("get", cacheFor(kind));
                   ensure();
-                  if (cached?.snapshot?.pack) break;
+                  if (cached?.snapshot?.pack) {
+                    break;
+                  }
                 }
                 const cachedPack = cached?.snapshot?.pack;
                 const normal = cachedPack?.kind === "NORMAL";
@@ -410,8 +653,20 @@
                   action: empty ? "ignore-empty-normal" : bodyForNative ? "ignore-body-for-native" : readCurrent ? "read-current-normal-body" : readAttributes ? "read-bundle-attributes" : cachedPack ? "reuse" : "miss"
                 });
                 if (cachedPack && !empty && !bodyForNative && !readCurrent && !readAttributes) {
-                  publish(cachedPack, { from: "cache", stale: cached.stale === true });
-                  progress({ status: "cached", phase: "ready", processed: cachedPack.icons.length, loaded: cachedPack.icons.length, total: cachedPack.icons.length, message: "저장된 팩을 불러왔어요." + (cached.stale ? " 최신 정보는 새로고침으로 확인해 주세요." : ""), fetchedAt: cached.acquiredAt, busy: false });
+                  publish(cachedPack, {
+                    from: "cache",
+                    stale: cached.stale === true
+                  });
+                  progress({
+                    status: "cached",
+                    phase: "ready",
+                    processed: cachedPack.icons.length,
+                    loaded: cachedPack.icons.length,
+                    total: cachedPack.icons.length,
+                    message: "저장된 팩을 불러왔어요." + (cached.stale ? " 최신 정보는 새로고침으로 확인해 주세요." : ""),
+                    fetchedAt: cached.acquiredAt,
+                    busy: false
+                  });
                   if (transactional) {
                     ensure();
                     commit(pendingPack, pendingData);
@@ -425,22 +680,58 @@
             }
             let resolved, doc;
             try {
-              progress({ status: "loading", phase: "article", processed: null, total: null, message: "아이콘 게시글을 읽고 있어요.", busy: true });
-              doc = !refresh && context.document || await readPublic(context.articleId, { forceRead: refresh, boardId: context.boardId || "98" });
+              progress({
+                status: "loading",
+                phase: "article",
+                processed: null,
+                total: null,
+                message: "아이콘 게시글을 읽고 있어요.",
+                busy: true
+              });
+              doc = !refresh && context.document || await readPublic(context.articleId, {
+                forceRead: refresh,
+                boardId: context.boardId || "98"
+              });
               ensure();
               const body = doc.querySelector('.view_content[itemprop="articleBody"],.view_content article');
-              progress({ status: "loading", phase: "metadata", processed: null, total: null, message: "팩 정보를 확인하고 있어요.", busy: true });
-              resolved = context.boardId && context.boardId !== "98" ? { kind: "NORMAL", pack: null, warnings: [], rawMetadata: null } : await API.Metadata.parseDocument(body || doc, { articleId: context.articleId, boardId: 98 });
+              progress({
+                status: "loading",
+                phase: "metadata",
+                processed: null,
+                total: null,
+                message: "팩 정보를 확인하고 있어요.",
+                busy: true
+              });
+              resolved = context.boardId && context.boardId !== "98" ? {
+                kind: "NORMAL",
+                pack: null,
+                warnings: [],
+                rawMetadata: null
+              } : await API.Metadata.parseDocument(body || doc, {
+                articleId: context.articleId,
+                boardId: 98
+              });
               ensure();
             } catch (error) {
               ensure();
-              if (transactional) throw error;
+              if (transactional) {
+                throw error;
+              }
               picker.setError("[" + (error.code || "READ_FAILED") + "] " + error.message + " 정상 탭에서 대표 글을 열거나 원래 선택기로 돌아갈 수 있습니다.");
               if (error.code === "ACCESS_DENIED") {
-                progress({ status: "partial", message: "접근 제한으로 중지했습니다. 자동 재요청은 하지 않습니다.", busy: false });
+                progress({
+                  status: "partial",
+                  message: "접근 제한으로 중지했습니다. 자동 재요청은 하지 않습니다.",
+                  busy: false
+                });
                 return;
               }
-              resolved = { kind: "NORMAL", pack: null, warnings: [], rawMetadata: null };
+              resolved = {
+                kind: "NORMAL",
+                pack: null,
+                warnings: [],
+                rawMetadata: null
+              };
             }
             log("pack-type", {
               kind: resolved.kind,
@@ -449,19 +740,35 @@
               warnings: resolved.warnings?.length || 0,
               route: context.panel ? "native-panel" : "article-read"
             });
-            if (resolved.warnings?.length) picker.setError(resolved.warnings.map((w) => w.message || String(w)).join(" "));
+            if (resolved.warnings?.length) {
+              picker.setError(resolved.warnings.map((w) => w.message || String(w)).join(" "));
+            }
             let pack = resolved.pack, sourceCheck = null;
             if (!pack) {
               if (!context.panel) {
                 if (!doc) {
-                  progress({ status: "partial", message: "공개 본문을 읽지 못했습니다. 정상 탭에서 다시 열거나 원본 다시 읽기를 사용해 주세요.", busy: false });
+                  progress({
+                    status: "partial",
+                    message: "공개 본문을 읽지 못했습니다. 정상 탭에서 다시 열거나 원본 다시 읽기를 사용해 주세요.",
+                    busy: false
+                  });
                   return;
                 }
-                progress({ status: "loading", phase: "tags", processed: null, total: null, message: "아이콘과 태그를 읽고 있어요.", busy: true });
+                progress({
+                  status: "loading",
+                  phase: "tags",
+                  processed: null,
+                  total: null,
+                  message: "아이콘과 태그를 읽고 있어요.",
+                  busy: true
+                });
                 const collected = this.site.readArticlePack(doc, context.articleId, context.title, context.boardId || "98", { diagnostics: this.options?.debug === true });
                 ensure();
                 pack = collected.pack;
-                log("body-collect", { selector: collected.selector, ...collected.counts });
+                log("body-collect", {
+                  selector: collected.selector,
+                  ...collected.counts
+                });
                 publish(pack, { from: "article-body" });
                 picker.setMetadataDiagnostics?.(collected.metadataDiagnostics);
                 progress({
@@ -474,7 +781,14 @@
                   busy: false
                 });
               } else {
-                progress({ status: "loading", phase: "native", processed: null, total: null, message: "사이트 아이콘 목록이 준비되기를 기다리고 있어요.", busy: true });
+                progress({
+                  status: "loading",
+                  phase: "native",
+                  processed: null,
+                  total: null,
+                  message: "사이트 아이콘 목록이 준비되기를 기다리고 있어요.",
+                  busy: true
+                });
                 const start = Date.now();
                 let s = this.site.snapshot(context.panel, context.articleId);
                 while (!s.ready && Date.now() - start < 1e4) {
@@ -492,7 +806,9 @@
                     click: /* @__PURE__ */ __name((b) => b.click(), "click"),
                     isCurrent: current,
                     onProgress: /* @__PURE__ */ __name((p) => {
-                      if (!current()) return;
+                      if (!current()) {
+                        return;
+                      }
                       publish(this.site.normalPack(p, context.articleId, context.title), { from: "native-panel", raw: p.rawCount });
                       progress(p);
                     }, "onProgress")
@@ -500,45 +816,127 @@
                   const final = await session.run(signal);
                   ensure();
                   pack = this.site.normalPack(final, context.articleId, context.title);
-                } else progress({ status: s.done ? "complete" : "partial", loaded: s.rawCount, total: s.declaredTotal, message: "자동 추가 수집 꺼짐 · 원래 버튼 사용 후 설정에서 자동 수집을 켤 수 있습니다.", busy: false });
+                } else {
+                  progress({
+                    status: s.done ? "complete" : "partial",
+                    loaded: s.rawCount,
+                    total: s.declaredTotal,
+                    message: "자동 추가 수집 꺼짐 · 원래 버튼 사용 후 설정에서 자동 수집을 켤 수 있습니다.",
+                    busy: false
+                  });
+                }
               }
             } else {
               publish(pack, { from: "metadata" });
               if (resolved.v1Slaves?.length) {
-                sourceCheck = await this.site.verifyReferences(resolved, { signal, readDocument: /* @__PURE__ */ __name((id, opts) => readPublic(id, { ...opts, boardId: "98", forceRead: refresh }), "readDocument"), onProgress: /* @__PURE__ */ __name((p) => {
-                  if (current()) progress(p);
-                }, "onProgress") });
+                sourceCheck = await this.site.verifyReferences(resolved, {
+                  signal,
+                  readDocument: /* @__PURE__ */ __name((id, opts) => readPublic(id, {
+                    ...opts,
+                    boardId: "98",
+                    forceRead: refresh
+                  }), "readDocument"),
+                  onProgress: /* @__PURE__ */ __name((p) => {
+                    if (current()) {
+                      progress(p);
+                    }
+                  }, "onProgress")
+                });
                 ensure();
-                pack = { ...pack, attributeReaderVersion: 2, mediaReaderVersion: 1 };
-                publish(pack, { from: "metadata", stale: sourceCheck.status !== "complete" });
-                progress({ ...sourceCheck, phase: "ready", processed: sourceCheck.processedCount ?? sourceCheck.verifiedCount, loaded: pack.icons.length, total: pack.icons.length, declaredCount: pack.icons.length, message: sourceCheck.status === "partial" ? "일부 원본 정보(URL·태그)를 확인하지 못했어요. 아래 안내를 확인해 주세요." : "원본 아이콘과 태그를 확인했어요.", busy: false });
+                pack = {
+                  ...pack,
+                  attributeReaderVersion: 2,
+                  mediaReaderVersion: 1
+                };
+                publish(pack, {
+                  from: "metadata",
+                  stale: sourceCheck.status !== "complete"
+                });
+                progress({
+                  ...sourceCheck,
+                  phase: "ready",
+                  processed: sourceCheck.processedCount ?? sourceCheck.verifiedCount,
+                  loaded: pack.icons.length,
+                  total: pack.icons.length,
+                  declaredCount: pack.icons.length,
+                  message: sourceCheck.status === "partial" ? "일부 원본 정보(URL·태그)를 확인하지 못했어요. 아래 안내를 확인해 주세요." : "원본 아이콘과 태그를 확인했어요.",
+                  busy: false
+                });
                 const problems = sourceCheck.states.filter((s) => s.status !== "verified" || s.metadataStatus === "partial");
-                if (problems.length) picker.setError(problems.map((s) => "글 " + s.articleId + ": " + (s.message || [s.status !== "verified" ? "원본 URL " + s.matched + "/" + s.declared + "개 확인 · 나머지 URL 대응 미확인" : "", s.metadataStatus === "partial" ? "일부 태그를 읽지 못했어요. 새로고침하거나 원본 태그를 확인해 주세요." : ""].filter(Boolean).join(" "))).join(" / "));
-              } else progress({ status: "complete", phase: "ready", processed: pack.icons.length, loaded: pack.icons.length, total: pack.icons.length, message: "팩 정보를 읽었어요.", busy: false });
+                if (problems.length) {
+                  picker.setError(problems.map((s) => "글 " + s.articleId + ": " + (s.message || [
+                    s.status !== "verified" ? "원본 URL " + s.matched + "/" + s.declared + "개 확인 · 나머지 URL 대응 미확인" : "",
+                    s.metadataStatus === "partial" ? "일부 태그를 읽지 못했어요. 새로고침하거나 원본 태그를 확인해 주세요." : ""
+                  ].filter(Boolean).join(" "))).join(" / "));
+                }
+              } else {
+                progress({
+                  status: "complete",
+                  phase: "ready",
+                  processed: pack.icons.length,
+                  loaded: pack.icons.length,
+                  total: pack.icons.length,
+                  message: "팩 정보를 읽었어요.",
+                  busy: false
+                });
+              }
             }
             ensure();
             if (pack.kind === "NORMAL" && !pack.icons.length) {
               log("cache-write", { action: "skip-empty-normal", icons: 0 });
-              if (transactional) throw Object.assign(new Error("이 게시글에는 표시할 수 있는 아이콘이 없습니다."), { code: "PACK_EMPTY" });
+              if (transactional) {
+                throw Object.assign(new Error("이 게시글에는 표시할 수 있는 아이콘이 없습니다."), { code: "PACK_EMPTY" });
+              }
               return;
             }
-            const completedProgress = { ...latestProgress, phase: "ready", processed: sourceCheck?.processedCount ?? pack.icons.length, loaded: pack.icons.length, total: pack.icons.length, busy: false };
-            progress({ ...completedProgress, status: "loading", phase: "storage", message: "다음에 사용할 팩을 저장하고 있어요.", busy: true });
+            const completedProgress = {
+              ...latestProgress,
+              phase: "ready",
+              processed: sourceCheck?.processedCount ?? pack.icons.length,
+              loaded: pack.icons.length,
+              total: pack.icons.length,
+              busy: false
+            };
+            progress({
+              ...completedProgress,
+              status: "loading",
+              phase: "storage",
+              message: "다음에 사용할 팩을 저장하고 있어요.",
+              busy: true
+            });
             try {
-              await this.browser.requestCache("put", { ...cacheFor(pack.kind), snapshot: { pack, kind: resolved.kind, sourceCheck }, rawMetadata: resolved.rawMetadata });
+              await this.browser.requestCache("put", {
+                ...cacheFor(pack.kind),
+                snapshot: { pack, kind: resolved.kind, sourceCheck },
+                rawMetadata: resolved.rawMetadata
+              });
             } catch (_) {
               cacheWarning();
             }
             ensure();
             progress(completedProgress);
             ensure();
-            if (transactional && pendingPack) commit(pendingPack, pendingData);
+            if (transactional && pendingPack) {
+              commit(pendingPack, pendingData);
+            }
             return { ok: true, pack };
           } catch (error) {
-            if (!current()) return { ok: false, cancelled: true };
+            if (!current()) {
+              return { ok: false, cancelled: true };
+            }
             picker.setError("[" + (error.code || "READ_FAILED") + "] " + error.message);
-            progress({ status: error.code === "ABORTED" ? "stopped" : "error", message: error.message, busy: false });
-            return { ok: false, error: { code: error.code || "READ_FAILED", message: error.message } };
+            progress({
+              status: error.code === "ABORTED" ? "stopped" : "error",
+              message: error.message,
+              busy: false
+            });
+            return {
+              ok: false,
+              error: {
+                code: error.code || "READ_FAILED",
+                message: error.message
+              }
+            };
           }
         }
         destroy() {
@@ -565,7 +963,7 @@
       }
     }, "initializeIconsFeature");
     initializeIconsFeature(typeof environment !== "undefined" ? environment : this);
-    return { "icons": selectModuleExports(icons2, ["IconFeature", "feature"]) };
+    return { icons: selectModuleExports(icons2, ["IconFeature", "feature"]) };
   }
   __name(createIconsFeature, "createIconsFeature");
 

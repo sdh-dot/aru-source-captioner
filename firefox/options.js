@@ -3,8 +3,11 @@
   var __defProp = Object.defineProperty;
   var __name = (target, value) => __defProp(target, "name", { value, configurable: true });
 
+  // docs/source/runtime/contracts.mjs
+  var defaultEnvironment = globalThis;
+
   // docs/source/platform/firefox/options.mjs
-  function installFirefoxOptions({ environment = globalThis, dependencies = {} } = {}) {
+  function installFirefoxOptions({ environment = defaultEnvironment, dependencies: _dependencies = {} } = {}) {
     const { document, chrome, console } = environment;
     const runInit2 = /* @__PURE__ */ __name(function init() {
       "use strict";
@@ -55,14 +58,13 @@
                 reject(new Error(chrome.runtime.lastError.message));
                 return;
               }
-              console.warn(
-                "[Aru Source Captioner] options load failed, using defaults:",
-                chrome.runtime.lastError.message
-              );
+              console.warn("[Aru Source Captioner] options load failed, using defaults:", chrome.runtime.lastError.message);
               resolve({ ...DEFAULT_OPTIONS });
               return;
             }
-            const merged = { ...DEFAULT_OPTIONS };
+            const merged = {
+              ...DEFAULT_OPTIONS
+            };
             for (const key of Object.keys(DEFAULT_OPTIONS)) {
               if (key in items) {
                 merged[key] = items[key];
@@ -90,24 +92,44 @@
         const allowHttpEl = document.getElementById("opt-allow-http");
         const strictEl = document.getElementById("opt-strict-allowlist");
         const hostsEl = document.getElementById("opt-allowed-hosts");
-        if (enabledEl) enabledEl.checked = !!opts.enabled;
+        if (enabledEl) {
+          enabledEl.checked = !!opts.enabled;
+        }
         existingBodyDownloadOptions = opts.aruBodyDownloadOptions && typeof opts.aruBodyDownloadOptions === "object" && !Array.isArray(opts.aruBodyDownloadOptions) ? { ...opts.aruBodyDownloadOptions } : {};
         const downloadEnabledEl = document.getElementById("opt-aru-body-download-enabled");
-        if (downloadEnabledEl) downloadEnabledEl.checked = existingBodyDownloadOptions.enabled === true;
+        if (downloadEnabledEl) {
+          downloadEnabledEl.checked = existingBodyDownloadOptions.enabled === true;
+        }
         existingIconsOptions = opts.aruIconsOptions && typeof opts.aruIconsOptions === "object" && !Array.isArray(opts.aruIconsOptions) ? { ...opts.aruIconsOptions } : {};
         const iconsEnabledEl = document.getElementById("opt-aru-icons-enabled");
         const iconsAutoLoadEl = document.getElementById("opt-aru-icons-auto-load");
-        if (iconsEnabledEl) iconsEnabledEl.checked = existingIconsOptions.enabled === true;
-        if (iconsAutoLoadEl) iconsAutoLoadEl.checked = existingIconsOptions.autoLoad !== false;
-        if (allowHttpEl) allowHttpEl.checked = !!opts.allowHttp;
-        if (strictEl) strictEl.checked = !!opts.strictAllowlist;
-        if (hostsEl) hostsEl.value = renderHostList(opts.allowedHosts);
+        if (iconsEnabledEl) {
+          iconsEnabledEl.checked = existingIconsOptions.enabled === true;
+        }
+        if (iconsAutoLoadEl) {
+          iconsAutoLoadEl.checked = existingIconsOptions.autoLoad !== false;
+        }
+        if (allowHttpEl) {
+          allowHttpEl.checked = !!opts.allowHttp;
+        }
+        if (strictEl) {
+          strictEl.checked = !!opts.strictAllowlist;
+        }
+        if (hostsEl) {
+          hostsEl.value = renderHostList(opts.allowedHosts);
+        }
         const revealModeEl = document.getElementById("opt-ruliweb-ai-reveal-mode");
-        if (revealModeEl) revealModeEl.value = opts.ruliwebAiRevealMode ?? "off";
+        if (revealModeEl) {
+          revealModeEl.value = opts.ruliwebAiRevealMode ?? "off";
+        }
         const revealAllowEl = document.getElementById("opt-ruliweb-ai-reveal-allow-keywords");
-        if (revealAllowEl) revealAllowEl.value = formatKeywordTextarea(opts.ruliwebAiRevealAllowKeywords);
+        if (revealAllowEl) {
+          revealAllowEl.value = formatKeywordTextarea(opts.ruliwebAiRevealAllowKeywords);
+        }
         const revealBlockEl = document.getElementById("opt-ruliweb-ai-reveal-block-keywords");
-        if (revealBlockEl) revealBlockEl.value = formatKeywordTextarea(opts.ruliwebAiRevealBlockKeywords);
+        if (revealBlockEl) {
+          revealBlockEl.value = formatKeywordTextarea(opts.ruliwebAiRevealBlockKeywords);
+        }
       }
       __name(applyToForm, "applyToForm");
       function readFromForm() {
@@ -118,20 +140,21 @@
         }, "readRevealMode");
         return {
           enabled: !!document.getElementById("opt-enabled")?.checked,
-          aruBodyDownloadOptions: { ...existingBodyDownloadOptions, enabled: !!document.getElementById("opt-aru-body-download-enabled")?.checked },
-          aruIconsOptions: { ...existingIconsOptions, enabled: !!document.getElementById("opt-aru-icons-enabled")?.checked, autoLoad: !!document.getElementById("opt-aru-icons-auto-load")?.checked },
+          aruBodyDownloadOptions: {
+            ...existingBodyDownloadOptions,
+            enabled: !!document.getElementById("opt-aru-body-download-enabled")?.checked
+          },
+          aruIconsOptions: {
+            ...existingIconsOptions,
+            enabled: !!document.getElementById("opt-aru-icons-enabled")?.checked,
+            autoLoad: !!document.getElementById("opt-aru-icons-auto-load")?.checked
+          },
           allowHttp: !!document.getElementById("opt-allow-http")?.checked,
           strictAllowlist: !!document.getElementById("opt-strict-allowlist")?.checked,
-          allowedHosts: parseHostList(
-            document.getElementById("opt-allowed-hosts")?.value ?? ""
-          ),
+          allowedHosts: parseHostList(document.getElementById("opt-allowed-hosts")?.value ?? ""),
           ruliwebAiRevealMode: readRevealMode(),
-          ruliwebAiRevealAllowKeywords: parseKeywordTextarea(
-            document.getElementById("opt-ruliweb-ai-reveal-allow-keywords")?.value ?? ""
-          ),
-          ruliwebAiRevealBlockKeywords: parseKeywordTextarea(
-            document.getElementById("opt-ruliweb-ai-reveal-block-keywords")?.value ?? ""
-          )
+          ruliwebAiRevealAllowKeywords: parseKeywordTextarea(document.getElementById("opt-ruliweb-ai-reveal-allow-keywords")?.value ?? ""),
+          ruliwebAiRevealBlockKeywords: parseKeywordTextarea(document.getElementById("opt-ruliweb-ai-reveal-block-keywords")?.value ?? "")
         };
       }
       __name(readFromForm, "readFromForm");
@@ -154,8 +177,15 @@
           try {
             const next = readFromForm();
             const latest = await loadOptions(true);
-            next.aruIconsOptions = { ...latest.aruIconsOptions, enabled: next.aruIconsOptions.enabled, autoLoad: next.aruIconsOptions.autoLoad };
-            next.aruBodyDownloadOptions = { ...latest.aruBodyDownloadOptions, enabled: next.aruBodyDownloadOptions.enabled };
+            next.aruIconsOptions = {
+              ...latest.aruIconsOptions,
+              enabled: next.aruIconsOptions.enabled,
+              autoLoad: next.aruIconsOptions.autoLoad
+            };
+            next.aruBodyDownloadOptions = {
+              ...latest.aruBodyDownloadOptions,
+              enabled: next.aruBodyDownloadOptions.enabled
+            };
             await saveOptions(next);
             setStatus("저장되었습니다.");
           } catch (err) {

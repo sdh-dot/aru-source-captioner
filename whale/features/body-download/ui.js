@@ -3,26 +3,53 @@
   var __defProp = Object.defineProperty;
   var __name = (target, value) => __defProp(target, "name", { value, configurable: true });
 
+  // docs/source/runtime/contracts.mjs
+  var defaultEnvironment = globalThis;
+
   // docs/source/runtime/module-scope.mjs
   function createModuleScope(resolvers = {}, names = [], own = []) {
     const scope = {};
     for (const name of names) {
-      if (own.includes(name)) scope[name] = resolvers[name]?.();
-      else Object.defineProperty(scope, name, { enumerable: true, get: /* @__PURE__ */ __name(() => resolvers[name]?.(), "get") });
+      if (own.includes(name)) {
+        scope[name] = resolvers[name]?.();
+      } else {
+        Object.defineProperty(scope, name, {
+          enumerable: true,
+          get: /* @__PURE__ */ __name(() => resolvers[name]?.(), "get")
+        });
+      }
     }
     return scope;
   }
   __name(createModuleScope, "createModuleScope");
 
   // docs/source/body-download/ui.mjs
-  function createDownloadUi({ environment = globalThis, dependencies = {} } = {}) {
-    const { document, location, navigator, URLSearchParams } = environment;
-    let downloads2 = createModuleScope(dependencies.downloads, ["readJob", "error", "DownloadRunner", "options", "call", "api", "article", "writeJob"], []);
+  function createDownloadUi({ environment = defaultEnvironment, dependencies = {} } = {}) {
+    const { document, URLSearchParams } = environment;
+    let downloads2 = createModuleScope(dependencies.downloads, [
+      "readJob",
+      "error",
+      "DownloadRunner",
+      "options",
+      "call",
+      "api",
+      "article",
+      "writeJob"
+    ], []);
     const initializeDownloadUi = /* @__PURE__ */ __name(function(root) {
       "use strict";
       const D = downloads2, $ = /* @__PURE__ */ __name((id) => document.getElementById(id), "$");
       let job = null, runner = null, lease = null;
-      const labels = { prepared: "실행 전", running: "다운로드 중", complete: "미디어 저장 완료", partial: "일부 파일 저장 실패", blocked: "접근 제한으로 미디어 요청 중지", cancelled: "취소됨", interrupted: "중단됨", error: "실행할 수 없습니다" };
+      const labels = {
+        prepared: "실행 전",
+        running: "다운로드 중",
+        complete: "미디어 저장 완료",
+        partial: "일부 파일 저장 실패",
+        blocked: "접근 제한으로 미디어 요청 중지",
+        cancelled: "취소됨",
+        interrupted: "중단됨",
+        error: "실행할 수 없습니다"
+      };
       function render(value) {
         job = value;
         if (!job.source) {
@@ -31,11 +58,11 @@
           $("error").textContent = job.error || "게시글에서 다시 실행해 주세요.";
           return;
         }
-        $("article-title").textContent = job.source.title;
+        $("article-title").textContent = job.source.title || null;
         $("source").textContent = "게시글 " + job.source.articleId + " · " + job.source.url;
-        $("found").textContent = job.counts.bodyMedia - job.counts.unsupported;
-        $("unique").textContent = job.images.length;
-        $("unsupported").textContent = job.counts.unsupported + job.images.filter((x) => x.status === "unsupported").length;
+        $("found").textContent = String(job.counts.bodyMedia - job.counts.unsupported);
+        $("unique").textContent = String(job.images.length);
+        $("unsupported").textContent = String(job.counts.unsupported + job.images.filter((x) => x.status === "unsupported").length);
         $("folder").textContent = job.folder;
         const complete = job.images.filter((x) => x.status === "complete").length, failed = job.images.filter((x) => ["failed", "unsupported", "blocked"].includes(x.status)).length;
         const processed = job.images.filter((x) => ["complete", "failed", "unsupported"].includes(x.status)).length;
@@ -51,7 +78,9 @@
         $("start").disabled = job.status !== "prepared" || !job.images.length;
         $("cancel").textContent = ["running", "cancelling"].includes(job.status) ? "다운로드 취소" : "닫기";
         $("record").hidden = !["interrupted", "partial", "cancelled", "blocked"].includes(job.status) && job.manifest?.status !== "failed";
-        if ($("results").open) renderResults();
+        if ($("results").open) {
+          renderResults();
+        }
       }
       __name(render, "render");
       function renderResults() {
@@ -65,14 +94,20 @@
       }
       __name(renderResults, "renderResults");
       $("results").addEventListener("toggle", () => {
-        if ($("results").open) renderResults();
+        if ($("results").open) {
+          renderResults();
+        }
       });
       async function load() {
         const id = new URLSearchParams(root.location.search).get("job"), stored = await D.readJob(id);
-        if (!stored || stored.id !== id) throw D.error("JOB", "이 실행 기록이 없거나 다른 다운로드 화면이 열렸습니다. 게시글에서 다시 실행해 주세요.");
+        if (!stored || stored.id !== id) {
+          throw D.error("JOB", "이 실행 기록이 없거나 다른 다운로드 화면이 열렸습니다. 게시글에서 다시 실행해 주세요.");
+        }
         job = stored;
         runner = new D.DownloadRunner({ onProgress: render });
-        if (!root.navigator.locks) throw D.error("LOCK_UNAVAILABLE", "중복 실행 방지 기능을 사용할 수 없는 브라우저입니다.");
+        if (!root.navigator.locks) {
+          throw D.error("LOCK_UNAVAILABLE", "중복 실행 방지 기능을 사용할 수 없는 브라우저입니다.");
+        }
         let readyResolve;
         const ready = new Promise((resolve) => {
           readyResolve = resolve;
@@ -82,22 +117,34 @@
         });
         root.navigator.locks.request("aru-body-download-manager", { ifAvailable: true }, async (lock) => {
           readyResolve(!!lock);
-          if (lock) await hold;
+          if (lock) {
+            await hold;
+          }
         }).catch(() => readyResolve(false));
-        if (!await ready) throw D.error("BUSY", "다른 다운로드 화면이 이미 열려 있습니다. 그 화면에서 진행해 주세요.");
+        if (!await ready) {
+          throw D.error("BUSY", "다른 다운로드 화면이 이미 열려 있습니다. 그 화면에서 진행해 주세요.");
+        }
         await runner.recover(job);
         render(job);
       }
       __name(load, "load");
       $("start").addEventListener("click", async (event) => {
-        if (!event.isTrusted || !job || runner?.running) return;
+        if (!event.isTrusted || !job || runner?.running) {
+          return;
+        }
         $("start").disabled = true;
         try {
-          if (!await D.options()) throw D.error("DISABLED", "전체 확장과 다운로드 옵션을 켜 주세요.");
+          if (!await D.options()) {
+            throw D.error("DISABLED", "전체 확장과 다운로드 옵션을 켜 주세요.");
+          }
           const sourceTab = await D.call(D.api.tabs, "get", job.sourceTabId);
-          if (D.article(sourceTab.url).url !== job.source.url) throw D.error("NAVIGATED", "원본 탭의 게시글이 변경되었습니다. 다시 실행해 주세요.");
+          if (D.article(sourceTab.url).url !== job.source.url) {
+            throw D.error("NAVIGATED", "원본 탭의 게시글이 변경되었습니다. 다시 실행해 주세요.");
+          }
           const fresh = await D.call(D.api.tabs, "sendMessage", job.sourceTabId, { type: "aru-body-download:collect", url: job.source.url }, { frameId: 0 });
-          if (!fresh?.ok || JSON.stringify(fresh.result.images.map((x) => x.originalUrl)) !== JSON.stringify(job.images.map((x) => x.originalUrl))) throw D.error("BODY_CHANGED", "본문 미디어 목록이 변경되었습니다. 게시글에서 다시 실행해 주세요.");
+          if (!fresh?.ok || JSON.stringify(fresh.result.images.map((x) => x.originalUrl)) !== JSON.stringify(job.images.map((x) => x.originalUrl))) {
+            throw D.error("BODY_CHANGED", "본문 미디어 목록이 변경되었습니다. 게시글에서 다시 실행해 주세요.");
+          }
           await runner.run(job);
         } catch (err) {
           $("error").hidden = false;
@@ -106,7 +153,9 @@
         }
       });
       $("cancel").addEventListener("click", async (event) => {
-        if (!event.isTrusted) return;
+        if (!event.isTrusted) {
+          return;
+        }
         if (runner?.running) {
           $("cancel").disabled = true;
           await runner.cancel();
@@ -121,15 +170,21 @@
         }
       });
       $("record").addEventListener("click", async (event) => {
-        if (!event.isTrusted || !runner || runner.running) return;
+        if (!event.isTrusted || !runner || runner.running) {
+          return;
+        }
         $("record").disabled = true;
         await runner.saveManifest(job);
         $("record").disabled = false;
       });
       D.api?.storage.onChanged.addListener((changes, area) => {
-        if (area === "sync" && (changes.enabled || changes.aruBodyDownloadOptions)) D.options().then((active) => {
-          if (!active && runner?.running) runner.cancel();
-        }).catch(() => runner?.cancel());
+        if (area === "sync" && (changes.enabled || changes.aruBodyDownloadOptions)) {
+          D.options().then((active) => {
+            if (!active && runner?.running) {
+              runner.cancel();
+            }
+          }).catch(() => runner?.cancel());
+        }
       });
       root.addEventListener("beforeunload", (event) => {
         if (runner?.running) {

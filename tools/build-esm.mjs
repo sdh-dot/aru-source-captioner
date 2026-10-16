@@ -1,5 +1,6 @@
 // ESM 원본에서만 호환 스크립트를 만들고 기존 배포 빌드의 순서·Manifest 정책을 유지한다.
 import fs from 'node:fs';
+import { compileProductModules } from './compile-typescript.mjs';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { build } from 'esbuild';
@@ -75,6 +76,7 @@ export async function compileRuntime({ check = false } = {}) {
 if (process.argv[1] && pathToFileURL(path.resolve(process.argv[1])).href === import.meta.url) {
   const args = process.argv.slice(2);
   if (args.some(arg => !['--check', '--compat-only'].includes(arg))) throw new Error('지원하지 않는 빌드 인자입니다.');
+  compileProductModules({check: args.includes('--check')});
   const result = await compileCompatibility({ check: args.includes('--check') });
   if (!args.includes('--check') && !args.includes('--compat-only')) await import('./build.mjs');
   await compileRuntime({ check: args.includes('--check') });

@@ -6,7 +6,6 @@
   // docs/source/performance/metrics.mjs
   function createPerformanceMetrics({ environment = globalThis } = {}) {
     const g = environment;
-    "use strict";
     const names = /* @__PURE__ */ new Set([
       "upload.discover",
       "upload.observer",
@@ -34,7 +33,17 @@
     let enabled = false, generation = 0;
     const clock = /* @__PURE__ */ __name(() => g.performance.now(), "clock");
     const row = /* @__PURE__ */ __name((name) => {
-      if (!stats.has(name)) stats.set(name, { count: 0, total: 0, max: 0, active: 0, peak: 0, samples: [], cursor: 0 });
+      if (!stats.has(name)) {
+        stats.set(name, {
+          count: 0,
+          total: 0,
+          max: 0,
+          active: 0,
+          peak: 0,
+          samples: [],
+          cursor: 0
+        });
+      }
       return stats.get(name);
     }, "row");
     const valid = /* @__PURE__ */ __name((name) => enabled && names.has(name), "valid");
@@ -42,20 +51,26 @@
       configure(options = {}) {
         enabled = options.enabled === true;
         generation++;
-        for (const value of stats.values()) value.active = 0;
+        for (const value of stats.values()) {
+          value.active = 0;
+        }
       },
       reset() {
         generation++;
         stats.clear();
       },
       start(name) {
-        if (!valid(name)) return;
+        if (!valid(name)) {
+          return;
+        }
         const value = row(name), started = clock(), epoch = generation;
         value.active++;
         value.peak = Math.max(value.peak, value.active);
         let finished = false;
         return () => {
-          if (finished || epoch !== generation || !enabled) return;
+          if (finished || epoch !== generation || !enabled) {
+            return;
+          }
           finished = true;
           const duration = Math.max(0, clock() - started);
           value.active--;
@@ -67,7 +82,9 @@
         };
       },
       count(name) {
-        if (valid(name)) row(name).count++;
+        if (valid(name)) {
+          row(name).count++;
+        }
       },
       gauge(name, number) {
         if (valid(name) && Number.isFinite(number) && number >= 0) {
@@ -93,7 +110,12 @@
             ...value.current === void 0 ? {} : { current: value.current }
           };
         }
-        return { enabled, windowSize, percentiles: "last 512 completed calls per metric; totals cover this reset interval", metrics };
+        return {
+          enabled,
+          windowSize,
+          percentiles: "last 512 completed calls per metric; totals cover this reset interval",
+          metrics
+        };
       }
     };
     return Object.freeze(api);
@@ -106,12 +128,21 @@
   }
   __name(getLegacyPerformanceMetrics, "getLegacyPerformanceMetrics");
 
+  // docs/source/runtime/contracts.mjs
+  var defaultEnvironment = globalThis;
+
   // docs/source/runtime/module-scope.mjs
   function createModuleScope(resolvers = {}, names = [], own = []) {
     const scope = {};
     for (const name of names) {
-      if (own.includes(name)) scope[name] = resolvers[name]?.();
-      else Object.defineProperty(scope, name, { enumerable: true, get: /* @__PURE__ */ __name(() => resolvers[name]?.(), "get") });
+      if (own.includes(name)) {
+        scope[name] = resolvers[name]?.();
+      } else {
+        Object.defineProperty(scope, name, {
+          enumerable: true,
+          get: /* @__PURE__ */ __name(() => resolvers[name]?.(), "get")
+        });
+      }
     }
     return scope;
   }
@@ -122,8 +153,8 @@
   __name(selectModuleExports, "selectModuleExports");
 
   // docs/source/upload-attribution/core.mjs
-  function createAttributionCore({ environment = globalThis, dependencies = {}, metrics = null } = {}) {
-    const { document, MutationObserver, URL } = environment;
+  function createAttributionCore({ environment = defaultEnvironment, dependencies = {}, metrics = null } = {}) {
+    const { URL } = environment;
     let attribution2 = createModuleScope(dependencies.attribution, [], ["Registry", "Controller"]);
     const initializeAttributionCore = /* @__PURE__ */ __name(function(g) {
       "use strict";
@@ -167,12 +198,16 @@
             info: null
           }));
           this.records.push(...records);
-          if (!this.byRoot.has(root)) this.byRoot.set(root, /* @__PURE__ */ new Map());
+          if (!this.byRoot.has(root)) {
+            this.byRoot.set(root, /* @__PURE__ */ new Map());
+          }
           const names = this.byRoot.get(root);
           for (const record of records) {
             this.known.add(record);
             this.nextExpiryAt = Math.min(this.nextExpiryAt, record.created + this.ttl);
-            if (!names.has(record.name)) names.set(record.name, []);
+            if (!names.has(record.name)) {
+              names.set(record.name, []);
+            }
             names.get(record.name).push(record);
           }
           return records;
@@ -185,13 +220,19 @@
         }
         expire() {
           const now = this.now();
-          if (now <= this.nextExpiryAt) return;
+          if (now <= this.nextExpiryAt) {
+            return;
+          }
           this.nextExpiryAt = Infinity;
-          for (const record of this.records) if (!record.consumed && record.state !== "expired") {
-            if (now - record.created > this.ttl) {
-              record.state = "expired";
-              this.blocked.add(record.name);
-            } else this.nextExpiryAt = Math.min(this.nextExpiryAt, record.created + this.ttl);
+          for (const record of this.records) {
+            if (!record.consumed && record.state !== "expired") {
+              if (now - record.created > this.ttl) {
+                record.state = "expired";
+                this.blocked.add(record.name);
+              } else {
+                this.nextExpiryAt = Math.min(this.nextExpiryAt, record.created + this.ttl);
+              }
+            }
           }
         }
         match(names, root) {
@@ -199,16 +240,28 @@
           try {
             this.expire();
             const exact = new Set(names.filter((value) => typeof value === "string" && value.length));
-            if (this.full) return { status: "capacity" };
-            if ([...exact].some((name) => this.blocked.has(name))) return { status: "expired" };
+            if (this.full) {
+              return { status: "capacity" };
+            }
+            if ([...exact].some((name) => this.blocked.has(name))) {
+              return { status: "expired" };
+            }
             const namesIndex = this.byRoot.get(root);
             const alternatives = [...exact].flatMap((name) => namesIndex?.get(name) || []).filter((record) => record.state !== "expired").sort((a, b) => a.ordinal - b.ordinal);
             const possible = alternatives.filter((record) => !record.consumed);
-            if (!possible.length) return { status: "unidentified" };
-            if (alternatives.some((record) => record.state === "pending")) return { status: "waiting" };
-            if (alternatives.some((record) => record.info?.status !== "ok" || !record.info.url)) return { status: "source-missing" };
+            if (!possible.length) {
+              return { status: "unidentified" };
+            }
+            if (alternatives.some((record) => record.state === "pending")) {
+              return { status: "waiting" };
+            }
+            if (alternatives.some((record) => record.info?.status !== "ok" || !record.info.url)) {
+              return { status: "source-missing" };
+            }
             const urls = new Set(alternatives.map((record) => record.info.url));
-            if (urls.size !== 1) return { status: "ambiguous" };
+            if (urls.size !== 1) {
+              return { status: "ambiguous" };
+            }
             return {
               status: "matched",
               url: possible[0].info.url,
@@ -221,7 +274,9 @@
           }
         }
         commit(match) {
-          if (match.status === "matched") match.record.consumed = true;
+          if (match.status === "matched") {
+            match.record.consumed = true;
+          }
         }
         clear() {
           this.records.length = 0;
@@ -235,9 +290,9 @@
         static {
           __name(this, "Controller");
         }
-        constructor({ document: document2 = g.document, parse, sanitize, caption, anchor, existing, onStatus = /* @__PURE__ */ __name(() => {
+        constructor({ document = g.document, parse, sanitize, caption, anchor, existing, onStatus = /* @__PURE__ */ __name(() => {
         }, "onStatus"), now } = {}) {
-          this.doc = document2;
+          this.doc = document;
           this.parse = parse;
           this.sanitize = sanitize;
           this.caption = caption;
@@ -267,7 +322,9 @@
           this.observer = new g.MutationObserver((mutations) => {
             metrics?.count("upload.observer");
             const changed = mutations.some((mutation) => {
-              if (mutation.type === "attributes") return this.roots.has(mutation.target) || mutation.target.getAttribute("contenteditable") === "true";
+              if (mutation.type === "attributes") {
+                return this.roots.has(mutation.target) || mutation.target.getAttribute("contenteditable") === "true";
+              }
               return [...mutation.addedNodes, ...mutation.removedNodes].some((node) => node.nodeType === 1 && (node.getAttribute("contenteditable") === "true" || this.roots.has(node) || node.childElementCount > 0 && (node.querySelector('[contenteditable="true"]') || [...this.roots].some((root) => node.contains(root)))));
             });
             if (changed) {
@@ -276,51 +333,85 @@
             }
           });
           this.discover();
-          this.observer.observe(this.doc.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["contenteditable", "class"] });
+          this.observer.observe(this.doc.body, {
+            childList: true,
+            subtree: true,
+            attributes: true,
+            attributeFilter: ["contenteditable", "class"]
+          });
         }
         trace(event) {
           this.events.push(event);
-          if (this.events.length > 120) this.events.shift();
+          if (this.events.length > 120) {
+            this.events.shift();
+          }
         }
         discover() {
           const finish = metrics?.start("upload.discover");
           try {
-            if (this.closed) return;
-            const found = [...this.doc.querySelectorAll(ROOTS)];
-            if (!found.length) found.push(...this.doc.querySelectorAll('[contenteditable="true"]'));
-            for (const root of this.roots) if (!found.includes(root)) {
-              this.rootObservers.get(root)?.disconnect();
-              this.rootObservers.delete(root);
-              this.roots.delete(root);
+            if (this.closed) {
+              return;
             }
-            for (const root of found) if (!this.roots.has(root)) {
-              this.roots.add(root);
-              for (const image of root.querySelectorAll("img")) this.ignored.add(image);
-              const observer = new g.MutationObserver((mutations) => {
-                metrics?.count("upload.observer");
-                let relevant = false;
-                for (const mutation of mutations) {
-                  if (mutation.type === "attributes") {
-                    this.observeImage(mutation.target);
-                    relevant = true;
-                  } else {
-                    for (const node of mutation.addedNodes) if (node.nodeType === 1) {
-                      if (node.matches("img")) {
-                        this.observeImage(node);
-                        relevant = true;
+            const found = [...this.doc.querySelectorAll(ROOTS)];
+            if (!found.length) {
+              found.push(...this.doc.querySelectorAll('[contenteditable="true"]'));
+            }
+            for (const root of this.roots) {
+              if (!found.includes(root)) {
+                this.rootObservers.get(root)?.disconnect();
+                this.rootObservers.delete(root);
+                this.roots.delete(root);
+              }
+            }
+            for (const root of found) {
+              if (!this.roots.has(root)) {
+                this.roots.add(root);
+                for (const image of root.querySelectorAll("img")) {
+                  this.ignored.add(image);
+                }
+                const observer = new g.MutationObserver((mutations) => {
+                  metrics?.count("upload.observer");
+                  let relevant = false;
+                  for (const mutation of mutations) {
+                    if (mutation.type === "attributes") {
+                      this.observeImage(mutation.target);
+                      relevant = true;
+                    } else {
+                      for (const node of mutation.addedNodes) {
+                        if (node.nodeType === 1) {
+                          if (node.matches("img")) {
+                            this.observeImage(node);
+                            relevant = true;
+                          }
+                          for (const image of node.querySelectorAll("img")) {
+                            this.observeImage(image);
+                            relevant = true;
+                          }
+                        }
                       }
-                      for (const image of node.querySelectorAll("img")) {
-                        this.observeImage(image);
+                      if (mutation.removedNodes.length && this.candidates.size) {
                         relevant = true;
                       }
                     }
-                    if (mutation.removedNodes.length && this.candidates.size) relevant = true;
                   }
-                }
-                if (relevant) this.schedule();
-              });
-              observer.observe(root, { childList: true, subtree: true, attributes: true, attributeFilter: ["alt", "title", "src", "data-original-name", "data-filename"] });
-              this.rootObservers.set(root, observer);
+                  if (relevant) {
+                    this.schedule();
+                  }
+                });
+                observer.observe(root, {
+                  childList: true,
+                  subtree: true,
+                  attributes: true,
+                  attributeFilter: [
+                    "alt",
+                    "title",
+                    "src",
+                    "data-original-name",
+                    "data-filename"
+                  ]
+                });
+                this.rootObservers.set(root, observer);
+              }
             }
           } finally {
             finish?.();
@@ -330,12 +421,19 @@
           return [...this.roots].find((root) => root.isConnected && root.contains(image));
         }
         observeImage(image) {
-          if (!image.matches?.("img") || this.ignored.has(image) || this.handled.has(image)) return;
+          if (!image.matches?.("img") || this.ignored.has(image) || this.handled.has(image)) {
+            return;
+          }
           const root = this.rootFor(image);
-          if (!root || !this.registry.records.some((record) => record.root === root && !record.consumed)) return;
+          if (!root || !this.registry.records.some((record) => record.root === root && !record.consumed)) {
+            return;
+          }
           if (!this.imageIds.has(image)) {
             this.imageIds.set(image, id("i"));
-            this.trace({ stage: "editor-image-observed", image: this.imageIds.get(image) });
+            this.trace({
+              stage: "editor-image-observed",
+              image: this.imageIds.get(image)
+            });
             image.addEventListener("load", () => {
               if (!this.closed) {
                 this.mediaFailures.delete(image);
@@ -352,7 +450,9 @@
           this.candidates.add(image);
         }
         async select(files, input) {
-          if (this.closed) return;
+          if (this.closed) {
+            return;
+          }
           this.discover();
           const roots = [...this.roots].filter((root2) => root2.isConnected);
           const scope = input?.closest?.(".seditor,.note-editor,.editor");
@@ -360,22 +460,40 @@
           const root = scoped.length === 1 ? scoped[0] : null;
           if (!root) {
             this.trace({ stage: "editor-unavailable" });
-            this.onStatus({ state: "editor-unavailable", selected: files.length });
+            this.onStatus({
+              state: "editor-unavailable",
+              selected: files.length
+            });
             return;
           }
-          for (const image of root.querySelectorAll("img")) if (!this.candidates.has(image)) this.ignored.add(image);
+          for (const image of root.querySelectorAll("img")) {
+            if (!this.candidates.has(image)) {
+              this.ignored.add(image);
+            }
+          }
           const records = this.registry.begin(files, root);
           this.selected += files.length;
-          records.forEach((record) => this.trace({ stage: "file-selected", file: record.id, batch: record.batch, index: record.index }));
+          records.forEach((record) => this.trace({
+            stage: "file-selected",
+            file: record.id,
+            batch: record.batch,
+            index: record.index
+          }));
           if (!records.length) {
             this.report();
             return;
           }
           const task = Promise.all(records.map((record, index) => this.parseFile(files[index]).then((info) => {
-            if (this.closed) return;
+            if (this.closed) {
+              return;
+            }
             this.registry.ready(record, info);
             this.readyCount++;
-            this.trace({ stage: "metadata-ready", file: record.id, sourceAvailable: info?.status === "ok" });
+            this.trace({
+              stage: "metadata-ready",
+              file: record.id,
+              sourceAvailable: info?.status === "ok"
+            });
             this.schedule();
           })));
           this.pending.push(task);
@@ -383,14 +501,20 @@
             await task;
           } finally {
             const index = this.pending.indexOf(task);
-            if (index >= 0) this.pending.splice(index, 1);
+            if (index >= 0) {
+              this.pending.splice(index, 1);
+            }
             this.schedule();
           }
         }
         parseFile(file) {
-          if (this.closed) return Promise.resolve({ status: "cancelled" });
+          if (this.closed) {
+            return Promise.resolve({ status: "cancelled" });
+          }
           const reusable = typeof g.File === "function" && file instanceof g.File;
-          if (reusable && this.parseJobs.has(file)) return this.parseJobs.get(file);
+          if (reusable && this.parseJobs.has(file)) {
+            return this.parseJobs.get(file);
+          }
           const promise = new Promise((resolve) => {
             this.parseQueue.push({ file, resolve });
             this.drainParsers();
@@ -416,11 +540,15 @@
           }
         }
         schedule() {
-          if (this.scheduled || this.closed) return;
+          if (this.scheduled || this.closed) {
+            return;
+          }
           this.scheduled = true;
           g.queueMicrotask(() => {
             this.scheduled = false;
-            if (!this.closed) this.reconcile();
+            if (!this.closed) {
+              this.reconcile();
+            }
           });
         }
         reconcile() {
@@ -444,7 +572,9 @@
                 image.getAttribute("data-filename")
               ], root);
               this.proof.set(image, match);
-              if (match.status !== "matched") continue;
+              if (match.status !== "matched") {
+                continue;
+              }
               let uploaded;
               try {
                 uploaded = new URL(image.getAttribute("src") || "", this.doc.baseURI);
@@ -480,7 +610,12 @@
                 this.inserted++;
                 this.candidates.delete(image);
                 this.proof.set(image, match);
-                this.trace({ stage: "caption-inserted", image: this.imageIds.get(image), evidence: match.evidence, possibleFiles: match.possibleIds });
+                this.trace({
+                  stage: "caption-inserted",
+                  image: this.imageIds.get(image),
+                  evidence: match.evidence,
+                  possibleFiles: match.possibleIds
+                });
               } catch (_) {
                 this.proof.set(image, { status: "insert-failed" });
               }
@@ -499,14 +634,20 @@
               blocked[state] = (blocked[state] || 0) + 1;
             }
             const order = [];
-            for (const root of this.roots) if (root.isConnected) for (const image of root.querySelectorAll("img")) {
-              const match = this.proof.get(image);
-              if (this.imageIds.has(image)) order.push({
-                image: this.imageIds.get(image),
-                selectionIndex: match?.evidence === "unique-exact-name" ? match.record.index : null,
-                batch: match?.evidence === "unique-exact-name" ? match.record.batch : null,
-                evidence: match?.evidence || null
-              });
+            for (const root of this.roots) {
+              if (root.isConnected) {
+                for (const image of root.querySelectorAll("img")) {
+                  const match = this.proof.get(image);
+                  if (this.imageIds.has(image)) {
+                    order.push({
+                      image: this.imageIds.get(image),
+                      selectionIndex: match?.evidence === "unique-exact-name" ? match.record.index : null,
+                      batch: match?.evidence === "unique-exact-name" ? match.record.batch : null,
+                      evidence: match?.evidence || null
+                    });
+                  }
+                }
+              }
             }
             return {
               diagnostic: "aru-upload-attribution-v1",
@@ -534,22 +675,30 @@
           this.closed = true;
           this.observer.disconnect();
           this.imageListeners.abort();
-          for (const observer of this.rootObservers.values()) observer.disconnect();
+          for (const observer of this.rootObservers.values()) {
+            observer.disconnect();
+          }
           this.rootObservers.clear();
           this.candidates.clear();
           this.roots.clear();
           this.registry.clear();
           this.events.length = 0;
           this.parseJobs = /* @__PURE__ */ new WeakMap();
-          for (const job of this.parseQueue.splice(0)) job.resolve({ status: "cancelled" });
-          for (const job of this.activeJobs) job.resolve({ status: "cancelled" });
+          for (const job of this.parseQueue.splice(0)) {
+            job.resolve({ status: "cancelled" });
+          }
+          for (const job of this.activeJobs) {
+            job.resolve({ status: "cancelled" });
+          }
           this.activeJobs.clear();
         }
       }
       attribution2 = Object.freeze({ Registry, Controller });
     }, "initializeAttributionCore");
     initializeAttributionCore(environment);
-    return { "attribution": selectModuleExports(attribution2, ["Registry", "Controller"]) };
+    return {
+      attribution: selectModuleExports(attribution2, ["Registry", "Controller"])
+    };
   }
   __name(createAttributionCore, "createAttributionCore");
 

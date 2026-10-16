@@ -31,7 +31,9 @@
     const result = [];
     const seen = /* @__PURE__ */ new Set();
     for (const value of values) {
-      if (typeof value !== "string") fail("TAGS_INVALID", "태그는 문자열이어야 합니다.");
+      if (typeof value !== "string") {
+        fail("TAGS_INVALID", "태그는 문자열이어야 합니다.");
+      }
       const tag = value.replace(/\s+/gu, " ").trim();
       if (tag.length > 512 || /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/u.test(tag)) {
         fail("TAGS_INVALID", "태그 길이 또는 제어 문자를 확인해 주세요.");
@@ -45,7 +47,9 @@
   }
   __name(normalize, "normalize");
   function decode(raw) {
-    if (raw == null || raw === "") return [];
+    if (raw == null || raw === "") {
+      return [];
+    }
     if (raw.length > 65536) {
       fail("TAGS_INVALID", "기존 태그 속성이 너무 큽니다. 원본은 변경하지 않았습니다.");
     }
@@ -67,7 +71,9 @@
     try {
       raw = PREFIX + encodeURIComponent(JSON.stringify(normalize(values)));
     } catch (error) {
-      if (error.code) throw error;
+      if (error.code) {
+        throw error;
+      }
       fail("TAGS_INVALID", "태그에 올바르지 않은 유니코드 문자가 있습니다.");
     }
     if (raw.length > 65536) {
@@ -82,8 +88,8 @@
     if (!["add", "remove", "replace"].includes(operation)) {
       fail("OP_INVALID", "태그 작업을 선택해 주세요.");
     }
-    tags = normalize(tags);
-    if (operation !== "replace" && !tags.length) {
+    const normalizedTags = normalize(tags);
+    if (operation !== "replace" && !normalizedTags.length) {
       fail("TAGS_EMPTY", "추가하거나 제거할 태그를 지정해 주세요.");
     }
     const selected = new Set(handles);
@@ -99,21 +105,27 @@
     const occupied = new Set(images.filter((image) => !selected.has(image.handle) && image.id).map((image) => image.id));
     const allIds = new Set(images.filter((image) => image.id).map((image) => image.id));
     const changes = [];
-    const remove = new Set(tags);
+    const remove = new Set(normalizedTags);
     let ids = 0;
     let tagChanges = 0;
     for (const image of images) {
-      if (!selected.has(image.handle)) continue;
+      if (!selected.has(image.handle)) {
+        continue;
+      }
       const before = decode(image.rawTags);
-      const after = operation === "add" ? normalize(before.concat(tags)) : operation === "remove" ? before.filter((tag) => !remove.has(tag)) : tags;
+      const after = operation === "add" ? normalize(before.concat(normalizedTags)) : operation === "remove" ? before.filter((tag) => !remove.has(tag)) : normalizedTags;
       let id = image.id;
       if (!id || occupied.has(id)) {
         let tries = 0;
         do {
           id = generate();
-          if (++tries > 100) fail("ID_COLLISION", "고유 ID 생성에 실패했습니다.");
+          if (++tries > 100) {
+            fail("ID_COLLISION", "고유 ID 생성에 실패했습니다.");
+          }
         } while (allIds.has(id) || occupied.has(id));
-        if (typeof id !== "string" || !id) fail("ID_INVALID", "고유 ID 생성에 실패했습니다.");
+        if (typeof id !== "string" || !id) {
+          fail("ID_INVALID", "고유 ID 생성에 실패했습니다.");
+        }
         allIds.add(id);
       }
       occupied.add(id);
@@ -121,17 +133,29 @@
       const rawTags = same && image.rawTags != null ? image.rawTags : encode(after);
       if (id !== image.id || rawTags !== image.rawTags) {
         changes.push({ handle: image.handle, id, rawTags });
-        if (id !== image.id) ids++;
-        if (rawTags !== image.rawTags) tagChanges++;
+        if (id !== image.id) {
+          ids++;
+        }
+        if (rawTags !== image.rawTags) {
+          tagChanges++;
+        }
       }
     }
-    return { changes, selected: selected.size, changed: changes.length, ids, tagChanges };
+    return {
+      changes,
+      selected: selected.size,
+      changed: changes.length,
+      ids,
+      tagChanges
+    };
   }
   __name(plan, "plan");
   var Selection = class {
     static {
       __name(this, "Selection");
     }
+    values;
+    anchor;
     constructor() {
       this.values = /* @__PURE__ */ new Set();
       this.anchor = null;
@@ -139,15 +163,20 @@
     click(handle, order, { ctrlKey = false, metaKey = false, shiftKey = false, checkbox = false } = {}) {
       const additive = ctrlKey || metaKey;
       if (shiftKey && this.anchor && order.includes(this.anchor)) {
-        if (!additive) this.values.clear();
+        if (!additive) {
+          this.values.clear();
+        }
         const start = order.indexOf(this.anchor);
         const end = order.indexOf(handle);
         for (const value of order.slice(Math.min(start, end), Math.max(start, end) + 1)) {
           this.values.add(value);
         }
       } else if (additive || checkbox) {
-        if (this.values.has(handle)) this.values.delete(handle);
-        else this.values.add(handle);
+        if (this.values.has(handle)) {
+          this.values.delete(handle);
+        } else {
+          this.values.add(handle);
+        }
         this.anchor = handle;
       } else {
         this.values = /* @__PURE__ */ new Set([handle]);
@@ -164,9 +193,13 @@
     retain(order) {
       const keep = new Set(order);
       for (const handle of this.values) {
-        if (!keep.has(handle)) this.values.delete(handle);
+        if (!keep.has(handle)) {
+          this.values.delete(handle);
+        }
       }
-      if (!keep.has(this.anchor)) this.anchor = null;
+      if (!keep.has(this.anchor)) {
+        this.anchor = null;
+      }
     }
   };
 

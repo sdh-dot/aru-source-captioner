@@ -3,12 +3,21 @@
   var __defProp = Object.defineProperty;
   var __name = (target, value) => __defProp(target, "name", { value, configurable: true });
 
+  // docs/source/runtime/contracts.mjs
+  var defaultEnvironment = globalThis;
+
   // docs/source/runtime/module-scope.mjs
   function createModuleScope(resolvers = {}, names = [], own = []) {
     const scope = {};
     for (const name of names) {
-      if (own.includes(name)) scope[name] = resolvers[name]?.();
-      else Object.defineProperty(scope, name, { enumerable: true, get: /* @__PURE__ */ __name(() => resolvers[name]?.(), "get") });
+      if (own.includes(name)) {
+        scope[name] = resolvers[name]?.();
+      } else {
+        Object.defineProperty(scope, name, {
+          enumerable: true,
+          get: /* @__PURE__ */ __name(() => resolvers[name]?.(), "get")
+        });
+      }
     }
     return scope;
   }
@@ -19,13 +28,16 @@
   __name(selectModuleExports, "selectModuleExports");
 
   // docs/source/ruliweb-icons/ui-preferences.mjs
-  function createIconsUiPreferences({ environment = globalThis, dependencies = {} } = {}) {
-    const { chrome, browser } = environment;
+  function createIconsUiPreferences({ environment = defaultEnvironment, dependencies = {} } = {}) {
     let icons2 = createModuleScope(dependencies.icons, ["createUiPreferences", "UiPreferences"], ["createUiPreferences", "UiPreferences"]);
     const initializeIconsUiPreferences = /* @__PURE__ */ __name(function(g) {
       "use strict";
       const A = icons2 = icons2 || {}, key = "aruIconsPickerUiV1";
-      const defaults = Object.freeze({ modalSize: "default", iconSize: "normal", previewVisible: true });
+      const defaults = Object.freeze({
+        modalSize: "default",
+        iconSize: "normal",
+        previewVisible: true
+      });
       function sanitize(value) {
         const v = value && typeof value === "object" ? value : {};
         return {
@@ -39,7 +51,9 @@
         let writes = Promise.resolve();
         function invoke(method, args) {
           const storage = api?.storage?.local;
-          if (typeof storage?.[method] !== "function") return Promise.reject(Error("Local storage unavailable"));
+          if (typeof storage?.[method] !== "function") {
+            return Promise.reject(Error("Local storage unavailable"));
+          }
           if (promiseApi) {
             try {
               return Promise.resolve(storage[method](...args));
@@ -51,8 +65,11 @@
             try {
               storage[method](...args, (result2) => {
                 const error = api.runtime?.lastError;
-                if (error) reject(Error(error.message || "Storage failed"));
-                else resolve(result2);
+                if (error) {
+                  reject(Error(error.message || "Storage failed"));
+                } else {
+                  resolve(result2);
+                }
               });
             } catch (error) {
               reject(error);
@@ -79,7 +96,9 @@
       A.UiPreferences = create();
     }, "initializeIconsUiPreferences");
     initializeIconsUiPreferences(environment);
-    return { "icons": selectModuleExports(icons2, ["createUiPreferences", "UiPreferences"]) };
+    return {
+      icons: selectModuleExports(icons2, ["createUiPreferences", "UiPreferences"])
+    };
   }
   __name(createIconsUiPreferences, "createIconsUiPreferences");
 

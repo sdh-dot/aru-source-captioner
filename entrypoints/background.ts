@@ -1,8 +1,9 @@
+import { defaultEnvironment } from "../src/runtime/contracts.ts";
 import { defineBackground } from "wxt/utils/define-background";
-import { installFirefoxBackground } from "../docs/source/platform/firefox/background.mjs";
-import { installWhaleBackground } from "../docs/source/platform/whale/background.mjs";
-import { createIconsBackground } from "../docs/source/ruliweb-icons/background.mjs";
-import { installDownloadBackground } from "../docs/source/runtime/downloads.mjs";
+import { installFirefoxBackground } from "../src/platform/firefox/background.ts";
+import { installWhaleBackground } from "../src/platform/whale/background.ts";
+import { createIconsBackground } from "../src/ruliweb-icons/background.ts";
+import { installDownloadBackground } from "../src/runtime/downloads.ts";
 export default defineBackground(() => {
   // Native 다운로드 완료 처리가 공통 다운로드의 소유권 판별자를 늦게 조회해야 한다.
   const downloads = {};
@@ -10,15 +11,17 @@ export default defineBackground(() => {
     ? installFirefoxBackground
     : installWhaleBackground;
   install({
-    environment: globalThis,
+    environment: defaultEnvironment,
     dependencies: {
       downloads: { ownsDownload: () => Reflect.get(downloads, "ownsDownload") },
     },
   });
-  createIconsBackground({ environment: globalThis });
+  createIconsBackground({ environment: defaultEnvironment });
   Object.assign(
     downloads,
-    installDownloadBackground({ environment: globalThis, initial: downloads })
-      .downloads,
+    installDownloadBackground({
+      environment: defaultEnvironment,
+      initial: downloads,
+    }).downloads,
   );
 });

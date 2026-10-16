@@ -4,7 +4,7 @@
     "allowJs": true,
     "checkJs": false,
     "noUncheckedIndexedAccess": false,
-    "lib": ["DOM", "ES2022"],
+    "lib": ["DOM", "DOM.Iterable", "ES2022"],
     "types": ["node"],
     "resolveJsonModule": true
   },
@@ -15,6 +15,7 @@
     "wxt.config.ts",
     "oxfmt.config.ts",
     "oxlint.config.ts",
-    ".wxt/wxt.d.ts"
+    ".wxt/wxt.d.ts",
+    "src/**/*.ts"
   ]
 }

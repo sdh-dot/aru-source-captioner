@@ -3,12 +3,12 @@ import { defineContentScript } from "wxt/utils/define-content-script";
 import { contentMatches } from "../config/manifests";
 import * as parser from "exifr";
 import { createEnvironment } from "../runtime/environment";
-import { createAttributionCore } from "../docs/source/upload-attribution/core.mjs";
-import { createAttributionUi } from "../docs/source/upload-attribution/ui.mjs";
-import { installFirefoxContent } from "../docs/source/platform/firefox/content.mjs";
-import { installWhaleContent } from "../docs/source/platform/whale/content.mjs";
-import { createIconReader } from "../docs/source/runtime/icons.mjs";
-import { createPerformanceMetrics } from "../docs/source/performance/metrics.mjs";
+import { createAttributionCore } from "../src/upload-attribution/core.ts";
+import { createAttributionUi } from "../src/upload-attribution/ui.ts";
+import { installFirefoxContent } from "../src/platform/firefox/content.ts";
+import { installWhaleContent } from "../src/platform/whale/content.ts";
+import { createIconReader } from "../src/runtime/icons.ts";
+import { createPerformanceMetrics } from "../src/performance/metrics.ts";
 import "../whale/styles.css";
 export default defineContentScript({
   matches: contentMatches(1),

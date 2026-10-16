@@ -3,12 +3,45 @@
   var __defProp = Object.defineProperty;
   var __name = (target, value) => __defProp(target, "name", { value, configurable: true });
 
+  // docs/source/ruliweb-icons/picker-lifecycle.mjs
+  var PickerLifecycle = class {
+    static {
+      __name(this, "PickerLifecycle");
+    }
+    #isClosed = false;
+    #dispose;
+    constructor(dispose) {
+      this.#dispose = dispose;
+    }
+    get isClosed() {
+      return this.#isClosed;
+    }
+    destroy() {
+      if (this.#isClosed) {
+        return;
+      }
+      this.#isClosed = true;
+      const dispose = this.#dispose;
+      this.#dispose = null;
+      dispose?.();
+    }
+  };
+
+  // docs/source/runtime/contracts.mjs
+  var defaultEnvironment = globalThis;
+
   // docs/source/runtime/module-scope.mjs
   function createModuleScope(resolvers = {}, names = [], own = []) {
     const scope = {};
     for (const name of names) {
-      if (own.includes(name)) scope[name] = resolvers[name]?.();
-      else Object.defineProperty(scope, name, { enumerable: true, get: /* @__PURE__ */ __name(() => resolvers[name]?.(), "get") });
+      if (own.includes(name)) {
+        scope[name] = resolvers[name]?.();
+      } else {
+        Object.defineProperty(scope, name, {
+          enumerable: true,
+          get: /* @__PURE__ */ __name(() => resolvers[name]?.(), "get")
+        });
+      }
     }
     return scope;
   }
@@ -19,19 +52,35 @@
   __name(selectModuleExports, "selectModuleExports");
 
   // docs/source/ruliweb-icons/picker.mjs
-  function createIconsPicker({ environment = globalThis, dependencies = {} } = {}) {
-    const { document, location, AbortController, URL, performance, console } = environment;
+  function createIconsPicker({ environment = defaultEnvironment, dependencies = {} } = {}) {
+    const { document, AbortController, URL, performance } = environment;
     const setTimeout = typeof environment.setTimeout === "function" ? (...args) => environment.setTimeout(...args) : void 0;
     const clearTimeout = typeof environment.clearTimeout === "function" ? (...args) => environment.clearTimeout(...args) : void 0;
-    const matchMedia = typeof environment.matchMedia === "function" ? (...args) => environment.matchMedia(...args) : void 0;
     const requestAnimationFrame = typeof environment.requestAnimationFrame === "function" ? (...args) => environment.requestAnimationFrame(...args) : void 0;
     const cancelAnimationFrame = typeof environment.cancelAnimationFrame === "function" ? (...args) => environment.cancelAnimationFrame(...args) : void 0;
-    let icons2 = createModuleScope(dependencies.icons, ["isMouseDoubleClick", "iconTagLabels", "Metadata", "createPicker", "SearchIndex", "FoldState", "DesignSystem", "CatalogView", "UiPreferences", "MediaBudget", "ComposerAdapter", "libraryFixedTags"], ["isMouseDoubleClick", "iconTagLabels", "createPicker"]);
+    let icons2 = createModuleScope(dependencies.icons, [
+      "isMouseDoubleClick",
+      "iconTagLabels",
+      "Metadata",
+      "createPicker",
+      "SearchIndex",
+      "FoldState",
+      "DesignSystem",
+      "CatalogView",
+      "UiPreferences",
+      "MediaBudget",
+      "ComposerAdapter",
+      "libraryFixedTags"
+    ], ["isMouseDoubleClick", "iconTagLabels", "createPicker"]);
     const initializeIconsPicker = /* @__PURE__ */ __name(function(global) {
       "use strict";
       const api = icons2 = icons2 || {};
       const MAX_CARDS = 72;
-      const UI_SIZES = Object.freeze({ small: { row: 96, card: 88, width: 92, media: 32, mediaWidth: 48 }, normal: { row: 120, card: 112, width: 108, media: 53, mediaWidth: 64 }, large: { row: 168, card: 160, width: 152, media: 96, mediaWidth: 104 } });
+      const UI_SIZES = Object.freeze({
+        small: { row: 96, card: 88, width: 92, media: 32, mediaWidth: 48 },
+        normal: { row: 120, card: 112, width: 108, media: 53, mediaWidth: 64 },
+        large: { row: 168, card: 160, width: 152, media: 96, mediaWidth: 104 }
+      });
       function mouseDoubleClick(event, proof, now) {
         return event.isTrusted === true && event.type === "dblclick" && event.button === 0 && event.detail === 2 && event.sourceCapabilities?.firesTouchEvents !== true && proof?.trusted === true && proof.pointerType === "mouse" && now - proof.time >= 0 && now - proof.time <= 1200 && now - proof.touchTime > 1200;
       }
@@ -42,24 +91,43 @@
       function lockPage(doc) {
         let lock = scrollLocks.get(doc);
         if (!lock) {
-          lock = { count: 0, styles: [doc.documentElement, doc.body].filter(Boolean).map((node) => ({ node, value: node.style.getPropertyValue("overflow"), priority: node.style.getPropertyPriority("overflow") })) };
+          lock = {
+            count: 0,
+            styles: [doc.documentElement, doc.body].filter(Boolean).map((node) => ({
+              node,
+              value: node.style.getPropertyValue("overflow"),
+              priority: node.style.getPropertyPriority("overflow")
+            }))
+          };
           scrollLocks.set(doc, lock);
         }
         lock.count++;
         lock.styles.forEach(({ node }) => node.style.setProperty("overflow", "hidden", "important"));
         return () => {
-          if (--lock.count) return;
+          if (--lock.count) {
+            return;
+          }
           for (const { node, value, priority } of lock.styles) {
-            if (node.style.getPropertyValue("overflow") !== "hidden") continue;
-            if (value) node.style.setProperty("overflow", value, priority);
-            else node.style.removeProperty("overflow");
+            if (node.style.getPropertyValue("overflow") !== "hidden") {
+              continue;
+            }
+            if (value) {
+              node.style.setProperty("overflow", value, priority);
+            } else {
+              node.style.removeProperty("overflow");
+            }
           }
           scrollLocks.delete(doc);
         };
       }
       __name(lockPage, "lockPage");
       function iconTagLabels(icon, dictionary = /* @__PURE__ */ new Map()) {
-        return [...new Set([...icon.imageMetadata?.tags || [], ...(icon.tagIds || []).map((id) => dictionary.get(id) || id)].filter((tag) => typeof tag === "string" && tag.length))];
+        return [
+          ...new Set([
+            ...icon.imageMetadata?.tags || [],
+            ...(icon.tagIds || []).map((id) => dictionary.get(id) || id)
+          ].filter((tag) => typeof tag === "string" && tag.length))
+        ];
       }
       __name(iconTagLabels, "iconTagLabels");
       api.iconTagLabels = iconTagLabels;
@@ -72,15 +140,21 @@
   `;
       function el(tag, className, text) {
         const node = document.createElement(tag);
-        if (className) node.className = className;
-        if (text !== void 0) node.textContent = text;
+        if (className) {
+          node.className = className;
+        }
+        if (text !== void 0) {
+          node.textContent = text;
+        }
         return node;
       }
       __name(el, "el");
       function button(className, text) {
         const node = el("button", className, text);
         node.type = "button";
-        if (text) node.title = text;
+        if (text) {
+          node.title = text;
+        }
         return node;
       }
       __name(button, "button");
@@ -89,11 +163,15 @@
       }
       __name(formatCount, "formatCount");
       function mediaUrl(value) {
-        if (typeof value !== "string") return null;
+        if (typeof value !== "string") {
+          return null;
+        }
         if (/^data:image\/(?:png|gif|jpeg|webp|svg\+xml);/i.test(value)) {
           return /^(?:127\.0\.0\.1|localhost)$/.test(global.location && global.location.hostname || "") ? value : null;
         }
-        if (value.includes("#")) return null;
+        if (value.includes("#")) {
+          return null;
+        }
         if (api.Metadata && typeof api.Metadata.mediaUrl === "function") {
           try {
             return api.Metadata.mediaUrl(value);
@@ -101,7 +179,9 @@
             return null;
           }
         }
-        if (value.length > 2048 || /[\u0000-\u0020\u007f\\]/u.test(value) || !/^https:\/\/i[123]\.ruliweb\.com\//u.test(value)) return null;
+        if (value.length > 2048 || /[\u0000-\u0020\u007f\\]/u.test(value) || !/^https:\/\/i[123]\.ruliweb\.com\//u.test(value)) {
+          return null;
+        }
         try {
           const url = new URL(value);
           return url.protocol === "https:" && ["i1.ruliweb.com", "i2.ruliweb.com", "i3.ruliweb.com"].includes(url.hostname) && !url.username && !url.password && !url.port && !url.hash ? value : null;
@@ -116,7 +196,9 @@
           try {
             const url = new URL(raw);
             const match = url.pathname.match(/^\/community\/board\/([1-9]\d*)\/read\/([1-9]\d*)\/?$/u);
-            if (match && Number.isSafeInteger(Number(match[2])) && url.protocol === "https:" && /^(?:bbs|m)\.ruliweb\.com$/.test(url.hostname) && !url.username && !url.password && !url.port && !url.hash) return raw;
+            if (match && Number.isSafeInteger(Number(match[2])) && url.protocol === "https:" && /^(?:bbs|m)\.ruliweb\.com$/.test(url.hostname) && !url.username && !url.password && !url.port && !url.hash) {
+              return raw;
+            }
           } catch (_) {
           }
         }
@@ -126,7 +208,9 @@
       }
       __name(articleUrl, "articleUrl");
       api.createPicker = /* @__PURE__ */ __name(function createPicker(options = {}) {
-        if (!api.SearchIndex || !api.FoldState) throw new Error("아이콘 검색 모듈이 준비되지 않았습니다.");
+        if (!api.SearchIndex || !api.FoldState) {
+          throw new Error("아이콘 검색 모듈이 준비되지 않았습니다.");
+        }
         const instanceId = "aru-icons-" + ++nextPickerId;
         const opener = options.anchor || options.opener || document.activeElement;
         const coarsePointer = global.matchMedia?.("(pointer:coarse)");
@@ -178,7 +262,9 @@
         .bundle-view.catalog-open .catalog{left:8px;right:8px}.bundle-view.catalog-open .catalog-viewport{height:150px}
       }
     `;
-        const uiCleanup = api.DesignSystem?.attach(root, { fontURL: options.fontURL });
+        const uiCleanup = api.DesignSystem?.attach(root, {
+          fontURL: options.fontURL
+        });
         style.textContent += `
       .search-modes{display:flex;flex-wrap:wrap;gap:6px 12px;margin-top:8px}.mode-label{font-size:11px;color:var(--aru-muted);display:flex;align-items:center;gap:4px}.mode-label select{min-height:32px;max-width:140px;border:1px solid var(--aru-border);border-radius:7px;background:var(--aru-surface);color:var(--aru-text);font:inherit}
       .library-status{margin-top:4px}.chips{flex-wrap:wrap;overflow:visible;gap:4px}.tag-button{min-height:30px;padding:3px 10px}
@@ -240,7 +326,9 @@
         packLink.rel = "noopener noreferrer";
         packLink.hidden = true;
         packLine.append(packTitle, packBadge, packLink);
-        if (options.insertionMode) packLine.append(el("span", "badge", "삽입 대상: " + (options.targetLabel || "현재 작성기")));
+        if (options.insertionMode) {
+          packLine.append(el("span", "badge", "삽입 대상: " + (options.targetLabel || "현재 작성기")));
+        }
         headerTitle.append(title, packLine);
         const headerActions = el("div", "header-actions");
         const closeButton = button("quiet close", "×");
@@ -276,8 +364,16 @@
           return control;
         }
         __name(viewChoice, "viewChoice");
-        const modalSize = viewChoice("modal-size", "창 크기", [["default", "기본"], ["wide", "넓게"], ["max", "최대화"]]);
-        const iconSize = viewChoice("icon-size", "아이콘 크기", [["small", "작게"], ["normal", "보통"], ["large", "크게"]]);
+        const modalSize = viewChoice("modal-size", "창 크기", [
+          ["default", "기본"],
+          ["wide", "넓게"],
+          ["max", "최대화"]
+        ]);
+        const iconSize = viewChoice("icon-size", "아이콘 크기", [
+          ["small", "작게"],
+          ["normal", "보통"],
+          ["large", "크게"]
+        ]);
         const previewToggle = button("quiet", "미리보기 접기");
         previewToggle.id = "preview-toggle";
         previewToggle.setAttribute("aria-expanded", "true");
@@ -289,10 +385,12 @@
         targetError.setAttribute("role", "alert");
         body.append(targetError);
         let targetValid = options.targetValid !== false;
-        let catalogRef = null, catalogPack = null;
+        let _catalogRef = null, _catalogPack = null;
         async function chooseCatalog(action) {
           const result3 = await action();
-          if (destroyed) return result3;
+          if (lifecycle.isClosed) {
+            return result3;
+          }
           if (result3?.ok === true) {
             setCatalogOpen(false, "selected");
             showPackToast();
@@ -329,7 +427,9 @@
             Promise.resolve(options.onSource(sourceInput.value)).catch((error) => setError(error.message));
           });
           sourceSelect.addEventListener("change", () => {
-            if (sourceSelect.value) Promise.resolve(options.onSource(sourceSelect.value)).catch((error) => setError(error.message));
+            if (sourceSelect.value) {
+              Promise.resolve(options.onSource(sourceSelect.value)).catch((error) => setError(error.message));
+            }
           });
         }
         const columns = el("div", "columns");
@@ -375,9 +475,18 @@
           return control;
         }
         __name(mode, "mode");
-        const scope = mode("search-scope", "검색 범위", [["current", "현재 팩"], ["all", "전체 팩"]]);
-        const textMatch = mode("text-match", "검색어", [["all", "모두 일치"], ["any", "하나 이상"]]);
-        const tagMatch = mode("tag-match", "태그", [["any", "하나 이상"], ["all", "모두 일치"]]);
+        const scope = mode("search-scope", "검색 범위", [
+          ["current", "현재 팩"],
+          ["all", "전체 팩"]
+        ]);
+        const textMatch = mode("text-match", "검색어", [
+          ["all", "모두 일치"],
+          ["any", "하나 이상"]
+        ]);
+        const tagMatch = mode("tag-match", "태그", [
+          ["any", "하나 이상"],
+          ["all", "모두 일치"]
+        ]);
         const libraryStatus = el("p", "help library-status");
         libraryStatus.setAttribute("role", "status");
         libraryStatus.setAttribute("aria-live", "polite");
@@ -417,8 +526,11 @@
         loadingArt.width = 64;
         loadingArt.height = 64;
         const loadingArtUrl = api.DesignSystem?.assetURL?.("assets/icons/aru-main-64.png");
-        if (loadingArtUrl) loadingArt.src = loadingArtUrl;
-        else loadingArt.hidden = true;
+        if (loadingArtUrl) {
+          loadingArt.src = loadingArtUrl;
+        } else {
+          loadingArt.hidden = true;
+        }
         loadingArt.addEventListener("error", () => {
           loadingArt.hidden = true;
         }, { once: true });
@@ -469,7 +581,9 @@
         selection.append(previewStatus, mediaRetry, mediaPolicyNote);
         columns.append(main, selection);
         body.append(columns);
-        if (options.catalogMode && !options.librarySearch) columns.hidden = true;
+        if (options.catalogMode && !options.librarySearch) {
+          columns.hidden = true;
+        }
         const statusPanel = el("section", "status-panel");
         statusPanel.setAttribute("aria-label", "아이콘 수집 상태");
         const errorNode = el("p", "error");
@@ -566,8 +680,12 @@
     `;
         root.append(mobileStyle);
         function setCatalogOpen(open, reason = "cancel") {
-          if (!catalogView || destroyed) return;
-          if (open && !catalogOpen) catalogReturnFocus = root.activeElement;
+          if (!catalogView || lifecycle.isClosed) {
+            return;
+          }
+          if (open && !catalogOpen) {
+            catalogReturnFocus = root.activeElement;
+          }
           if (!open && reason === "cancel") {
             options.onCatalogCancel?.();
             catalogView.cancelPending();
@@ -577,14 +695,26 @@
           catalogDock.setAttribute("aria-expanded", String(open));
           catalogView.node.hidden = !open;
           catalogBackdrop.hidden = !open;
-          for (const node of [viewControls, columns, statusPanel, targetError, footer, packLink]) {
+          for (const node of [
+            viewControls,
+            columns,
+            statusPanel,
+            targetError,
+            footer,
+            packLink
+          ]) {
             node.inert = open;
-            if (open) node.setAttribute("inert", "");
-            else node.removeAttribute("inert");
+            if (open) {
+              node.setAttribute("inert", "");
+            } else {
+              node.removeAttribute("inert");
+            }
           }
           if (open) {
             positionCatalog();
-            (mobileInput() ? catalogView.node : catalogView.input).focus({ preventScroll: true });
+            (mobileInput() ? catalogView.node : catalogView.input).focus({
+              preventScroll: true
+            });
           } else {
             const focus = reason === "selected" ? mobileInput() ? dialog : input : catalogReturnFocus?.isConnected ? catalogReturnFocus : catalogDock;
             focusWithoutKeyboard(focus);
@@ -592,14 +722,16 @@
         }
         __name(setCatalogOpen, "setCatalogOpen");
         function showPackToast() {
-          if (toastShown || destroyed) return;
+          if (toastShown || lifecycle.isClosed) {
+            return;
+          }
           toastShown = true;
           toast.textContent = "아이콘팩을 불러왔어요. 다른 팩은 '아이콘 리스트'에서 선택하세요.";
           toast.hidden = false;
           dialog.classList.add("toast-visible");
           toastTimer = setTimeout(() => {
             toastTimer = 0;
-            if (!destroyed) {
+            if (!lifecycle.isClosed) {
               toast.hidden = true;
               dialog.classList.remove("toast-visible");
             }
@@ -622,7 +754,10 @@
         }
         __name(currentCardSize, "currentCardSize");
         const events = new AbortController();
-        const listen = /* @__PURE__ */ __name((node, type, handler, other = {}) => node.addEventListener(type, handler, { ...other, signal: events.signal }), "listen");
+        const listen = /* @__PURE__ */ __name((node, type, handler, other = {}) => node.addEventListener(type, handler, {
+          ...other,
+          signal: events.signal
+        }), "listen");
         const folds = /* @__PURE__ */ new Map();
         let fold = new api.FoldState();
         let currentPackKey = null;
@@ -635,14 +770,18 @@
         let contexts = [];
         let visibilityObserver = null;
         let resizeObserver = null;
-        let destroyed = false;
+        const lifecycle = new PickerLifecycle(disposePicker);
         let composing = false;
         let searchTimer = 0;
         let virtualFrame = 0;
         let initialFocusFrame = 0;
         let selectedIconId = null;
         let preparing = false;
-        let previewState = { iconId: null, status: "none", code: null };
+        let previewState = {
+          iconId: null,
+          status: "none",
+          code: null
+        };
         let previewCleanup = /* @__PURE__ */ __name(() => {
         }, "previewCleanup");
         const mediaFailures = /* @__PURE__ */ new Map();
@@ -662,14 +801,26 @@
         let lastRenderMs = 0;
         const mediaBudget = api.MediaBudget ? new api.MediaBudget(4) : null;
         const mediaCleanups = /* @__PURE__ */ new WeakMap();
-        const state = { query: "", selectedTagIds: [], tagMatch: "any", categoryFilterIds: [], sourceFilterIds: [], sort: "source", queryRevision: 0 };
+        const state = {
+          query: "",
+          selectedTagIds: [],
+          tagMatch: "any",
+          categoryFilterIds: [],
+          sourceFilterIds: [],
+          sort: "source",
+          queryRevision: 0
+        };
         const hasCriteria = /* @__PURE__ */ __name(() => !!state.query.normalize("NFKC").trim() || state.selectedTagIds.length > 0 || state.categoryFilterIds.length > 0 || state.sourceFilterIds.length > 0, "hasCriteria");
         const announce = /* @__PURE__ */ __name((text) => {
-          if (!destroyed) live.textContent = text;
+          if (!lifecycle.isClosed) {
+            live.textContent = text;
+          }
         }, "announce");
         function focusWithoutKeyboard(node) {
           const editable = node?.matches?.('input,textarea,[contenteditable="true"]');
-          (mobileInput() && editable ? dialog : node)?.focus?.({ preventScroll: true });
+          (mobileInput() && editable ? dialog : node)?.focus?.({
+            preventScroll: true
+          });
         }
         __name(focusWithoutKeyboard, "focusWithoutKeyboard");
         const byIconId = /* @__PURE__ */ __name((id) => (pack && pack.icons || []).find((icon) => icon.id === id), "byIconId");
@@ -732,8 +883,12 @@
           };
           const key = icon.id + ":" + stage;
           mediaFailures.set(key, row);
-          if (mediaFailures.size > 100) mediaFailures.delete(mediaFailures.keys().next().value);
-          if (options.debug === true) global.console?.info?.("[Aru Icons] media diagnostics", row);
+          if (mediaFailures.size > 100) {
+            mediaFailures.delete(mediaFailures.keys().next().value);
+          }
+          if (options.debug === true) {
+            global.console?.info?.("[Aru Icons] media diagnostics", row);
+          }
         }
         __name(mediaDiagnostic, "mediaDiagnostic");
         function updatePrepare() {
@@ -752,7 +907,11 @@
           if (!url) {
             mediaDiagnostic(icon, preview ? "preview" : "thumbnail", "UNSAFE_URL");
             if (preview) {
-              previewState = { iconId: icon.id, status: "error", code: "UNSAFE_URL" };
+              previewState = {
+                iconId: icon.id,
+                status: "error",
+                code: "UNSAFE_URL"
+              };
               previewStatus.textContent = "원본 주소를 확인할 수 없습니다.";
               mediaRetry.hidden = false;
               updatePrepare();
@@ -769,11 +928,15 @@
           }
           const capped = !preview && !isGrid() && options.catalogMode && /\.(gif|webp)(?:[?#]|$)/i.test(url);
           if (capped && renderMedia) {
-            if (renderMedia.animatedRemaining <= 0) return el("span", "media-placeholder", "미리보기");
+            if (renderMedia.animatedRemaining <= 0) {
+              return el("span", "media-placeholder", "미리보기");
+            }
             renderMedia.animatedRemaining--;
           }
           const media = el(video ? "video" : "img", "icon-media");
-          if (capped) media.dataset.animatedThumb = "true";
+          if (capped) {
+            media.dataset.animatedThumb = "true";
+          }
           if (video) {
             media.preload = "auto";
             media.muted = true;
@@ -795,12 +958,16 @@
             media.removeEventListener("error", failed);
           }, "clean");
           const ready = /* @__PURE__ */ __name(() => {
-            if (finished || !media.isConnected || destroyed || frameThumbnail && (frameSeeking || media.readyState < 2)) return;
+            if (finished || !media.isConnected || lifecycle.isClosed || frameThumbnail && (frameSeeking || media.readyState < 2)) {
+              return;
+            }
             finished = true;
             clean();
             media.dataset.mediaState = "ready";
             cover?.remove();
-            if (frame) frame.dataset.mediaState = "ready";
+            if (frame) {
+              frame.dataset.mediaState = "ready";
+            }
             if (preview) {
               previewState = { iconId: icon.id, status: "ready", code: null };
               previewStatus.textContent = "미리보기 준비됨";
@@ -813,32 +980,44 @@
             ready();
           }, "seekReady");
           const seekFrame = /* @__PURE__ */ __name(() => {
-            if (!frameThumbnail || finished || !media.isConnected) return;
+            if (!frameThumbnail || finished || !media.isConnected) {
+              return;
+            }
             try {
               if (Number.isFinite(media.duration) && media.duration > 0) {
                 frameSeeking = true;
                 media.currentTime = Math.min(0.01, media.duration / 2);
-              } else ready();
+              } else {
+                ready();
+              }
             } catch (_) {
               frameSeeking = false;
               ready();
             }
           }, "seekFrame");
           const showFailure = /* @__PURE__ */ __name((text, code) => {
-            if (!media.isConnected || destroyed) return;
-            if (finished) return;
+            if (!media.isConnected || lifecycle.isClosed) {
+              return;
+            }
+            if (finished) {
+              return;
+            }
             finished = true;
             clean();
             mediaDiagnostic(icon, preview ? "preview" : "thumbnail", code, video ? media.error?.code || null : null);
             const placeholder = el("span", "media-placeholder", text);
             placeholder.dataset.mediaState = "error";
             placeholder.dataset.mediaCode = code;
-            if (video && media.error?.code) placeholder.dataset.mediaEventCode = String(media.error.code);
+            if (video && media.error?.code) {
+              placeholder.dataset.mediaEventCode = String(media.error.code);
+            }
             placeholder.title = "선택한 아이콘의 미디어 재시도에서 원본을 다시 확인할 수 있습니다.";
             if (frame) {
               frame.replaceChildren(placeholder);
               frame.dataset.mediaState = "error";
-            } else media.replaceWith(placeholder);
+            } else {
+              media.replaceWith(placeholder);
+            }
             media.removeAttribute("src");
             if (preview) {
               previewState = { iconId: icon.id, status: "error", code };
@@ -870,12 +1049,20 @@
             }, "previewCleanup");
             timer = setTimeout(() => showFailure("미리보기 로딩 시간 초과", "MEDIA_TIMEOUT"), 15e3);
             media.src = url;
-          } else if (mediaBudget) mediaBudget.add(media, url, () => showFailure("로딩 시간 초과", "MEDIA_TIMEOUT"), () => {
-            if (!context || !isGrid() && !frameThumbnail) return true;
-            const top = Math.floor(position / context.columns) * rowHeight;
-            return top + rowHeight > context.viewport.scrollTop && top < context.viewport.scrollTop + context.viewport.clientHeight;
-          }, frameThumbnail ? { events: ["loadeddata", "seeked"], isReady: /* @__PURE__ */ __name(() => media.dataset.mediaState === "ready", "isReady") } : null);
-          else media.src = url;
+          } else if (mediaBudget) {
+            mediaBudget.add(media, url, () => showFailure("로딩 시간 초과", "MEDIA_TIMEOUT"), () => {
+              if (!context || !isGrid() && !frameThumbnail) {
+                return true;
+              }
+              const top = Math.floor(position / context.columns) * rowHeight;
+              return top + rowHeight > context.viewport.scrollTop && top < context.viewport.scrollTop + context.viewport.clientHeight;
+            }, frameThumbnail ? {
+              events: ["loadeddata", "seeked"],
+              isReady: /* @__PURE__ */ __name(() => media.dataset.mediaState === "ready", "isReady")
+            } : null);
+          } else {
+            media.src = url;
+          }
           return frame || media;
         }
         __name(createMedia, "createMedia");
@@ -884,7 +1071,9 @@
         }
         __name(updateMetrics, "updateMetrics");
         function select(icon) {
-          if (catalogOpen) return;
+          if (catalogOpen) {
+            return;
+          }
           selectedIconId = icon.id;
           root.querySelectorAll(".icon-card").forEach((card) => {
             card.setAttribute("aria-pressed", String(card.dataset.iconId === selectedIconId));
@@ -908,9 +1097,15 @@
           card.style.left = "calc(" + position % context.columns * 100 / context.columns + "% + 4px)";
           card.style.width = "calc(" + 100 / context.columns + "% - 8px)";
           const name = el("span", "icon-name", icon.name || "아이콘 " + (position + 1));
-          name.title = [icon.name || "아이콘 " + (position + 1), sourceOf(icon)?.title, ...(icon.libraryMemberships || []).map((m) => m.title)].filter(Boolean).join(" · ");
+          name.title = [
+            icon.name || "아이콘 " + (position + 1),
+            sourceOf(icon)?.title,
+            ...(icon.libraryMemberships || []).map((m) => m.title)
+          ].filter(Boolean).join(" · ");
           const tags = el("span", "icon-tags", labels || "태그 없음");
-          if (labels) tags.title = labels;
+          if (labels) {
+            tags.title = labels;
+          }
           const choose = button("card-choose");
           choose.setAttribute("aria-label", card.getAttribute("aria-label"));
           choose.setAttribute("aria-pressed", String(icon.id === selectedIconId));
@@ -924,10 +1119,20 @@
             if (event.pointerType === "touch") {
               lastTouchTime = performance.now();
               mouseProof = null;
-            } else if (event.isTrusted && event.pointerType === "mouse" && event.isPrimary !== false && event.button === 0) mouseProof = { trusted: true, pointerType: "mouse", time: performance.now(), touchTime: lastTouchTime, iconId: icon.id };
+            } else if (event.isTrusted && event.pointerType === "mouse" && event.isPrimary !== false && event.button === 0) {
+              mouseProof = {
+                trusted: true,
+                pointerType: "mouse",
+                time: performance.now(),
+                touchTime: lastTouchTime,
+                iconId: icon.id
+              };
+            }
           });
           card.addEventListener("pointermove", (event) => {
-            if (touchStart && Math.hypot(event.clientX - touchStart.x, event.clientY - touchStart.y) > 8) moved = true;
+            if (touchStart && Math.hypot(event.clientX - touchStart.x, event.clientY - touchStart.y) > 8) {
+              moved = true;
+            }
           });
           card.addEventListener("pointercancel", () => {
             moved = true;
@@ -945,14 +1150,18 @@
           preview.title = "아이콘을 선택하고 미리보기 패널에서 확인합니다.";
           preview.dataset.previewFor = icon.id;
           preview.addEventListener("click", (event) => {
-            if (catalogOpen) return;
+            if (catalogOpen) {
+              return;
+            }
             if (moved) {
               event.preventDefault();
               moved = false;
               mouseProof = null;
               return;
             }
-            if (!ui.previewVisible) applyUi({ ...ui, previewVisible: true }, true);
+            if (!ui.previewVisible) {
+              applyUi({ ...ui, previewVisible: true }, true);
+            }
             select(icon);
             selection.scrollIntoView?.({ block: "nearest" });
           });
@@ -960,14 +1169,23 @@
           preview.addEventListener("click", (event) => event.stopPropagation());
           preview.addEventListener("dblclick", (event) => event.stopPropagation());
           card.addEventListener("dblclick", (event) => {
-            if (catalogOpen || !options.insertionMode || event.target.closest?.(".card-preview") || moved || mouseProof?.iconId !== icon.id || !mouseDoubleClick(event, mouseProof, performance.now())) return;
+            if (catalogOpen || !options.insertionMode || event.target.closest?.(".card-preview") || moved || mouseProof?.iconId !== icon.id || !mouseDoubleClick(event, mouseProof, performance.now())) {
+              return;
+            }
             event.preventDefault();
             event.stopPropagation();
             select(icon);
             requestInsertion();
           });
           card.addEventListener("keydown", (event) => {
-            const offsets = { ArrowRight: 1, ArrowLeft: -1, ArrowDown: context.columns, ArrowUp: -context.columns, PageDown: context.columns * 2, PageUp: -context.columns * 2 };
+            const offsets = {
+              ArrowRight: 1,
+              ArrowLeft: -1,
+              ArrowDown: context.columns,
+              ArrowUp: -context.columns,
+              PageDown: context.columns * 2,
+              PageUp: -context.columns * 2
+            };
             let next;
             if (event.key === "Enter" || event.key === " ") {
               if (event.target === card) {
@@ -976,33 +1194,49 @@
               }
               return;
             }
-            if (event.key === "Home") next = 0;
-            else if (event.key === "End") next = context.group.icons.length - 1;
-            else if (Object.prototype.hasOwnProperty.call(offsets, event.key)) next = Math.min(context.group.icons.length - 1, Math.max(0, position + offsets[event.key]));
-            else return;
+            if (event.key === "Home") {
+              next = 0;
+            } else if (event.key === "End") {
+              next = context.group.icons.length - 1;
+            } else if (Object.prototype.hasOwnProperty.call(offsets, event.key)) {
+              next = Math.min(context.group.icons.length - 1, Math.max(0, position + offsets[event.key]));
+            } else {
+              return;
+            }
             event.preventDefault();
             const top = Math.floor(next / context.columns) * rowHeight;
-            if (top < context.viewport.scrollTop) context.viewport.scrollTop = top;
-            else if (top + rowHeight > context.viewport.scrollTop + context.viewport.clientHeight) context.viewport.scrollTop = top + rowHeight - context.viewport.clientHeight;
+            if (top < context.viewport.scrollTop) {
+              context.viewport.scrollTop = top;
+            } else if (top + rowHeight > context.viewport.scrollTop + context.viewport.clientHeight) {
+              context.viewport.scrollTop = top + rowHeight - context.viewport.clientHeight;
+            }
             context.lastWindow = "";
             context.forceIndex = next;
             renderWindows();
             const target = [...context.content.children].find((node) => Number(node.dataset.index) === next);
-            if (target) target.focus({ preventScroll: true });
+            if (target) {
+              target.focus({ preventScroll: true });
+            }
           });
           return card;
         }
         __name(makeCard, "makeCard");
         function queueWindows() {
-          if (virtualFrame || destroyed) return;
+          if (virtualFrame || lifecycle.isClosed) {
+            return;
+          }
           virtualFrame = requestAnimationFrame(() => {
             virtualFrame = 0;
-            if (!destroyed) renderWindows();
+            if (!lifecycle.isClosed) {
+              renderWindows();
+            }
           });
         }
         __name(queueWindows, "queueWindows");
         function renderWindows() {
-          if (destroyed) return;
+          if (lifecycle.isClosed) {
+            return;
+          }
           let remaining = MAX_CARDS;
           const renderMedia = { animatedRemaining: 4 };
           const active = root.activeElement?.closest(".icon-card") || root.activeElement;
@@ -1016,8 +1250,11 @@
               resizedTop = Math.floor(anchor / nextColumns) * rowHeight + context.viewport.scrollTop % oldHeight / oldHeight * rowHeight;
               if (context.content.contains(active) && Number.isInteger(Number(active.dataset.index))) {
                 const focusedTop = Math.floor(Number(active.dataset.index) / nextColumns) * rowHeight;
-                if (focusedTop < resizedTop) resizedTop = focusedTop;
-                else if (focusedTop + rowHeight > resizedTop + context.viewport.clientHeight) resizedTop = focusedTop + rowHeight - context.viewport.clientHeight;
+                if (focusedTop < resizedTop) {
+                  resizedTop = focusedTop;
+                } else if (focusedTop + rowHeight > resizedTop + context.viewport.clientHeight) {
+                  resizedTop = focusedTop + rowHeight - context.viewport.clientHeight;
+                }
               }
             }
             context.columns = nextColumns;
@@ -1025,8 +1262,12 @@
             const rows = Math.ceil(context.group.icons.length / context.columns);
             const height = rows * rowHeight + 8;
             context.content.style.height = height + "px";
-            if (resizedTop !== null) context.viewport.scrollTop = resizedTop;
-            if (!isGrid()) context.viewport.style.height = Math.min(height, 248) + "px";
+            if (resizedTop !== null) {
+              context.viewport.scrollTop = resizedTop;
+            }
+            if (!isGrid()) {
+              context.viewport.style.height = Math.min(height, 248) + "px";
+            }
             if (!context.visible && !context.content.contains(active) && context.forceIndex === null) {
               if (context.content.childElementCount) {
                 pauseMedia(context.content);
@@ -1049,21 +1290,30 @@
             const focusedIndex = context.content.contains(active) ? Number(active.dataset.index) : null;
             remaining -= Math.max(0, end - first);
             if (key === context.lastWindow) {
-              if (!isGrid()) renderMedia.animatedRemaining = Math.max(0, renderMedia.animatedRemaining - context.content.querySelectorAll("[data-animated-thumb]").length);
+              if (!isGrid()) {
+                renderMedia.animatedRemaining = Math.max(0, renderMedia.animatedRemaining - context.content.querySelectorAll("[data-animated-thumb]").length);
+              }
               return;
             }
             context.lastWindow = key;
             if (!isGrid()) {
               pauseMedia(context.content);
               const fragment = document.createDocumentFragment();
-              for (let position = first; position < end; position++) fragment.append(makeCard(context.group.icons[position], position, context, renderMedia));
+              for (let position = first; position < end; position++) {
+                fragment.append(makeCard(context.group.icons[position], position, context, renderMedia));
+              }
               context.content.replaceChildren(fragment);
             } else {
-              const old = new Map([...context.content.children].map((card) => [card.dataset.iconId, card]));
+              const old = new Map([...context.content.children].map((card) => [
+                card.dataset.iconId,
+                card
+              ]));
               const keep = /* @__PURE__ */ new Set();
-              for (const card of old.values()) if (Number(card.dataset.index) < first || Number(card.dataset.index) >= end || (card.dataset.columns !== String(context.columns) || card.dataset.rowHeight !== String(rowHeight))) {
-                pauseMedia(card);
-                card.remove();
+              for (const card of old.values()) {
+                if (Number(card.dataset.index) < first || Number(card.dataset.index) >= end || card.dataset.columns !== String(context.columns) || card.dataset.rowHeight !== String(rowHeight)) {
+                  pauseMedia(card);
+                  card.remove();
+                }
               }
               for (let position = first; position < end; position++) {
                 const icon = context.group.icons[position], existing = old.get(icon.id);
@@ -1072,17 +1322,24 @@
                 card.dataset.rowHeight = String(rowHeight);
                 keep.add(card);
                 const at = context.content.children[position - first];
-                if (at !== card) context.content.insertBefore(card, at || null);
+                if (at !== card) {
+                  context.content.insertBefore(card, at || null);
+                }
               }
-              for (const card of old.values()) if (!keep.has(card)) {
-                pauseMedia(card);
-                card.remove();
+              for (const card of old.values()) {
+                if (!keep.has(card)) {
+                  pauseMedia(card);
+                  card.remove();
+                }
               }
             }
             if (focusedIndex !== null) {
               const replacement = [...context.content.children].find((node) => Number(node.dataset.index) === focusedIndex);
-              if (replacement) replacement.focus({ preventScroll: true });
-              else (context.toggle || input).focus({ preventScroll: true });
+              if (replacement) {
+                replacement.focus({ preventScroll: true });
+              } else {
+                (context.toggle || input).focus({ preventScroll: true });
+              }
             }
           });
           mediaBudget?.prune();
@@ -1092,22 +1349,34 @@
         function renderChips(rebuild = false) {
           if (rebuild) {
             chips.replaceChildren();
-            const tags = library ? api.libraryFixedTags.map((name) => ({ id: name, name })) : pack && pack.tags || [];
+            const tags = library ? api.libraryFixedTags.map((name) => ({
+              id: name,
+              name
+            })) : pack && pack.tags || [];
             chips.hidden = tags.length === 0;
-            if (tags.length) [{ id: "", name: "전체" }, ...tags].forEach((tag) => {
-              const chip = button("tag-button", tag.name);
-              chip.dataset.tagId = tag.id;
-              chip.addEventListener("click", () => {
-                cancelSearch();
-                if (!composing) state.query = input.value;
-                if (library) {
-                  if (!tag.id) state.selectedTagIds = [];
-                  else state.selectedTagIds = state.selectedTagIds.includes(tag.id) ? state.selectedTagIds.filter((id) => id !== tag.id) : [...state.selectedTagIds, tag.id];
-                } else state.selectedTagIds = tag.id && !state.selectedTagIds.includes(tag.id) ? [tag.id] : [];
-                applySearch();
+            if (tags.length) {
+              [{ id: "", name: "전체" }, ...tags].forEach((tag) => {
+                const chip = button("tag-button", tag.name);
+                chip.dataset.tagId = tag.id;
+                chip.addEventListener("click", () => {
+                  cancelSearch();
+                  if (!composing) {
+                    state.query = input.value;
+                  }
+                  if (library) {
+                    if (!tag.id) {
+                      state.selectedTagIds = [];
+                    } else {
+                      state.selectedTagIds = state.selectedTagIds.includes(tag.id) ? state.selectedTagIds.filter((id) => id !== tag.id) : [...state.selectedTagIds, tag.id];
+                    }
+                  } else {
+                    state.selectedTagIds = tag.id && !state.selectedTagIds.includes(tag.id) ? [tag.id] : [];
+                  }
+                  applySearch();
+                });
+                chips.append(chip);
               });
-              chips.append(chip);
-            });
+            }
           }
           chips.querySelectorAll("button").forEach((chip) => chip.setAttribute("aria-pressed", String(chip.dataset.tagId ? state.selectedTagIds.includes(chip.dataset.tagId) : !state.selectedTagIds.length)));
         }
@@ -1136,7 +1405,9 @@
             selectionDetail.textContent = "선택한 아이콘을 여기서 확인하세요.";
             return;
           }
-          if (!keepPreview && ui.previewVisible) selectionArt.append(createMedia(icon, true));
+          if (!keepPreview && ui.previewVisible) {
+            selectionArt.append(createMedia(icon, true));
+          }
           selectionName.textContent = icon.name || "선택한 아이콘";
           const source = sourceOf(icon);
           const categoryNames = (pack.categories || []).filter((category) => (icon.categoryIds || []).includes(category.id)).map((category) => category.name);
@@ -1159,7 +1430,16 @@
           const activeGroup = oldActive && oldActive.closest(".group");
           const activeGroupId = activeGroup && activeGroup.dataset.groupId;
           const activeIconId = oldActive && oldActive.dataset.iconId;
-          const criteria = JSON.stringify([state.query, state.selectedTagIds, state.categoryFilterIds, state.sourceFilterIds, currentPackKey, scope.value, textMatch.value, tagMatch.value]);
+          const criteria = JSON.stringify([
+            state.query,
+            state.selectedTagIds,
+            state.categoryFilterIds,
+            state.sourceFilterIds,
+            currentPackKey,
+            scope.value,
+            textMatch.value,
+            tagMatch.value
+          ]);
           const previousTop = isGrid() && criteria === lastListCriteria ? contexts[0]?.viewport.scrollTop || 0 : 0;
           lastListCriteria = criteria;
           teardownGroups();
@@ -1180,7 +1460,21 @@
             const content = el("div", "virtual-content");
             viewport.append(content);
             groupsNode.append(viewport);
-            const context = { group: { id: "bundle-list", name: pack.name || pack.title, icons: icons3 }, viewport, content, toggle: null, columns: 2, lastWindow: "", visible: true, forceIndex: null, scrollHandler: queueWindows };
+            const context = {
+              group: {
+                id: "bundle-list",
+                name: pack.name || pack.title,
+                icons: icons3
+              },
+              viewport,
+              content,
+              toggle: null,
+              columns: 2,
+              lastWindow: "",
+              visible: true,
+              forceIndex: null,
+              scrollHandler: queueWindows
+            };
             viewport.scrollTop = previousTop;
             viewport.addEventListener("scroll", queueWindows, { passive: true });
             contexts.push(context);
@@ -1202,7 +1496,9 @@
             avatar.setAttribute("aria-hidden", "true");
             const name = el("span", "group-title", group.name || "미분류");
             const aliases = el("span", "aliases", (group.aliases || []).join(" / "));
-            if (aliases.textContent) name.append(aliases);
+            if (aliases.textContent) {
+              name.append(aliases);
+            }
             const count = el("span", "group-count", formatCount(group.count === void 0 ? group.icons.length : group.count) + "개");
             toggle.append(arrow, avatar, name, count);
             heading.append(toggle);
@@ -1215,8 +1511,12 @@
             toggle.addEventListener("click", () => {
               fold.toggle(group.id);
               renderGroups();
-              const replacement = [...root.querySelectorAll(".group-toggle")].find((node) => node.dataset.groupId === group.id);
-              if (replacement) replacement.focus({ preventScroll: true });
+              const replacement = [
+                ...root.querySelectorAll(".group-toggle")
+              ].find((node) => node.dataset.groupId === group.id);
+              if (replacement) {
+                replacement.focus({ preventScroll: true });
+              }
             });
             if (!collapsed) {
               const viewport = el("div", "group-viewport");
@@ -1227,14 +1527,28 @@
               groupBody.append(viewport);
               const foot = el("div", "group-foot", group.icons.length > 12 ? "그룹 안에서 스크롤 · 보이는 아이콘만 표시" : "카테고리별 표시 · 같은 그룹 안의 중복 제외");
               groupBody.append(foot);
-              const context = { group, viewport, content, toggle, columns: 2, lastWindow: "", visible: true, forceIndex: null, scrollHandler: queueWindows };
-              viewport.addEventListener("scroll", context.scrollHandler, { passive: true });
+              const context = {
+                group,
+                viewport,
+                content,
+                toggle,
+                columns: 2,
+                lastWindow: "",
+                visible: true,
+                forceIndex: null,
+                scrollHandler: queueWindows
+              };
+              viewport.addEventListener("scroll", context.scrollHandler, {
+                passive: true
+              });
               contexts.push(context);
             }
           });
           if (typeof ResizeObserver === "function") {
             resizeObserver = new ResizeObserver(() => {
-              if (dialog.classList.contains("catalog-open")) positionCatalog();
+              if (dialog.classList.contains("catalog-open")) {
+                positionCatalog();
+              }
               queueWindows();
             });
             contexts.forEach((context) => resizeObserver.observe(context.viewport));
@@ -1243,7 +1557,9 @@
             visibilityObserver = new IntersectionObserver((entries) => {
               entries.forEach((entry) => {
                 const context = contexts.find((item) => item.viewport === entry.target);
-                if (context) context.visible = entry.isIntersecting;
+                if (context) {
+                  context.visible = entry.isIntersecting;
+                }
               });
               queueWindows();
             }, { root: body, rootMargin: "160px 0px" });
@@ -1254,11 +1570,16 @@
           renderChips();
           renderSelection();
           if (activeGroupId) {
-            const nextGroup = [...root.querySelectorAll(".group")].find((node) => node.dataset.groupId === activeGroupId);
+            const nextGroup = [
+              ...root.querySelectorAll(".group")
+            ].find((node) => node.dataset.groupId === activeGroupId);
             const nextCard = nextGroup && [...nextGroup.querySelectorAll(".icon-card")].find((node) => node.dataset.iconId === activeIconId);
             const replacement = nextCard || nextGroup && nextGroup.querySelector(".group-toggle");
-            if (replacement) replacement.focus({ preventScroll: true });
-            else input.focus({ preventScroll: true });
+            if (replacement) {
+              replacement.focus({ preventScroll: true });
+            } else {
+              input.focus({ preventScroll: true });
+            }
           }
           lastRenderMs = performance.now() - started;
           updateMetrics();
@@ -1267,7 +1588,9 @@
         function project(row) {
           const projectionKey = scope.value === "all" ? "all" : library.state.currentKey;
           const cached = projections.get(row);
-          if (cached?.has(projectionKey)) return cached.get(projectionKey);
+          if (cached?.has(projectionKey)) {
+            return cached.get(projectionKey);
+          }
           const membership = row.memberships.find((m) => scope.value === "all" || m.packKey === library.state.currentKey) || row.memberships[0];
           const memberPack = library.packs.get(membership?.packKey)?.pack, memberIcon = memberPack?.icons[membership?.position] || row.icon;
           const source = (memberPack?.sources || []).find((s) => s.sourceId === memberIcon.sourceId || String(s.articleId) === String(row.icon.origin?.articleId));
@@ -1279,7 +1602,10 @@
             libraryMemberships: row.memberships,
             librarySource: source,
             tagIds: [],
-            imageMetadata: { ...row.icon.imageMetadata, tags: row.tagLabels || [] }
+            imageMetadata: {
+              ...row.icon.imageMetadata,
+              tags: row.tagLabels || []
+            }
           };
           const cache = cached || /* @__PURE__ */ new Map();
           cache.set(projectionKey, icon);
@@ -1288,19 +1614,39 @@
         }
         __name(project, "project");
         function paintProgress(info = {}) {
-          if (destroyed) return;
+          if (lifecycle.isClosed) {
+            return;
+          }
           const status = info.status || (info.busy ? "loading" : "partial");
           const loaded = info.loaded === void 0 ? info.count : info.loaded;
-          const labels = { loading: "불러오는 중", complete: "불러옴", partial: "일부 불러옴", stopped: "중지됨", cached: "저장된 목록", error: "읽기 실패" };
+          const labels = {
+            loading: "불러오는 중",
+            complete: "불러옴",
+            partial: "일부 불러옴",
+            stopped: "중지됨",
+            cached: "저장된 목록",
+            error: "읽기 실패"
+          };
           let text = info.message || labels[status] || "수집 상태";
-          if (loaded !== void 0) text += " · " + formatCount(loaded) + "개";
-          if (info.total !== void 0 && info.total !== null) text += " / 전체 " + formatCount(info.total) + "개";
-          else if (loaded !== void 0 && status !== "complete") text += " · 전체 수 미확인";
-          if (info.declaredCount !== void 0) text += " · 메타데이터 선언 " + formatCount(info.declaredCount) + "개";
-          if (info.verifiedCount !== void 0) text += " · 하위 글 확인 " + formatCount(info.verifiedCount) + "개";
+          if (loaded !== void 0) {
+            text += " · " + formatCount(loaded) + "개";
+          }
+          if (info.total !== void 0 && info.total !== null) {
+            text += " / 전체 " + formatCount(info.total) + "개";
+          } else if (loaded !== void 0 && status !== "complete") {
+            text += " · 전체 수 미확인";
+          }
+          if (info.declaredCount !== void 0) {
+            text += " · 메타데이터 선언 " + formatCount(info.declaredCount) + "개";
+          }
+          if (info.verifiedCount !== void 0) {
+            text += " · 하위 글 확인 " + formatCount(info.verifiedCount) + "개";
+          }
           if (status === "cached" && info.fetchedAt) {
             const date = new Date(info.fetchedAt);
-            if (Number.isFinite(date.getTime())) text += " · 취득 " + date.toLocaleString("ko-KR");
+            if (Number.isFinite(date.getTime())) {
+              text += " · 취득 " + date.toLocaleString("ko-KR");
+            }
           }
           progressNode.textContent = text;
           const busy = info.busy === void 0 ? status === "loading" : !!info.busy;
@@ -1313,14 +1659,37 @@
         __name(paintProgress, "paintProgress");
         function paintLoading(info = {}) {
           const busy = info.busy === void 0 ? info.status === "loading" : !!info.busy;
-          const phaseLabels = { cache: "저장된 팩을 확인하고 있어요.", article: "아이콘 게시글을 읽고 있어요.", metadata: "팩 정보를 확인하고 있어요.", references: "원본 게시글을 확인하고 있어요.", tags: "아이콘과 태그를 읽고 있어요.", storage: "팩을 저장하고 있어요.", native: "아이콘 목록을 읽고 있어요." };
+          const phaseLabels = {
+            cache: "저장된 팩을 확인하고 있어요.",
+            article: "아이콘 게시글을 읽고 있어요.",
+            metadata: "팩 정보를 확인하고 있어요.",
+            references: "원본 게시글을 확인하고 있어요.",
+            tags: "아이콘과 태그를 읽고 있어요.",
+            storage: "팩을 저장하고 있어요.",
+            native: "아이콘 목록을 읽고 있어요."
+          };
           const processed = Number.isFinite(info.processed) ? info.processed : Number.isFinite(info.loaded) ? info.loaded : null;
           const total = Number.isFinite(info.total) && info.total > 0 ? info.total : null;
           loadingPanel.hidden = !busy;
           groupsNode.inert = busy;
           dialog.classList.toggle("pack-busy", busy);
           loadingPanel.dataset.phase = info.phase || "";
-          if (info.states) progressNode.dataset.sourceChecks = JSON.stringify(info.states.map((s) => ({ articleId: s.articleId, page: s.page, status: s.status, metadataStatus: s.metadataStatus, declared: s.declared, matched: s.matched, tagged: s.tagged, tagErrors: s.tagErrors, ambiguousMetadata: s.ambiguousMetadata, metadataReadError: s.metadataReadError, missingCount: s.missingCount, missing: s.missing })));
+          if (info.states) {
+            progressNode.dataset.sourceChecks = JSON.stringify(info.states.map((s) => ({
+              articleId: s.articleId,
+              page: s.page,
+              status: s.status,
+              metadataStatus: s.metadataStatus,
+              declared: s.declared,
+              matched: s.matched,
+              tagged: s.tagged,
+              tagErrors: s.tagErrors,
+              ambiguousMetadata: s.ambiguousMetadata,
+              metadataReadError: s.metadataReadError,
+              missingCount: s.missingCount,
+              missing: s.missing
+            })));
+          }
           gridStage.setAttribute("aria-busy", String(busy));
           loadingMessage.textContent = info.message || phaseLabels[info.phase] || "아이콘팩을 확인하고 있어요.";
           loadingCount.textContent = processed === null ? "" : formatCount(processed) + (total === null ? "개 처리" : " / " + formatCount(total) + "개 처리");
@@ -1333,32 +1702,73 @@
           }
           loadingStop.disabled = !busy || ["cache", "storage"].includes(info.phase) || typeof options.onStop !== "function";
           loadingStop.textContent = info.phase === "native" ? "추가 수집 중지" : "로딩 중지";
-          catalogView?.setProgress?.({ ...info, message: loadingMessage.textContent });
+          catalogView?.setProgress?.({
+            ...info,
+            message: loadingMessage.textContent
+          });
         }
         __name(paintLoading, "paintLoading");
         function renderLibrary() {
           libraryResult = library.search();
           dialog.classList.toggle("all-pack-search", scope.value === "all");
-          if (scope.value === "current" && library.packs.has(library.state.currentKey)) basePack = library.packs.get(library.state.currentKey).pack;
+          if (scope.value === "current" && library.packs.has(library.state.currentKey)) {
+            basePack = library.packs.get(library.state.currentKey).pack;
+          }
           const rows = library.rows.filter((row) => scope.value === "all" || row.memberships.some((m) => m.packKey === library.state.currentKey));
           const icons3 = rows.map(project), byIdentity = new Map(icons3.map((icon) => [icon.libraryIdentity, icon]));
-          pack = { ...basePack || {}, icons: icons3, kind: scope.value === "all" ? "BUNDLE" : basePack?.kind || "NORMAL", categories: basePack?.categories || [], tags: basePack?.tags || [] };
+          pack = {
+            ...basePack,
+            icons: icons3,
+            kind: scope.value === "all" ? "BUNDLE" : basePack?.kind || "NORMAL",
+            categories: basePack?.categories || [],
+            tags: basePack?.tags || []
+          };
           displayTags = new Map(icons3.map((icon) => [icon.id, iconTagLabels(icon)]));
           const ordered = libraryResult.items.map((row) => byIdentity.get(row.identity)).filter(Boolean);
           if (!isGrid() && pack.categories.length) {
-            const groups = pack.categories.map((category) => ({ ...category, icons: ordered.filter((icon) => (icon.categoryIds || []).includes(category.id)) })).filter((group) => group.icons.length);
+            const groups = pack.categories.map((category) => ({
+              ...category,
+              icons: ordered.filter((icon) => (icon.categoryIds || []).includes(category.id))
+            })).filter((group) => group.icons.length);
             const loose = ordered.filter((icon) => !(icon.categoryIds || []).length);
-            if (loose.length) groups.push({ id: "uncategorized", name: "기타 아이콘", icons: loose });
-            result2 = { groups, uniqueCount: ordered.length, membershipCount: groups.reduce((n, g) => n + g.icons.length, 0) };
-          } else result2 = { groups: ordered.length ? [{ id: "library-list", name: basePack?.title || "아이콘 목록", icons: ordered }] : [], uniqueCount: ordered.length, membershipCount: ordered.length };
+            if (loose.length) {
+              groups.push({
+                id: "uncategorized",
+                name: "기타 아이콘",
+                icons: loose
+              });
+            }
+            result2 = {
+              groups,
+              uniqueCount: ordered.length,
+              membershipCount: groups.reduce((n, g) => n + g.icons.length, 0)
+            };
+          } else {
+            result2 = {
+              groups: ordered.length ? [
+                {
+                  id: "library-list",
+                  name: basePack?.title || "아이콘 목록",
+                  icons: ordered
+                }
+              ] : [],
+              uniqueCount: ordered.length,
+              membershipCount: ordered.length
+            };
+          }
           syncLayout();
           const progress = libraryResult.progress, loading = progress.status === "loading";
           libraryStatus.textContent = loading ? `수집 중 · ${libraryResult.scopedIndexed}/${libraryResult.scopedRegistered}개 팩 검색 가능 · 실패 ${progress.failed}개` : libraryResult.partial ? `일부 팩을 아직 읽지 못했어요. 현재 확인된 아이콘을 표시합니다. · ${libraryResult.scopedIndexed}/${libraryResult.scopedRegistered}개 팩` : `${libraryResult.scopedIndexed}개 팩 검색 완료`;
           help.textContent = `${scope.value === "all" ? "전체 팩" : "현재 팩"} · 검색어 ${textMatch.value === "all" ? "모두" : "하나 이상"} + 태그 ${tagMatch.value === "all" ? "모두" : "하나 이상"} 일치`;
           if (scope.value === "current") {
-            if (currentProgress) paintProgress(currentProgress);
-            else if (basePack) paintProgress({ status: "complete", loaded: basePack.icons.length });
-            else {
+            if (currentProgress) {
+              paintProgress(currentProgress);
+            } else if (basePack) {
+              paintProgress({
+                status: "complete",
+                loaded: basePack.icons.length
+              });
+            } else {
               progressNode.textContent = "아이콘 리스트에서 팩을 선택하세요.";
               stop.disabled = retry.disabled = refresh.disabled = true;
             }
@@ -1376,41 +1786,74 @@
           } else if (basePack) {
             packTitle.textContent = basePack.title || basePack.name || "현재 팩";
             packBadge.textContent = basePack.kind || "NORMAL";
-            const url = articleUrl(basePack.representative || { articleId: basePack.mainArticleId || basePack.articleId, boardId: basePack.boardId });
+            const url = articleUrl(basePack.representative || {
+              articleId: basePack.mainArticleId || basePack.articleId,
+              boardId: basePack.boardId
+            });
             packLink.hidden = !url;
-            if (url) packLink.href = url;
+            if (url) {
+              packLink.href = url;
+            }
           }
         }
         __name(renderLibrary, "renderLibrary");
         function libraryCollect(refresh2 = false) {
-          if (!library || destroyed) return;
-          const work = library.collect({ refresh: refresh2, onProgress: /* @__PURE__ */ __name(() => {
-            if (destroyed || libraryFrame) return;
-            libraryFrame = requestAnimationFrame(() => {
-              libraryFrame = 0;
-              if (!destroyed) applySearch(false);
-            });
-          }, "onProgress") });
+          if (!library || lifecycle.isClosed) {
+            return;
+          }
+          const work = library.collect({
+            refresh: refresh2,
+            onProgress: /* @__PURE__ */ __name(() => {
+              if (lifecycle.isClosed || libraryFrame) {
+                return;
+              }
+              libraryFrame = requestAnimationFrame(() => {
+                libraryFrame = 0;
+                if (!lifecycle.isClosed) {
+                  applySearch(false);
+                }
+              });
+            }, "onProgress")
+          });
           applySearch(false);
           work.catch((error) => {
-            if (!destroyed) setError(error.message);
+            if (!lifecycle.isClosed) {
+              setError(error.message);
+            }
           });
         }
         __name(libraryCollect, "libraryCollect");
         function applySearch(collect = true) {
-          if (destroyed) return;
+          if (lifecycle.isClosed) {
+            return;
+          }
           state.queryRevision++;
           fold.update(hasCriteria());
           const start = performance.now();
           if (library) {
-            library.setState({ scope: scope.value, query: state.query, textMatch: textMatch.value, tagMatch: tagMatch.value, selectedTags: state.selectedTagIds });
+            library.setState({
+              scope: scope.value,
+              query: state.query,
+              textMatch: textMatch.value,
+              tagMatch: tagMatch.value,
+              selectedTags: state.selectedTagIds
+            });
             renderLibrary();
-            const key = JSON.stringify([scope.value, state.query, textMatch.value, library.state.currentKey]);
+            const key = JSON.stringify([
+              scope.value,
+              state.query,
+              textMatch.value,
+              library.state.currentKey
+            ]);
             if (collect && scope.value === "all" && key !== collectionKey) {
               collectionKey = key;
-              if (libraryResult.partial) libraryCollect();
+              if (libraryResult.partial) {
+                libraryCollect();
+              }
             }
-          } else result2 = index ? index.search(state) : { groups: [], uniqueCount: 0, membershipCount: 0 };
+          } else {
+            result2 = index ? index.search(state) : { groups: [], uniqueCount: 0, membershipCount: 0 };
+          }
           lastSearchMs = performance.now() - start;
           renderGroups();
           reportMetadata();
@@ -1419,7 +1862,7 @@
         function metadataSummary() {
           const matched = new Set(result2.groups.flatMap((group) => group.icons.map((icon) => icon.id)));
           return {
-            ...pack?.bodyCounts?.metadata || {},
+            ...pack?.bodyCounts?.metadata,
             modelIcons: pack?.icons?.length || 0,
             taggedIcons: (pack?.icons || []).filter((icon) => icon.imageMetadata?.tags?.length).length,
             indexed: library ? pack?.icons.length || 0 : index?.iconCount || 0,
@@ -1435,27 +1878,39 @@
         function metadataDetails() {
           const summary2 = metadataSummary(), matched = new Set(result2.groups.flatMap((group) => group.icons.map((icon) => icon.id)));
           const media = collectionDiagnostics?.mediaDetail || [], byId = new Map(media.filter((row) => row.iconId).map((row) => [row.iconId, row]));
-          return { summary: summary2, images: media, missing: (pack?.icons || []).filter((icon) => !matched.has(icon.id)).map((icon) => {
-            const source = byId.get(icon.id);
-            return {
-              ...source,
-              iconId: icon.id,
-              url: icon.url,
-              keywords: [...icon.keywords || []],
-              tags: tagsFor(icon),
-              stage: "search",
-              reason: source?.reason && source.reason !== "mapped" ? source.reason : "query-or-filter-mismatch"
-            };
-          }) };
+          return {
+            summary: summary2,
+            images: media,
+            missing: (pack?.icons || []).filter((icon) => !matched.has(icon.id)).map((icon) => {
+              const source = byId.get(icon.id);
+              return {
+                ...source,
+                iconId: icon.id,
+                url: icon.url,
+                keywords: [...icon.keywords || []],
+                tags: tagsFor(icon),
+                stage: "search",
+                reason: source?.reason && source.reason !== "mapped" ? source.reason : "query-or-filter-mismatch"
+              };
+            })
+          };
         }
         __name(metadataDetails, "metadataDetails");
         function reportMetadata() {
-          if (options.debug !== true || !pack) return;
+          if (options.debug !== true || !pack) {
+            return;
+          }
           const detail = metadataDetails(), key = JSON.stringify(detail);
-          if (key === lastMetadataLog) return;
+          if (key === lastMetadataLog) {
+            return;
+          }
           lastMetadataLog = key;
           const failures = detail.images.filter((row) => row.reason !== "mapped");
-          global.console?.info?.("[Aru Icons] metadata diagnostics", { ...detail.summary, unmappedOrUntagged: failures, missing: detail.missing });
+          global.console?.info?.("[Aru Icons] metadata diagnostics", {
+            ...detail.summary,
+            unmappedOrUntagged: failures,
+            missing: detail.missing
+          });
         }
         __name(reportMetadata, "reportMetadata");
         function resetSearch() {
@@ -1472,40 +1927,55 @@
         }
         __name(resetSearch, "resetSearch");
         function callAction(name) {
-          if (typeof options[name] !== "function") return;
+          if (typeof options[name] !== "function") {
+            return;
+          }
           try {
             Promise.resolve(options[name]()).catch((error) => setError(error && error.message || "요청을 처리하지 못했습니다."));
-          } catch (error) {
+          } catch (caught) {
+            const error = caught;
             setError(error && error.message || "요청을 처리하지 못했습니다.");
           }
         }
         __name(callAction, "callAction");
         function setError(message) {
-          if (destroyed) return;
+          if (lifecycle.isClosed) {
+            return;
+          }
           errorNode.textContent = String(message || "아이콘을 읽지 못했습니다.");
           errorNode.hidden = false;
           retry.disabled = typeof options.onRetry !== "function";
         }
         __name(setError, "setError");
         function close(action) {
-          if (destroyed) return;
+          if (lifecycle.isClosed) {
+            return;
+          }
           destroy();
           try {
-            if (typeof options[action] === "function") options[action]();
+            if (typeof options[action] === "function") {
+              options[action]();
+            }
           } catch (_) {
           }
         }
         __name(close, "close");
         function destroy() {
-          if (destroyed) return;
-          destroyed = true;
+          lifecycle.destroy();
+        }
+        __name(destroy, "destroy");
+        function disposePicker() {
           clearTimeout(toastTimer);
           cancelSearch();
           previewCleanup();
           library?.cancel();
           uiCleanup?.();
-          if (libraryFrame) cancelAnimationFrame(libraryFrame);
-          if (initialFocusFrame) cancelAnimationFrame(initialFocusFrame);
+          if (libraryFrame) {
+            cancelAnimationFrame(libraryFrame);
+          }
+          if (initialFocusFrame) {
+            cancelAnimationFrame(initialFocusFrame);
+          }
           events.abort();
           teardownGroups();
           pauseMedia(root);
@@ -1516,22 +1986,28 @@
           index = null;
           displayTags.clear();
           collectionDiagnostics = null;
-          catalogRef = null;
-          catalogPack = null;
+          _catalogRef = null;
+          _catalogPack = null;
           selectedIconId = null;
           result2 = { groups: [], uniqueCount: 0, membershipCount: 0 };
           folds.forEach((item) => item.dispose());
-          if (!folds.size) fold.dispose();
+          if (!folds.size) {
+            fold.dispose();
+          }
           folds.clear();
           root.replaceChildren();
           host.remove();
           unlockPage();
-          if (opener && opener.isConnected && typeof opener.focus === "function" && !(mobileInput() && opener.matches?.('input,textarea,[contenteditable="true"]'))) opener.focus({ preventScroll: true });
+          if (opener && opener.isConnected && typeof opener.focus === "function" && !(mobileInput() && opener.matches?.('input,textarea,[contenteditable="true"]'))) {
+            opener.focus({ preventScroll: true });
+          }
         }
-        __name(destroy, "destroy");
+        __name(disposePicker, "disposePicker");
         function availableViewport() {
           const height = global.visualViewport?.height || global.innerHeight;
-          if (!Number.isFinite(height) || height <= 0) return;
+          if (!Number.isFinite(height) || height <= 0) {
+            return;
+          }
           host.style.setProperty("--aru-available-height", height + "px");
           host.style.top = (global.visualViewport?.offsetTop || 0) + "px";
           host.style.bottom = "auto";
@@ -1543,16 +2019,27 @@
             host.style.width = width + "px";
           }
           const mobile = mobileInput();
-          if (dialog.classList.contains("mobile-layout") !== mobile) searchOptions.open = !mobile;
+          if (dialog.classList.contains("mobile-layout") !== mobile) {
+            searchOptions.open = !mobile;
+          }
           dialog.classList.toggle("mobile-layout", mobile);
           positionCatalog();
-          if (mobile && refresh.parentNode !== optionContent) optionContent.append(refresh);
-          else if (!mobile && refresh.parentNode !== loadActions) loadActions.append(refresh);
+          if (mobile && refresh.parentNode !== optionContent) {
+            optionContent.append(refresh);
+          } else if (!mobile && refresh.parentNode !== loadActions) {
+            loadActions.append(refresh);
+          }
           const compact = height < 600;
-          if (mobile && viewControls.parentNode !== optionContent) optionContent.append(viewControls);
-          else if (!mobile && viewControls.parentNode !== dialog) header.after(viewControls);
-          if (mobile && compact && chips.parentNode !== optionContent) optionContent.prepend(chips);
-          else if ((!mobile || !compact) && chips.parentNode !== searchArea) searchOptions.after(chips);
+          if (mobile && viewControls.parentNode !== optionContent) {
+            optionContent.append(viewControls);
+          } else if (!mobile && viewControls.parentNode !== dialog) {
+            header.after(viewControls);
+          }
+          if (mobile && compact && chips.parentNode !== optionContent) {
+            optionContent.prepend(chips);
+          } else if ((!mobile || !compact) && chips.parentNode !== searchArea) {
+            searchOptions.after(chips);
+          }
           optionsSummary.textContent = mobile && compact ? "필터" : "검색·화면 설정";
           optionsSummary.setAttribute("aria-label", "검색·태그·화면 설정");
           dialog.classList.toggle("compact-height", compact);
@@ -1560,7 +2047,11 @@
         }
         __name(availableViewport, "availableViewport");
         function applyUi(value, persist = false) {
-          const next = api.UiPreferences?.sanitize ? api.UiPreferences.sanitize(value) : { modalSize: ["default", "wide", "max"].includes(value.modalSize) ? value.modalSize : "default", iconSize: ["small", "normal", "large"].includes(value.iconSize) ? value.iconSize : "normal", previewVisible: typeof value.previewVisible === "boolean" ? value.previewVisible : true };
+          const next = api.UiPreferences?.sanitize ? api.UiPreferences.sanitize(value) : {
+            modalSize: ["default", "wide", "max"].includes(value.modalSize) ? value.modalSize : "default",
+            iconSize: ["small", "normal", "large"].includes(value.iconSize) ? value.iconSize : "normal",
+            previewVisible: typeof value.previewVisible === "boolean" ? value.previewVisible : true
+          };
           ui = next;
           rowHeight = currentCardSize().row;
           dialog.dataset.modalSize = ui.modalSize;
@@ -1572,11 +2063,19 @@
           previewToggle.textContent = ui.previewVisible ? "미리보기 접기" : "미리보기 펼치기";
           previewToggle.setAttribute("aria-expanded", String(ui.previewVisible));
           const size = currentCardSize();
-          for (const [name, value2] of Object.entries({ height: size.card, media: size.media, "media-width": size.mediaWidth })) dialog.style.setProperty("--aru-card-" + name, value2 + "px");
+          for (const [name, value2] of Object.entries({
+            height: size.card,
+            media: size.media,
+            "media-width": size.mediaWidth
+          })) {
+            dialog.style.setProperty("--aru-card-" + name, value2 + "px");
+          }
           if (!ui.previewVisible) {
-            for (const v of selectionArt.querySelectorAll("video")) try {
-              v.pause();
-            } catch (_) {
+            for (const v of selectionArt.querySelectorAll("video")) {
+              try {
+                v.pause();
+              } catch (_) {
+              }
             }
             if (previewState.status === "loading") {
               previewCleanup();
@@ -1592,7 +2091,9 @@
             uiRevision++;
             const saved = { ...ui };
             Promise.resolve().then(() => preferences?.write?.(saved)).catch(() => {
-              if (!destroyed) announce("화면 설정을 저장하지 못했어요. 이번 창에서는 계속 사용할 수 있습니다.");
+              if (!lifecycle.isClosed) {
+                announce("화면 설정을 저장하지 못했어요. 이번 창에서는 계속 사용할 수 있습니다.");
+              }
             });
           }
         }
@@ -1602,15 +2103,20 @@
         listen(previewToggle, "click", () => applyUi({ ...ui, previewVisible: !ui.previewVisible }, true));
         applyUi(ui);
         const pointerChanged = /* @__PURE__ */ __name(() => applyUi(ui), "pointerChanged");
-        if (coarsePointer?.addEventListener) listen(coarsePointer, "change", pointerChanged);
-        else if (coarsePointer?.addListener) {
+        if (coarsePointer?.addEventListener) {
+          listen(coarsePointer, "change", pointerChanged);
+        } else if (coarsePointer?.addListener) {
           coarsePointer.addListener(pointerChanged);
           events.signal.addEventListener("abort", () => coarsePointer.removeListener?.(pointerChanged), { once: true });
         }
         const uiReady = Promise.resolve().then(() => preferences?.read?.()).then((value) => {
-          if (!destroyed && uiRevision === 0 && value) applyUi(value);
+          if (!lifecycle.isClosed && uiRevision === 0 && value) {
+            applyUi(value);
+          }
         }).catch(() => {
-          if (!destroyed) announce("화면 설정을 복원하지 못했어요. 기본 크기로 열었습니다.");
+          if (!lifecycle.isClosed) {
+            announce("화면 설정을 복원하지 못했어요. 기본 크기로 열었습니다.");
+          }
         });
         availableViewport();
         listen(global, "resize", availableViewport);
@@ -1619,10 +2125,14 @@
           listen(global.visualViewport, "scroll", availableViewport);
         }
         listen(backdrop, "wheel", (event) => {
-          if (event.target === backdrop) event.preventDefault();
+          if (event.target === backdrop) {
+            event.preventDefault();
+          }
         }, { passive: false });
         listen(backdrop, "touchmove", (event) => {
-          if (event.target === backdrop) event.preventDefault();
+          if (event.target === backdrop) {
+            event.preventDefault();
+          }
         }, { passive: false });
         listen(input, "compositionstart", () => {
           composing = true;
@@ -1638,8 +2148,12 @@
           }, 150);
         });
         listen(input, "input", (event) => {
-          if (composing || event.isComposing) return;
-          if (library && scope.value === "all") library.cancel();
+          if (composing || event.isComposing) {
+            return;
+          }
+          if (library && scope.value === "all") {
+            library.cancel();
+          }
           cancelSearch();
           searchTimer = setTimeout(() => {
             searchTimer = 0;
@@ -1653,7 +2167,9 @@
           input.value = "";
           state.query = "";
           applySearch();
-          if (!mobileInput()) input.focus();
+          if (!mobileInput()) {
+            input.focus();
+          }
           announce("검색어만 지웠습니다. 태그 필터는 유지됩니다.");
         });
         listen(reset, "click", resetSearch);
@@ -1690,42 +2206,61 @@
             library.cancel();
             applySearch(false);
             announce("전체 팩 수집을 중지했습니다.");
-          } else callAction("onStop");
+          } else {
+            callAction("onStop");
+          }
         });
         listen(loadingStop, "click", () => callAction("onStop"));
         listen(retry, "click", () => {
-          if (library && scope.value === "all") libraryCollect();
-          else callAction("onRetry");
+          if (library && scope.value === "all") {
+            libraryCollect();
+          } else {
+            callAction("onRetry");
+          }
         });
         listen(refresh, "click", () => {
-          if (library && scope.value === "all") libraryCollect(true);
-          else callAction("onRefresh");
+          if (library && scope.value === "all") {
+            libraryCollect(true);
+          } else {
+            callAction("onRefresh");
+          }
         });
         listen(mediaRetry, "click", () => {
           const icon = byIconId(selectedIconId);
-          if (!icon) return;
+          if (!icon) {
+            return;
+          }
           previewCleanup();
           previewState = { iconId: null, status: "none", code: null };
-          for (const card of root.querySelectorAll(".icon-card")) if (card.dataset.iconId === icon.id && card.querySelector('[data-media-state="error"]')) {
-            card.replaceWith(makeCard(icon, Number(card.dataset.index), contexts.find((c) => c.content === card.parentNode), {}));
+          for (const card of root.querySelectorAll(".icon-card")) {
+            if (card.dataset.iconId === icon.id && card.querySelector('[data-media-state="error"]')) {
+              card.replaceWith(makeCard(icon, Number(card.dataset.index), contexts.find((c) => c.content === card.parentNode), {}));
+            }
           }
           renderSelection();
           mediaBudget?.prune();
         });
         async function requestInsertion() {
           const icon = byIconId(selectedIconId);
-          if (catalogOpen || destroyed || !icon || prepare.disabled || preparing || !targetValid || previewState.status === "error" || typeof options.onSelect !== "function") return;
+          if (catalogOpen || lifecycle.isClosed || !icon || prepare.disabled || preparing || !targetValid || previewState.status === "error" || typeof options.onSelect !== "function") {
+            return;
+          }
           preparing = true;
           updatePrepare();
           try {
             const prepared = await options.onSelect(icon);
-            if (!destroyed) announce(typeof prepared === "string" ? prepared : prepared && prepared.message || "선택 정보를 준비했습니다. 실제 삽입·게시·전송은 실행하지 않았습니다.");
-          } catch (error) {
+            if (!lifecycle.isClosed) {
+              announce(typeof prepared === "string" ? prepared : prepared && prepared.message || "선택 정보를 준비했습니다. 실제 삽입·게시·전송은 실행하지 않았습니다.");
+            }
+          } catch (caught) {
+            const error = caught;
             mediaDiagnostic(icon, "insertion", error?.code || "INSERT_FAILED");
             setError((error?.code ? "[" + error.code + "] " : "") + (error?.message || "선택 정보를 준비하지 못했습니다."));
           } finally {
             preparing = false;
-            if (!destroyed) renderSelection();
+            if (!lifecycle.isClosed) {
+              renderSelection();
+            }
           }
         }
         __name(requestInsertion, "requestInsertion");
@@ -1736,13 +2271,20 @@
           if (event.key === "Escape" && !event.isComposing) {
             event.preventDefault();
             event.stopPropagation();
-            if (catalogOpen) setCatalogOpen(false, "cancel");
-            else close("onClose");
+            if (catalogOpen) {
+              setCatalogOpen(false, "cancel");
+            } else {
+              close("onClose");
+            }
             return;
           }
-          if (event.key !== "Tab") return;
+          if (event.key !== "Tab") {
+            return;
+          }
           const scopeRoot = catalogOpen ? catalogView.node : root;
-          const focusable = [...scopeRoot.querySelectorAll('button:not(:disabled),input:not(:disabled),select:not(:disabled),summary,a[href],[tabindex="0"]')].filter((node) => !node.hidden && !node.closest("[inert],[hidden]") && (!node.closest("details:not([open])") || node.tagName === "SUMMARY") && node.getClientRects().length);
+          const focusable = [
+            ...scopeRoot.querySelectorAll('button:not(:disabled),input:not(:disabled),select:not(:disabled),summary,a[href],[tabindex="0"]')
+          ].filter((node) => !node.hidden && !node.closest("[inert],[hidden]") && (!node.closest("details:not([open])") || node.tagName === "SUMMARY") && node.getClientRects().length);
           const first = focusable[0], last = focusable[focusable.length - 1];
           if (!first) {
             event.preventDefault();
@@ -1761,17 +2303,25 @@
           }
         });
         ["click", "pointerdown", "mousedown", "keyup", "keypress"].forEach((type) => listen(root, type, (event) => event.stopPropagation()));
-        if (library) renderChips(true);
+        if (library) {
+          renderChips(true);
+        }
         renderGroups();
         syncLayout();
-        if (catalogView && options.openCatalogInitially === true) setCatalogOpen(true);
+        if (catalogView && options.openCatalogInitially === true) {
+          setCatalogOpen(true);
+        }
         initialFocusFrame = requestAnimationFrame(() => {
           initialFocusFrame = 0;
-          if (!destroyed && !root.activeElement) (mobileInput() ? catalogOpen ? catalogView.node : dialog : catalogOpen ? catalogView.input : input).focus({ preventScroll: true });
+          if (!lifecycle.isClosed && !root.activeElement) {
+            (mobileInput() ? catalogOpen ? catalogView.node : dialog : catalogOpen ? catalogView.input : input).focus({ preventScroll: true });
+          }
         });
         const apiPicker = {
           setCurrentSource(key) {
-            if (!library) return;
+            if (!library) {
+              return;
+            }
             library.setState({ currentKey: key });
             collectionKey = "";
           },
@@ -1787,7 +2337,9 @@
           },
           refreshLibrary() {
             if (library) {
-              if (scope.value === "all") libraryCollect();
+              if (scope.value === "all") {
+                libraryCollect();
+              }
               applySearch(false);
             }
           },
@@ -1802,8 +2354,8 @@
             catalogView?.setEntries(entries, message, library?.packs);
           },
           setCatalogPack(ref, next) {
-            catalogRef = ref;
-            catalogPack = next;
+            _catalogRef = ref;
+            _catalogPack = next;
             catalogView?.setPack(ref, next);
           },
           setQuery(value) {
@@ -1823,7 +2375,9 @@
               applySearch(false);
               return;
             }
-            if (library) library.setState({ currentKey: null });
+            if (library) {
+              library.setState({ currentKey: null });
+            }
             basePack = null;
             teardownGroups();
             pack = null;
@@ -1832,8 +2386,8 @@
             displayTags.clear();
             collectionDiagnostics = null;
             lastMetadataLog = "";
-            catalogRef = null;
-            catalogPack = null;
+            _catalogRef = null;
+            _catalogPack = null;
             selectedIconId = null;
             result2 = { groups: [], uniqueCount: 0, membershipCount: 0 };
             columns.hidden = !!options.catalogMode && !library;
@@ -1844,7 +2398,9 @@
             renderSelection();
           },
           setSources(choices = []) {
-            if (!sourceSelect || destroyed) return;
+            if (!sourceSelect || lifecycle.isClosed) {
+              return;
+            }
             const selected = sourceSelect.value;
             sourceSelect.replaceChildren();
             const placeholder = el("option", "", "기본 목록에서 팩 선택");
@@ -1862,8 +2418,12 @@
           shadowRoot: root,
           setPack(nextPack) {
             columns.hidden = false;
-            if (destroyed) return;
-            if (!nextPack || !Array.isArray(nextPack.icons)) throw new Error("아이콘팩 데이터가 올바르지 않습니다.");
+            if (lifecycle.isClosed) {
+              return;
+            }
+            if (!nextPack || !Array.isArray(nextPack.icons)) {
+              throw new Error("아이콘팩 데이터가 올바르지 않습니다.");
+            }
             const key = String(nextPack.packId || nextPack.id || nextPack.mainArticleId || nextPack.articleId || nextPack.title || "current-pack");
             if (currentPackKey !== key) {
               selectedIconId = null;
@@ -1872,7 +2432,9 @@
               if (!folds.has(key)) {
                 const nextFold = new api.FoldState();
                 const initiallyCollapsed = Object.entries(options.initialCollapsed || {}).filter(([, value]) => value).map(([id]) => id);
-                if (initiallyCollapsed.length) nextFold.setAll(initiallyCollapsed, true);
+                if (initiallyCollapsed.length) {
+                  nextFold.setAll(initiallyCollapsed, true);
+                }
                 folds.set(key, nextFold);
               }
               fold = folds.get(key);
@@ -1885,21 +2447,34 @@
             index = new api.SearchIndex(pack);
             collectionDiagnostics = null;
             const tagDictionary = new Map((pack.tags || []).map((tag) => [tag.id, tag.name]));
-            displayTags = new Map(pack.icons.map((icon) => [icon.id, iconTagLabels(icon, tagDictionary)]));
+            displayTags = new Map(pack.icons.map((icon) => [
+              icon.id,
+              iconTagLabels(icon, tagDictionary)
+            ]));
             packTitle.textContent = pack.title || pack.name || "아이콘팩 " + (pack.mainArticleId || pack.articleId || "");
             packBadge.textContent = pack.kind || pack.packKind || "NORMAL";
-            const primarySource = pack.representative || { articleId: pack.mainArticleId || pack.articleId, boardId: pack.boardId, articleUrl: pack.articleUrl };
+            const primarySource = pack.representative || {
+              articleId: pack.mainArticleId || pack.articleId,
+              boardId: pack.boardId,
+              articleUrl: pack.articleUrl
+            };
             const link = articleUrl(primarySource);
             packLink.hidden = !link;
-            if (link) packLink.href = link;
-            else packLink.removeAttribute("href");
+            if (link) {
+              packLink.href = link;
+            } else {
+              packLink.removeAttribute("href");
+            }
             renderChips(true);
             applySearch();
           },
           setProgress(info = {}) {
             currentProgress = { ...info };
-            if (!library || scope.value !== "all") paintProgress(info);
-            else catalogView?.setProgress?.(info);
+            if (!library || scope.value !== "all") {
+              paintProgress(info);
+            } else {
+              catalogView?.setProgress?.(info);
+            }
           },
           setError,
           clearError() {
@@ -1909,14 +2484,60 @@
           resetSearch,
           destroy,
           getSnapshot() {
-            return { destroyed, targetValid, catalog: catalogView ? { ...catalogView.snapshot(), open: catalogOpen, toastShown } : null, media: mediaBudget?.snapshot(), library: libraryResult ? { scope: scope.value, textMatch: textMatch.value, tagMatch: tagMatch.value, partial: libraryResult.partial, registered: libraryResult.registered, indexed: libraryResult.indexed, progress: libraryResult.progress } : null, ui: { ...ui, rowHeight, columns: contexts[0]?.columns || 0, preparing }, displayMode: "icon-list", viewportCount: contexts.length, preview: { ...previewState }, mediaFailures: options.debug === true ? [...mediaFailures.values()] : [], packId: currentPackKey, query: state.query, selectedTagIds: state.selectedTagIds.slice(), selectedIconId, uniqueCount: result2.uniqueCount, membershipCount: result2.membershipCount, groups: result2.groups.map((group) => ({ id: group.id, count: group.count === void 0 ? group.icons.length : group.count, collapsed: fold.isCollapsed(group.id) })), renderedCards: root.querySelectorAll(".icon-card").length, maxCards: MAX_CARDS, searchMs: lastSearchMs, renderMs: lastRenderMs, metadata: metadataSummary() };
+            return {
+              destroyed: lifecycle.isClosed,
+              targetValid,
+              catalog: catalogView ? { ...catalogView.snapshot(), open: catalogOpen, toastShown } : null,
+              media: mediaBudget?.snapshot(),
+              library: libraryResult ? {
+                scope: scope.value,
+                textMatch: textMatch.value,
+                tagMatch: tagMatch.value,
+                partial: libraryResult.partial,
+                registered: libraryResult.registered,
+                indexed: libraryResult.indexed,
+                progress: libraryResult.progress
+              } : null,
+              ui: {
+                ...ui,
+                rowHeight,
+                columns: contexts[0]?.columns || 0,
+                preparing
+              },
+              displayMode: "icon-list",
+              viewportCount: contexts.length,
+              preview: { ...previewState },
+              mediaFailures: options.debug === true ? [...mediaFailures.values()] : [],
+              packId: currentPackKey,
+              query: state.query,
+              selectedTagIds: state.selectedTagIds.slice(),
+              selectedIconId,
+              uniqueCount: result2.uniqueCount,
+              membershipCount: result2.membershipCount,
+              groups: result2.groups.map((group) => ({
+                id: group.id,
+                count: group.count === void 0 ? group.icons.length : group.count,
+                collapsed: fold.isCollapsed(group.id)
+              })),
+              renderedCards: root.querySelectorAll(".icon-card").length,
+              maxCards: MAX_CARDS,
+              searchMs: lastSearchMs,
+              renderMs: lastRenderMs,
+              metadata: metadataSummary()
+            };
           }
         };
         return apiPicker;
       }, "createPicker");
     }, "initializeIconsPicker");
     initializeIconsPicker(environment);
-    return { "icons": selectModuleExports(icons2, ["isMouseDoubleClick", "iconTagLabels", "createPicker"]) };
+    return {
+      icons: selectModuleExports(icons2, [
+        "isMouseDoubleClick",
+        "iconTagLabels",
+        "createPicker"
+      ])
+    };
   }
   __name(createIconsPicker, "createIconsPicker");
 

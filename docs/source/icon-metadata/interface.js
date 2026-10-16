@@ -3,12 +3,21 @@
   var __defProp = Object.defineProperty;
   var __name = (target, value) => __defProp(target, "name", { value, configurable: true });
 
+  // docs/source/runtime/contracts.mjs
+  var defaultEnvironment = globalThis;
+
   // docs/source/runtime/module-scope.mjs
   function createModuleScope(resolvers = {}, names = [], own = []) {
     const scope = {};
     for (const name of names) {
-      if (own.includes(name)) scope[name] = resolvers[name]?.();
-      else Object.defineProperty(scope, name, { enumerable: true, get: /* @__PURE__ */ __name(() => resolvers[name]?.(), "get") });
+      if (own.includes(name)) {
+        scope[name] = resolvers[name]?.();
+      } else {
+        Object.defineProperty(scope, name, {
+          enumerable: true,
+          get: /* @__PURE__ */ __name(() => resolvers[name]?.(), "get")
+        });
+      }
     }
     return scope;
   }
@@ -19,12 +28,8 @@
   __name(selectModuleExports, "selectModuleExports");
 
   // docs/source/icon-metadata/interface.mjs
-  function createMetadataInterface({ environment = globalThis, dependencies = {} } = {}) {
-    const { document, location, chrome, browser, MutationObserver, CustomEvent, URL, crypto } = environment;
-    const setTimeout = typeof environment.setTimeout === "function" ? (...args) => environment.setTimeout(...args) : void 0;
-    const clearTimeout = typeof environment.clearTimeout === "function" ? (...args) => environment.clearTimeout(...args) : void 0;
-    const requestAnimationFrame = typeof environment.requestAnimationFrame === "function" ? (...args) => environment.requestAnimationFrame(...args) : void 0;
-    const cancelAnimationFrame = typeof environment.cancelAnimationFrame === "function" ? (...args) => environment.cancelAnimationFrame(...args) : void 0;
+  function createMetadataInterface({ environment = defaultEnvironment, dependencies = {} } = {}) {
+    const { URL } = environment;
     let metadata2 = createModuleScope(dependencies.metadata, ["Selection", "FIXED", "normalize", "Panel", "Browser", "Client"], ["Client", "Browser", "Panel", "Controller", "countLabel"]);
     let icons2 = createModuleScope(dependencies.icons, ["DesignSystem"], []);
     const initializeMetadataClient = /* @__PURE__ */ __name(function(g) {
@@ -39,7 +44,9 @@
           this.pending = /* @__PURE__ */ new Map();
           this.closed = false;
           this.receive = (e) => {
-            if (e.target !== doc || typeof e.detail !== "string") return;
+            if (e.target !== doc || typeof e.detail !== "string") {
+              return;
+            }
             let p;
             try {
               p = JSON.parse(e.detail);
@@ -47,16 +54,25 @@
               return;
             }
             const item = this.pending.get(p.requestId);
-            if (!item) return;
+            if (!item) {
+              return;
+            }
             g.clearTimeout(item.timer);
             this.pending.delete(p.requestId);
-            if (p.ok) item.resolve(p.result);
-            else item.reject(Object.assign(new Error(p.error?.message || "메타데이터 오류"), { code: p.error?.code }));
+            if (p.ok) {
+              item.resolve(p.result);
+            } else {
+              item.reject(Object.assign(new Error(p.error?.message || "메타데이터 오류"), {
+                code: p.error?.code
+              }));
+            }
           };
           doc.addEventListener("aru-metadata-response-v1", this.receive);
         }
         request(op, body = {}) {
-          if (this.closed) return Promise.reject(new Error("편집기가 종료되었습니다."));
+          if (this.closed) {
+            return Promise.reject(new Error("편집기가 종료되었습니다."));
+          }
           return new Promise((resolve, reject) => {
             const requestId = g.crypto.randomUUID().replaceAll("-", "");
             const detail = JSON.stringify({ ...body, op, requestId });
@@ -85,15 +101,22 @@
       const api = g.browser || g.chrome;
       const Browser = {
         async active() {
-          if (!api?.storage?.sync) return false;
+          if (!api?.storage?.sync) {
+            return false;
+          }
           let values;
-          if (g.browser) values = await api.storage.sync.get(["enabled", "aruIconsOptions"]);
-          else values = await new Promise((resolve) => api.storage.sync.get(["enabled", "aruIconsOptions"], (v) => resolve(api.runtime?.lastError ? {} : v)));
+          if (g.browser) {
+            values = await api.storage.sync.get(["enabled", "aruIconsOptions"]);
+          } else {
+            values = await new Promise((resolve) => api.storage.sync.get(["enabled", "aruIconsOptions"], (v) => resolve(api.runtime?.lastError ? {} : v)));
+          }
           return values?.enabled !== false && values?.aruIconsOptions?.enabled === true;
         },
         subscribe(fn) {
           const listener = /* @__PURE__ */ __name((changes, area) => {
-            if (area === "sync" && (changes.enabled || changes.aruIconsOptions)) fn();
+            if (area === "sync" && (changes.enabled || changes.aruIconsOptions)) {
+              fn();
+            }
           }, "listener");
           api?.storage?.onChanged?.addListener(listener);
           return () => api?.storage?.onChanged?.removeListener(listener);
@@ -110,8 +133,8 @@
         static {
           __name(this, "Panel");
         }
-        constructor({ document: document2, client, token, onClose }) {
-          this.doc = document2;
+        constructor({ document, client, token, onClose }) {
+          this.doc = document;
           this.client = client;
           this.token = token;
           this.onClose = onClose;
@@ -123,17 +146,20 @@
           this.closed = false;
           this.rowHeight = 132;
           this.previewRevision = 0;
-          this.host = document2.createElement("div");
+          this.host = document.createElement("div");
           this.host.dataset.aruMetadataPanel = "";
           this.shadow = this.host.attachShadow({ mode: "open" });
           this.shadow.innerHTML = `<style>${CSS}</style><div class="overlay"><section class="dialog" role="dialog" aria-modal="true" aria-labelledby="title"><header class="header"><h2 id="title">아이콘 태그</h2><button type="button" data-action="close">닫기</button></header><div class="body"><div class="controls"><input class="search" type="search" placeholder="번호·이름·태그 검색" aria-label="이미지 필터"><button type="button" data-action="filtered">검색 결과 선택</button><button type="button" data-action="all">전체 선택</button><button type="button" data-action="clear">선택 해제</button><label><input type="checkbox" class="checkbox"> 체크박스 선택</label></div><div class="note summary" aria-live="polite"></div><div class="viewport" tabindex="0" aria-label="이미지 다중 선택 목록"><div class="space"></div></div><p class="note">Ctrl로 추가 선택 · Shift로 범위 선택 · Ctrl+A로 검색 결과 선택</p><div class="fixed" aria-label="고정 태그"></div><div class="controls"><input class="free" aria-label="자유 태그" placeholder="자유 태그 입력"><button type="button" data-action="tag">태그 추가</button><select class="operation" aria-label="태그 작업"><option value="add">추가 · 기존 태그 보존</option><option value="remove">제거 · 지정한 태그만</option><option value="replace">교체 · 기존 태그 덮어쓰기</option></select></div><div class="chips" aria-label="이번 작업의 태그"></div><p class="note operation-note"></p><div class="status" role="status" aria-live="polite"></div></div><footer class="footer"><span class="change-count">이미지를 선택해 주세요.</span><button type="button" data-action="refresh">목록 갱신</button><button type="button" data-action="undo" disabled>실행 취소</button><button type="button" data-action="redo" disabled>다시 실행</button><button type="button" class="apply" data-action="apply" disabled>편집기에 적용</button></footer></section></div>`;
           this.uiCleanup = icons2?.DesignSystem?.attach(this.shadow);
-          icons2?.DesignSystem?.modalHeader(this.shadow.querySelector("header"), { kind: "tags", description: "이미지와 동영상의 태그를 편집합니다." });
+          icons2?.DesignSystem?.modalHeader(this.shadow.querySelector("header"), {
+            kind: "tags",
+            description: "이미지와 동영상의 태그를 편집합니다."
+          });
           this.q = (s) => this.shadow.querySelector(s);
           this.viewport = this.q(".viewport");
           this.space = this.q(".space");
           for (const tag of M.FIXED) {
-            const b = document2.createElement("button");
+            const b = document.createElement("button");
             b.type = "button";
             b.textContent = tag;
             b.dataset.tag = tag;
@@ -149,8 +175,12 @@
             }
           });
           this.shadow.addEventListener("change", (e) => {
-            if (e.target.matches(".operation")) this.changed();
-            if (e.target.matches(".checkbox")) this.render();
+            if (e.target.matches(".operation")) {
+              this.changed();
+            }
+            if (e.target.matches(".checkbox")) {
+              this.render();
+            }
           });
           this.shadow.addEventListener("keydown", (e) => {
             if (e.key === "Escape") {
@@ -167,7 +197,9 @@
               this.changed();
             }
             if (e.key === "Tab") {
-              const focusable = [...this.shadow.querySelectorAll('button:not(:disabled),input,select,[tabindex="0"]')];
+              const focusable = [
+                ...this.shadow.querySelectorAll('button:not(:disabled),input,select,[tabindex="0"]')
+              ];
               const first = focusable[0], last = focusable[focusable.length - 1];
               if (e.shiftKey && this.shadow.activeElement === first) {
                 e.preventDefault();
@@ -178,21 +210,26 @@
               }
             }
           });
-          this.viewport.addEventListener("scroll", () => this.scheduleRender(), { passive: true });
+          this.viewport.addEventListener("scroll", () => this.scheduleRender(), {
+            passive: true
+          });
           this.resize = () => this.scheduleRender();
           g.addEventListener("resize", this.resize);
           if (g.ResizeObserver) {
             this.observer = new g.ResizeObserver(this.resize);
             this.observer.observe(this.viewport);
           }
-          document2.body.append(this.host);
+          document.body.append(this.host);
           this.q(".search").focus();
           this.load();
         }
         async load() {
           this.setBusy(true);
           try {
-            const data = await this.client.request("scan", { token: this.token, session: this.session });
+            const data = await this.client.request("scan", {
+              token: this.token,
+              session: this.session
+            });
             if (!this.closed) {
               this.accept(data);
               this.status(data.collisions ? `중복 ID ${data.collisions}개: 적용할 때 선택한 이미지의 충돌만 정리합니다.` : "이미지 선택만으로 본문은 바뀌지 않습니다.");
@@ -201,7 +238,9 @@
             this.status(`[${e.code || "ERROR"}] ${e.message}`, true);
           } finally {
             this.setBusy(false);
-            if (!this.closed) this.q(".search").focus();
+            if (!this.closed) {
+              this.q(".search").focus();
+            }
           }
         }
         accept(data) {
@@ -226,10 +265,14 @@
           this.q(".summary").textContent = `본문 이미지 ${this.images.length}개 · 검색 결과 ${this.filtered.length}개 · 선택 ${this.selection.values.size}개`;
         }
         scheduleRender() {
-          if (this.frame || this.closed) return;
+          if (this.frame || this.closed) {
+            return;
+          }
           this.frame = g.requestAnimationFrame(() => {
             this.frame = null;
-            if (!this.closed) this.render();
+            if (!this.closed) {
+              this.render();
+            }
           });
         }
         render() {
@@ -239,9 +282,11 @@
           this.space.style.setProperty("--cardwidth", cardWidth - 6 + "px");
           const first = Math.max(0, Math.floor(this.viewport.scrollTop / this.rowHeight) - 1), last = Math.min(rows, first + Math.ceil((this.viewport.clientHeight || 300) / this.rowHeight) + 3);
           const from = first * cols, to = Math.min(this.filtered.length, last * cols), keep = new Set(this.filtered.slice(from, to).map((x) => x.handle));
-          for (const card of [...this.space.children]) if (!keep.has(card.dataset.handle)) {
-            card.querySelector("img")?.removeAttribute("src");
-            card.remove();
+          for (const card of [...this.space.children]) {
+            if (!keep.has(card.dataset.handle)) {
+              card.querySelector("img")?.removeAttribute("src");
+              card.remove();
+            }
           }
           const cards = new Map([...this.space.children].map((n) => [n.dataset.handle, n]));
           for (let i = from; i < to; i++) {
@@ -258,9 +303,13 @@
               img.loading = "eager";
               let src;
               try {
-                if (!x.src || !x.src.trim()) throw new Error("empty");
+                if (!x.src || !x.src.trim()) {
+                  throw new Error("empty");
+                }
                 src = new URL(x.src, this.doc.baseURI);
-                if (!["https:", "http:", "blob:", "data:"].includes(src.protocol) || src.username || src.password || src.protocol === "data:" && !x.src.startsWith("data:image/")) src = null;
+                if (!["https:", "http:", "blob:", "data:"].includes(src.protocol) || src.username || src.password || src.protocol === "data:" && !x.src.startsWith("data:image/")) {
+                  src = null;
+                }
               } catch (_) {
               }
               img.addEventListener("error", () => {
@@ -270,8 +319,11 @@
                   b.dataset.failed = "true";
                 }
               }, { once: true });
-              if (src) img.src = src.href;
-              else img.alt = "표시할 이미지 URL 없음";
+              if (src) {
+                img.src = src.href;
+              } else {
+                img.alt = "표시할 이미지 URL 없음";
+              }
               const label = this.doc.createElement("small");
               label.textContent = `${x.index + 1} · ${x.id ? "태그 편집 가능" : "새 이미지"}`;
               const tags = this.doc.createElement("span");
@@ -290,8 +342,11 @@
             b.setAttribute("aria-pressed", String(this.selection.values.has(x.handle)));
             const checkbox = this.q(".checkbox").checked;
             b.setAttribute("role", checkbox ? "checkbox" : "button");
-            if (checkbox) b.setAttribute("aria-checked", String(this.selection.values.has(x.handle)));
-            else b.removeAttribute("aria-checked");
+            if (checkbox) {
+              b.setAttribute("aria-checked", String(this.selection.values.has(x.handle)));
+            } else {
+              b.removeAttribute("aria-checked");
+            }
             const check = b.querySelector(".check");
             check.hidden = !checkbox;
             check.textContent = this.selection.values.has(x.handle) ? "☑" : "☐";
@@ -299,14 +354,21 @@
         }
         click(e) {
           const b = e.target.closest("button");
-          if (!b) return;
+          if (!b) {
+            return;
+          }
           const h = b.dataset.handle;
           if (h && !this.busy) {
             if (b.dataset.failed) {
               b.remove();
               this.render();
             }
-            this.selection.click(h, this.filtered.map((x) => x.handle), { ctrlKey: e.ctrlKey, metaKey: e.metaKey, shiftKey: e.shiftKey, checkbox: this.q(".checkbox").checked });
+            this.selection.click(h, this.filtered.map((x) => x.handle), {
+              ctrlKey: e.ctrlKey,
+              metaKey: e.metaKey,
+              shiftKey: e.shiftKey,
+              checkbox: this.q(".checkbox").checked
+            });
             this.changed();
             return;
           }
@@ -354,7 +416,9 @@
           }
         }
         addFree() {
-          if (this.busy) return;
+          if (this.busy) {
+            return;
+          }
           try {
             this.tags = M.normalize(this.tags.concat(this.q(".free").value));
             this.q(".free").value = "";
@@ -364,10 +428,14 @@
           }
         }
         changed() {
-          if (this.closed) return;
+          if (this.closed) {
+            return;
+          }
           this.summary();
           this.render();
-          for (const b of this.shadow.querySelectorAll(".fixed button")) b.setAttribute("aria-pressed", String(this.tags.includes(b.dataset.tag)));
+          for (const b of this.shadow.querySelectorAll(".fixed button")) {
+            b.setAttribute("aria-pressed", String(this.tags.includes(b.dataset.tag)));
+          }
           this.q(".chips").replaceChildren();
           for (const tag of this.tags) {
             const b = this.doc.createElement("button");
@@ -383,44 +451,67 @@
           this.updateButtons();
           g.clearTimeout(this.previewTimer);
           const revision = ++this.previewRevision;
-          if (this.session && this.selection.values.size) this.previewTimer = g.setTimeout(async () => {
-            try {
-              const r = await this.client.request("preview", this.payload());
-              if (!this.closed && revision === this.previewRevision) this.q(".change-count").textContent = `적용 전: 선택 ${r.selected}개 · 변경 예정 ${r.changed}개 (ID ${r.ids} · 태그 ${r.tagChanges})`;
-            } catch (e) {
-              if (!this.closed && revision === this.previewRevision) this.q(".change-count").textContent = e.message;
-            }
-          }, 160);
-          else this.q(".change-count").textContent = "이미지를 선택해 주세요.";
+          if (this.session && this.selection.values.size) {
+            this.previewTimer = g.setTimeout(async () => {
+              try {
+                const r = await this.client.request("preview", this.payload());
+                if (!this.closed && revision === this.previewRevision) {
+                  this.q(".change-count").textContent = `적용 전: 선택 ${r.selected}개 · 변경 예정 ${r.changed}개 (ID ${r.ids} · 태그 ${r.tagChanges})`;
+                }
+              } catch (e) {
+                if (!this.closed && revision === this.previewRevision) {
+                  this.q(".change-count").textContent = e.message;
+                }
+              }
+            }, 160);
+          } else {
+            this.q(".change-count").textContent = "이미지를 선택해 주세요.";
+          }
         }
         payload() {
-          return { session: this.session, handles: [...this.selection.values], tags: this.tags, operation: this.q(".operation").value };
+          return {
+            session: this.session,
+            handles: [...this.selection.values],
+            tags: this.tags,
+            operation: this.q(".operation").value
+          };
         }
         updateButtons() {
           this.q("[data-action=apply]").disabled = this.busy || !this.session || !this.selection.values.size || this.q(".operation").value !== "replace" && !this.tags.length;
           this.q("[data-action=undo]").disabled = this.busy || !this.history?.canUndo;
           this.q("[data-action=redo]").disabled = this.busy || !this.history?.canRedo;
-          for (const n of this.shadow.querySelectorAll("input,select,.fixed button,.chips button,[data-action=all],[data-action=filtered],[data-action=clear],[data-action=refresh],[data-action=tag]")) n.disabled = this.busy;
+          for (const n of this.shadow.querySelectorAll("input,select,.fixed button,.chips button,[data-action=all],[data-action=filtered],[data-action=clear],[data-action=refresh],[data-action=tag]")) {
+            n.disabled = this.busy;
+          }
           this.q("[data-action=close]").disabled = this.busy;
         }
         setBusy(b) {
-          if (this.closed) return;
+          if (this.closed) {
+            return;
+          }
           this.busy = b;
           this.updateButtons();
         }
         status(text, error = false) {
-          if (this.closed) return;
+          if (this.closed) {
+            return;
+          }
           this.q(".status").textContent = text;
           this.q(".status").classList.toggle("error", error);
         }
         async apply() {
-          if (this.busy || this.q("[data-action=apply]").disabled) return;
+          if (this.busy || this.q("[data-action=apply]").disabled) {
+            return;
+          }
           this.setBusy(true);
           g.clearTimeout(this.previewTimer);
           ++this.previewRevision;
           try {
             const r = await this.client.request("apply", this.payload());
-            const data = await this.client.request("scan", { token: this.token, session: this.session });
+            const data = await this.client.request("scan", {
+              token: this.token,
+              session: this.session
+            });
             if (!this.closed) {
               this.space.replaceChildren();
               this.accept(data);
@@ -431,11 +522,15 @@
             this.status(`[${e.code || "ERROR"}] ${e.message}`, true);
           } finally {
             this.setBusy(false);
-            if (!this.closed) this.q("[data-action=apply]").focus();
+            if (!this.closed) {
+              this.q("[data-action=apply]").focus();
+            }
           }
         }
         async travel(op) {
-          if (this.busy) return;
+          if (this.busy) {
+            return;
+          }
           this.setBusy(true);
           this.selection.clear();
           try {
@@ -450,21 +545,29 @@
             this.status(`[${e.code || "ERROR"}] ${e.message}`, true);
           } finally {
             this.setBusy(false);
-            if (!this.closed) this.q(".search").focus();
+            if (!this.closed) {
+              this.q(".search").focus();
+            }
           }
         }
         close(force = false) {
-          if (this.closed || this.busy && !force) return;
+          if (this.closed || this.busy && !force) {
+            return;
+          }
           this.closed = true;
           g.clearTimeout(this.previewTimer);
           g.cancelAnimationFrame(this.frame);
           g.removeEventListener("resize", this.resize);
           this.observer?.disconnect();
-          for (const img of this.shadow.querySelectorAll("img")) img.removeAttribute("src");
+          for (const img of this.shadow.querySelectorAll("img")) {
+            img.removeAttribute("src");
+          }
           this.uiCleanup?.();
           this.host.remove();
-          if (this.session) this.client.request("release", { session: this.session }).catch(() => {
-          });
+          if (this.session) {
+            this.client.request("release", { session: this.session }).catch(() => {
+            });
+          }
           this.images = [];
           this.filtered = [];
           this.selection.clear();
@@ -479,7 +582,9 @@
       "use strict";
       const M = metadata2;
       function countLabel(c) {
-        if (!c) return "미디어 수 확인 중";
+        if (!c) {
+          return "미디어 수 확인 중";
+        }
         const counts = `이미지 ${c.images}개 · 동영상 ${c.videos}개`;
         return counts + (c.limit != null ? ` / 미디어 최대 ${c.limit}개${c.exceeded ? " · 제한 초과" : c.reached ? " · 제한 도달" : ""}${c.images !== c.policyImages ? ` · src 없는 이미지 ${c.images - c.policyImages}개는 한도 집계 제외` : ""}` : " · 제한 정보 없음");
       }
@@ -488,14 +593,14 @@
         static {
           __name(this, "Controller");
         }
-        constructor({ document: document2 = g.document, browser: browser2 = M.Browser } = {}) {
-          this.doc = document2;
-          this.browser = browser2;
+        constructor({ document = g.document, browser = M.Browser } = {}) {
+          this.doc = document;
+          this.browser = browser;
           this.entries = /* @__PURE__ */ new Map();
           this.active = false;
           this.disposed = false;
           this.generation = 0;
-          this.client = new M.Client(document2);
+          this.client = new M.Client(document);
         }
         async start() {
           this.unsubscribe = this.browser.subscribe(() => this.options());
@@ -508,30 +613,44 @@
             active = await this.browser.active();
           } catch (_) {
           }
-          if (this.disposed || generation !== this.generation || active === this.active) return;
+          if (this.disposed || generation !== this.generation || active === this.active) {
+            return;
+          }
           this.active = active;
-          if (active) this.enable();
-          else this.disable();
+          if (active) {
+            this.enable();
+          } else {
+            this.disable();
+          }
         }
         enable() {
           this.countListener = (e) => {
-            if (typeof e.detail !== "string") return;
+            if (typeof e.detail !== "string") {
+              return;
+            }
             let p;
             try {
               p = JSON.parse(e.detail);
             } catch (_) {
               return;
             }
-            for (const rec of this.entries.values()) if (rec.token === p.token) {
-              rec.label.textContent = countLabel(p.count);
-              rec.label.classList.toggle("warn", p.count.reached);
+            for (const rec of this.entries.values()) {
+              if (rec.token === p.token) {
+                rec.label.textContent = countLabel(p.count);
+                rec.label.classList.toggle("warn", p.count.reached);
+              }
             }
           };
           this.doc.addEventListener("aru-metadata-count-v1", this.countListener);
           this.observer = new g.MutationObserver((records) => {
-            if (records.some((r) => [...r.addedNodes, ...r.removedNodes].some((n) => n.nodeType === 1 && (n.matches("#editor_v2,.seditor,.note-editor,.note-toolbar,#ReactSummernoteLite") || n.querySelector("#editor_v2,.seditor,.note-editor,.note-toolbar,#ReactSummernoteLite"))))) this.schedule();
+            if (records.some((r) => [...r.addedNodes, ...r.removedNodes].some((n) => n.nodeType === 1 && (n.matches("#editor_v2,.seditor,.note-editor,.note-toolbar,#ReactSummernoteLite") || n.querySelector("#editor_v2,.seditor,.note-editor,.note-toolbar,#ReactSummernoteLite"))))) {
+              this.schedule();
+            }
           });
-          this.observer.observe(this.doc.body, { childList: true, subtree: true });
+          this.observer.observe(this.doc.body, {
+            childList: true,
+            subtree: true
+          });
           this.discover();
         }
         schedule() {
@@ -539,29 +658,54 @@
           this.timer = g.setTimeout(() => this.discover(), 160);
         }
         discover() {
-          if (!this.active) return;
-          for (const [root, r] of this.entries) if (!root.isConnected || !r.host.isConnected || root.querySelector(".note-editable") !== r.input || root.querySelector("#ReactSummernoteLite") !== r.source || root.querySelector(".note-toolbar") !== r.toolbar) this.remove(root);
+          if (!this.active) {
+            return;
+          }
+          for (const [root, r] of this.entries) {
+            if (!root.isConnected || !r.host.isConnected || root.querySelector(".note-editable") !== r.input || root.querySelector("#ReactSummernoteLite") !== r.source || root.querySelector(".note-toolbar") !== r.toolbar) {
+              this.remove(root);
+            }
+          }
           for (const root of this.doc.querySelectorAll("#editor_v2 .seditor")) {
-            if (this.entries.has(root)) continue;
+            if (this.entries.has(root)) {
+              continue;
+            }
             const source = root.querySelector("#ReactSummernoteLite"), toolbar = root.querySelector(".note-toolbar"), camera = toolbar?.querySelector(".icon-camera")?.closest("button");
             const input = root.querySelector('.note-editable[contenteditable="true"]');
-            if (!source || !toolbar || !camera || !input) continue;
+            if (!source || !toolbar || !camera || !input) {
+              continue;
+            }
             const token = g.crypto.randomUUID().replaceAll("-", "");
             root.dataset.aruMetadataTarget = token;
             const host = this.doc.createElement("span");
             host.dataset.aruMetadataEntry = "";
             const shadow = host.attachShadow({ mode: "open" });
             shadow.innerHTML = '<style>:host{font:12px system-ui;display:inline-flex;vertical-align:middle;margin:3px}button{font:inherit;border:1px solid #bc9ce7;border-radius:5px;background:#f7f0ff;color:#513478;padding:6px;cursor:pointer}span{padding:5px;color:#655776}.warn{color:#af381f}</style><button type="button">아이콘 태그</button><span aria-live="polite"></span>';
-            const uiCleanup = icons2?.DesignSystem?.entry(shadow, { label: "아이콘 태그", tooltip: "게시글에 첨부한 이미지와 동영상의 태그를 편집합니다." });
+            const uiCleanup = icons2?.DesignSystem?.entry(shadow, {
+              label: "아이콘 태그",
+              tooltip: "게시글에 첨부한 이미지와 동영상의 태그를 편집합니다."
+            });
             shadow.querySelector("span").classList.add("aru-media-count");
             camera.after(host);
-            const rec = { token, host, uiCleanup, label: shadow.querySelector("span"), button: shadow.querySelector("button"), source, toolbar, input, root };
+            const rec = {
+              token,
+              host,
+              uiCleanup,
+              label: shadow.querySelector("span"),
+              button: shadow.querySelector("button"),
+              source,
+              toolbar,
+              input,
+              root
+            };
             this.entries.set(root, rec);
             rec.label.textContent = countLabel(null);
             rec.button.addEventListener("click", () => this.open(rec));
             this.startWatch(rec);
             rec.observer = new g.MutationObserver(() => {
-              if (!root.querySelector(".note-editable") || !host.isConnected) this.schedule();
+              if (!root.querySelector(".note-editable") || !host.isConnected) {
+                this.schedule();
+              }
             });
             rec.observer.observe(root, { childList: true, subtree: true });
           }
@@ -574,16 +718,24 @@
               rec.label.removeAttribute("title");
             }
           }).catch((e) => {
-            if (this.entries.get(rec.root) !== rec) return;
+            if (this.entries.get(rec.root) !== rec) {
+              return;
+            }
             rec.label.textContent = "미디어 수 확인 불가";
             rec.label.title = e.message;
-            if (e.code === "EDITOR_API_UNAVAILABLE" && attempt < 4) rec.readyTimer = g.setTimeout(() => {
-              if (this.active && this.entries.get(rec.root) === rec) this.startWatch(rec, attempt + 1);
-            }, 500 * (attempt + 1));
+            if (e.code === "EDITOR_API_UNAVAILABLE" && attempt < 4) {
+              rec.readyTimer = g.setTimeout(() => {
+                if (this.active && this.entries.get(rec.root) === rec) {
+                  this.startWatch(rec, attempt + 1);
+                }
+              }, 500 * (attempt + 1));
+            }
           });
         }
         open(rec) {
-          if (!this.active) return;
+          if (!this.active) {
+            return;
+          }
           if (this.panel) {
             this.panel.q(".search").focus();
             return;
@@ -597,29 +749,44 @@
             }
           }).catch(() => {
           });
-          this.panel = new M.Panel({ document: this.doc, client: this.client, token: rec.token, onClose: /* @__PURE__ */ __name(() => {
-            this.panel = null;
-            if (rec.root.isConnected) rec.button.focus();
-          }, "onClose") });
+          this.panel = new M.Panel({
+            document: this.doc,
+            client: this.client,
+            token: rec.token,
+            onClose: /* @__PURE__ */ __name(() => {
+              this.panel = null;
+              if (rec.root.isConnected) {
+                rec.button.focus();
+              }
+            }, "onClose")
+          });
         }
         remove(root) {
           const rec = this.entries.get(root);
-          if (!rec) return;
-          if (this.panel?.token === rec.token) this.panel.close(true);
+          if (!rec) {
+            return;
+          }
+          if (this.panel?.token === rec.token) {
+            this.panel.close(true);
+          }
           g.clearTimeout(rec.readyTimer);
           rec.observer?.disconnect();
           this.client.request("unwatch", { token: rec.token }).catch(() => {
           });
           rec.uiCleanup?.();
           rec.host.remove();
-          if (root.dataset.aruMetadataTarget === rec.token) delete root.dataset.aruMetadataTarget;
+          if (root.dataset.aruMetadataTarget === rec.token) {
+            delete root.dataset.aruMetadataTarget;
+          }
           this.entries.delete(root);
         }
         disable() {
           this.observer?.disconnect();
           g.clearTimeout(this.timer);
           this.panel?.close(true);
-          for (const root of [...this.entries.keys()]) this.remove(root);
+          for (const root of [...this.entries.keys()]) {
+            this.remove(root);
+          }
           this.doc.removeEventListener("aru-metadata-count-v1", this.countListener);
         }
         destroy() {
@@ -639,7 +806,15 @@
       }
     }, "initializeMetadataController");
     initializeMetadataController(environment);
-    return { "metadata": selectModuleExports(metadata2, ["Client", "Browser", "Panel", "Controller", "countLabel"]) };
+    return {
+      metadata: selectModuleExports(metadata2, [
+        "Client",
+        "Browser",
+        "Panel",
+        "Controller",
+        "countLabel"
+      ])
+    };
   }
   __name(createMetadataInterface, "createMetadataInterface");
 
