@@ -1,0 +1,20 @@
+<!doctype html><meta charset="utf-8"><title>ESM 작성기 MOCK</title>
+<input name="board_id" value="98">
+<div id="editor_v2"><div class="seditor"><textarea id="ReactSummernoteLite"></textarea><div class="note-editor"><div class="note-toolbar"><button type="button"><i class="icon-camera"></i></button></div><div class="note-editable" contenteditable="true"><p>보존할 본문<img src="https://i1.ruliweb.com/img/aru-e2e-fixture/0.png" data-aru-id="first-keep" data-aru-tags="아루, 기쁨"></p><img src="https://i1.ruliweb.com/img/aru-e2e-fixture/1.png" data-aru-id="second-keep" data-aru-tags="원문, 유지"></div></div></div></div>
+<script>
+// 브라우저 확장의 실제 MAIN bridge가 요구하는 작성기 계약만 제공한다. 서버 저장은 없다.
+const editable = document.querySelector('.note-editable');
+const history = { stack: [], stackOffset: -1, recordUndo() { this.stack = this.stack.slice(0, this.stackOffset + 1); this.stack.push({ contents: editable.innerHTML }); this.stackOffset++; } };
+const native = { editable, history, beforeCommand() {} };
+const context = { modules: { editor: native }, layoutInfo: { editable }, triggerEvent() {} };
+const editor = {
+  data() { return context; }, on() {}, off() {},
+  summernote(operation) {
+    if (operation === 'editor.beforeCommand') return native.beforeCommand();
+    if (operation === 'undo' || operation === 'redo') { history.stackOffset += operation === 'undo' ? -1 : 1; editable.innerHTML = history.stack[history.stackOffset].contents; }
+  }
+};
+window.jQuery = () => editor;
+window.seditor = { getHtml: () => editable.innerHTML };
+history.recordUndo();
+</script>

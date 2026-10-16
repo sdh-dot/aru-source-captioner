@@ -1,0 +1,969 @@
+{
+  "checkedAt": "2026-10-16T10:08:41.995Z",
+  "branch": "refactor/esm-core-transition",
+  "sourceBase": "2f755c3db89b628256586cfd314337b496f36421",
+  "publicMain": "1164afc3745d6af47e4e3fc750540963226f8355",
+  "worktreeInitiallyClean": true,
+  "beforeSnapshot": "E:/dev/VSCode/personal/tmp/esm-completion-SB3F6j/before.json",
+  "beforeSourceIifes": 45,
+  "beforeDocsSourceIifes": 24,
+  "beforeInventory": [
+    {
+      "file": "docs/MOBILE-TAGS-READONLY.js",
+      "category": "기타 도구·원본",
+      "iifeLines": [
+        2
+      ],
+      "imports": []
+    },
+    {
+      "file": "docs/READONLY-UPLOAD-DIAGNOSTIC.js",
+      "category": "기타 도구·원본",
+      "iifeLines": [
+        1
+      ],
+      "imports": []
+    },
+    {
+      "file": "docs/demo/upload-surfaces.js",
+      "category": "기타 도구·원본",
+      "iifeLines": [
+        2
+      ],
+      "imports": []
+    },
+    {
+      "file": "docs/source/bundle-generator/bridge.js",
+      "category": "작성기 연동",
+      "iifeLines": [
+        2
+      ],
+      "imports": []
+    },
+    {
+      "file": "docs/source/bundle-generator/client.js",
+      "category": "작성기 연동",
+      "iifeLines": [
+        1
+      ],
+      "imports": []
+    },
+    {
+      "file": "docs/source/bundle-generator/controller.js",
+      "category": "UI 초기화",
+      "iifeLines": [
+        1
+      ],
+      "imports": []
+    },
+    {
+      "file": "docs/source/bundle-generator/core.js",
+      "category": "순수 데이터 처리 로직",
+      "iifeLines": [
+        2,
+        98
+      ],
+      "imports": []
+    },
+    {
+      "file": "docs/source/bundle-generator/search-ui.js",
+      "category": "UI 초기화",
+      "iifeLines": [
+        1
+      ],
+      "imports": []
+    },
+    {
+      "file": "docs/source/bundle-generator/search.js",
+      "category": "검색 및 인덱싱",
+      "iifeLines": [
+        2,
+        65
+      ],
+      "imports": []
+    },
+    {
+      "file": "docs/source/bundle-generator/ui.js",
+      "category": "UI 초기화",
+      "iifeLines": [
+        1
+      ],
+      "imports": []
+    },
+    {
+      "file": "docs/source/icon-metadata/interface.js",
+      "category": "UI 초기화",
+      "iifeLines": [
+        2,
+        44,
+        177
+      ],
+      "imports": []
+    },
+    {
+      "file": "docs/source/ruliweb-icons/background.js",
+      "category": "Background Script",
+      "iifeLines": [
+        2
+      ],
+      "imports": []
+    },
+    {
+      "file": "docs/source/ruliweb-icons/catalog.js",
+      "category": "검색 및 인덱싱",
+      "iifeLines": [
+        2
+      ],
+      "imports": []
+    },
+    {
+      "file": "docs/source/ruliweb-icons/composer-bridge.js",
+      "category": "작성기 연동",
+      "iifeLines": [
+        2
+      ],
+      "imports": []
+    },
+    {
+      "file": "docs/source/ruliweb-icons/design-system.js",
+      "category": "UI 초기화",
+      "iifeLines": [
+        2
+      ],
+      "imports": []
+    },
+    {
+      "file": "docs/source/ruliweb-icons/feature.js",
+      "category": "UI 초기화",
+      "iifeLines": [
+        2
+      ],
+      "imports": []
+    },
+    {
+      "file": "docs/source/ruliweb-icons/library-reader.js",
+      "category": "검색 및 인덱싱",
+      "iifeLines": [
+        2
+      ],
+      "imports": []
+    },
+    {
+      "file": "docs/source/ruliweb-icons/library-search.js",
+      "category": "검색 및 인덱싱",
+      "iifeLines": [
+        2
+      ],
+      "imports": []
+    },
+    {
+      "file": "docs/source/ruliweb-icons/picker.js",
+      "category": "UI 초기화",
+      "iifeLines": [
+        2
+      ],
+      "imports": []
+    },
+    {
+      "file": "docs/source/ruliweb-icons/registry.js",
+      "category": "검색 및 인덱싱",
+      "iifeLines": [
+        2
+      ],
+      "imports": []
+    },
+    {
+      "file": "docs/source/ruliweb-icons/ui-preferences.js",
+      "category": "UI 초기화",
+      "iifeLines": [
+        2
+      ],
+      "imports": []
+    },
+    {
+      "file": "docs/source/upload-attribution/core.js",
+      "category": "순수 데이터 처리 로직",
+      "iifeLines": [
+        2
+      ],
+      "imports": []
+    },
+    {
+      "file": "docs/source/upload-attribution/ui.js",
+      "category": "UI 초기화",
+      "iifeLines": [
+        2
+      ],
+      "imports": []
+    },
+    {
+      "file": "firefox/content.js",
+      "category": "Content Script",
+      "iifeLines": [
+        20
+      ],
+      "imports": []
+    },
+    {
+      "file": "firefox/features/body-download/browser-api.js",
+      "category": "브라우저 API 연동",
+      "iifeLines": [
+        1
+      ],
+      "imports": []
+    },
+    {
+      "file": "firefox/features/body-download/core.js",
+      "category": "UI 초기화",
+      "iifeLines": [
+        2
+      ],
+      "imports": []
+    },
+    {
+      "file": "firefox/features/body-download/engine.js",
+      "category": "UI 초기화",
+      "iifeLines": [
+        1
+      ],
+      "imports": []
+    },
+    {
+      "file": "firefox/features/body-download/ui.js",
+      "category": "UI 초기화",
+      "iifeLines": [
+        1
+      ],
+      "imports": []
+    },
+    {
+      "file": "firefox/options.js",
+      "category": "브라우저 API 연동",
+      "iifeLines": [
+        9,
+        131
+      ],
+      "imports": []
+    },
+    {
+      "file": "whale/content.js",
+      "category": "Content Script",
+      "iifeLines": [
+        20
+      ],
+      "imports": []
+    },
+    {
+      "file": "whale/features/body-download/browser-api.js",
+      "category": "브라우저 API 연동",
+      "iifeLines": [
+        1
+      ],
+      "imports": []
+    },
+    {
+      "file": "whale/features/body-download/core.js",
+      "category": "UI 초기화",
+      "iifeLines": [
+        2
+      ],
+      "imports": []
+    },
+    {
+      "file": "whale/features/body-download/engine.js",
+      "category": "UI 초기화",
+      "iifeLines": [
+        1
+      ],
+      "imports": []
+    },
+    {
+      "file": "whale/features/body-download/ui.js",
+      "category": "UI 초기화",
+      "iifeLines": [
+        1
+      ],
+      "imports": []
+    },
+    {
+      "file": "whale/options.js",
+      "category": "브라우저 API 연동",
+      "iifeLines": [
+        9,
+        143,
+        154,
+        159,
+        164,
+        169
+      ],
+      "imports": []
+    }
+  ],
+  "modules": 49,
+  "sourceIifes": 0,
+  "inlineHtml": [
+    {
+      "file": "docs/demo/index.html",
+      "script": 0,
+      "iifes": 0
+    }
+  ],
+  "generatedIifes": 67,
+  "testHarnessIifes": 5,
+  "vendorIifes": 30,
+  "auditFailures": [],
+  "compatibilityOutputs": 51,
+  "runtimeOutputs": 8,
+  "newModuleSources": [
+    "docs/source/ruliweb-icons/registry.mjs",
+    "docs/source/ruliweb-icons/catalog.mjs",
+    "docs/source/ruliweb-icons/design-system.mjs",
+    "docs/source/ruliweb-icons/library-search.mjs",
+    "docs/source/ruliweb-icons/library-reader.mjs",
+    "docs/source/ruliweb-icons/ui-preferences.mjs",
+    "docs/source/ruliweb-icons/picker.mjs",
+    "docs/source/ruliweb-icons/feature.mjs",
+    "docs/source/ruliweb-icons/composer-bridge.mjs",
+    "docs/source/ruliweb-icons/background.mjs",
+    "docs/source/bundle-generator/core.mjs",
+    "docs/source/bundle-generator/client.mjs",
+    "docs/source/bundle-generator/search.mjs",
+    "docs/source/bundle-generator/search-ui.mjs",
+    "docs/source/bundle-generator/ui.mjs",
+    "docs/source/bundle-generator/controller.mjs",
+    "docs/source/bundle-generator/bridge.mjs",
+    "docs/source/icon-metadata/interface.mjs",
+    "docs/source/upload-attribution/core.mjs",
+    "docs/source/upload-attribution/ui.mjs",
+    "docs/source/platform/firefox/content.mjs",
+    "docs/source/platform/firefox/options.mjs",
+    "docs/source/platform/firefox/background.mjs",
+    "docs/source/body-download/core.mjs",
+    "docs/source/body-download/browser-api.mjs",
+    "docs/source/body-download/engine.mjs",
+    "docs/source/body-download/ui.mjs",
+    "docs/source/body-download/content.mjs",
+    "docs/source/body-download/background.mjs",
+    "docs/source/platform/whale/content.mjs",
+    "docs/source/platform/whale/options.mjs",
+    "docs/source/platform/whale/background.mjs",
+    "docs/MOBILE-TAGS-READONLY.mjs",
+    "docs/READONLY-UPLOAD-DIAGNOSTIC.mjs",
+    "docs/demo/upload-surfaces.mjs",
+    "docs/source/body-download/extractor.mjs",
+    "docs/source/runtime/module-scope.mjs",
+    "docs/source/runtime/icons.mjs",
+    "docs/source/runtime/downloads.mjs"
+  ],
+  "protection": [
+    {
+      "directory": "E:\\dev\\VSCode\\personal\\aru_archive\\browser-extension\\android-upload-attribution",
+      "head": "4d871f702fb633722c09e0074e6fa0d9429c17f6",
+      "headUnchanged": true,
+      "compared": 254,
+      "changed": [],
+      "added": []
+    },
+    {
+      "directory": "E:\\dev\\VSCode\\personal\\aru_archive\\browser-extension\\android-firefox-loading-ux",
+      "head": "a6087a7c740db200f1aba6c3941ec9c8338501f4",
+      "headUnchanged": true,
+      "compared": 213,
+      "changed": [],
+      "added": []
+    },
+    {
+      "directory": "E:\\dev\\VSCode\\personal\\aru_archive\\browser-extension\\github-publication\\repository",
+      "head": "1164afc3745d6af47e4e3fc750540963226f8355",
+      "headUnchanged": true,
+      "compared": 202,
+      "changed": [],
+      "added": []
+    }
+  ],
+  "contracts": [
+    {
+      "file": "firefox/manifest.json",
+      "sha256": "8dd5aabaace64a3b25867ce763fd3d9a6bb092093eb6b6a02208552b7d812707",
+      "unchanged": true
+    },
+    {
+      "file": "whale/manifest.json",
+      "sha256": "003282479db6ffe90acb6e272cdbd9bd5e1e725666e9531ae9568913543bec0f",
+      "unchanged": true
+    },
+    {
+      "file": "tools/build.mjs",
+      "sha256": "9961adcdd73cfd238f1caa920d556028f196c8435e008c5b1fb1bba44b4c5c33",
+      "unchanged": true
+    },
+    {
+      "file": "docs/tools/build-generator.mjs",
+      "sha256": "26d84b87ce916078aa044dfc4bb7f44f7ea5ab90d8d79e90d998cd754034ac70",
+      "unchanged": true
+    },
+    {
+      "file": "package-lock.json",
+      "sha256": "6e6ad079dbbc47ac4c09e6404f70cacd61ad345541f52a4e19d56282fd6a51dd",
+      "unchanged": true
+    },
+    {
+      "file": "shared/icon-metadata/tag-codec.mjs",
+      "sha256": "cb6d097fce0a6deca4863e36f672e03c0244b77b7913135da8ecc17ff37d7454",
+      "unchanged": true
+    },
+    {
+      "file": "shared/icon-metadata/tag-edit-model.mjs",
+      "sha256": "801a23e1e63e2004d5b576dd180ad09b35c99a936ff940df002566a3cd930e06",
+      "unchanged": true
+    }
+  ],
+  "tests": {
+    "esm": {
+      "tests": 51,
+      "pass": 51,
+      "fail": 0
+    },
+    "isolatedRegression": {
+      "tests": 94,
+      "pass": 94,
+      "fail": 0
+    },
+    "publicRc3": {
+      "tests": 59,
+      "pass": 59,
+      "fail": 0
+    },
+    "hybrid": {
+      "tests": 106,
+      "pass": 106,
+      "fail": 0
+    },
+    "historical": {
+      "baseline": {
+        "tests": 287,
+        "pass": 193,
+        "fail": 94
+      },
+      "current": {
+        "tests": 287,
+        "pass": 193,
+        "fail": 94
+      },
+      "newFailures": [],
+      "resolvedFailures": [],
+      "sourceAssertionPathUpdated": "docs/tests/icon-assets/assets.test.cjs: design-system.js → design-system.mjs; assertions unchanged"
+    }
+  },
+  "build": {
+    "passed": true,
+    "reproducibility": true,
+    "manifestReferences": true,
+    "compatibilityCheck": true
+  },
+  "firefoxLint": {
+    "errors": 0,
+    "warnings": 9,
+    "baselineWarnings": 9
+  },
+  "browsers": [
+    {
+      "browser": "firefox",
+      "version": "158.0",
+      "report": "docs/results/esm-e2e/reports/20261016-190012-firefox.json",
+      "counts": {
+        "BROWSER/PASS": 4,
+        "MOCK/PASS": 7,
+        "SITE/BLOCKED": 4,
+        "SITE/PASS": 4
+      },
+      "backgroundErrors": [],
+      "networkFixtureErrors": [],
+      "tests": [
+        {
+          "test": "browser.launch",
+          "level": "BROWSER",
+          "status": "PASS"
+        },
+        {
+          "test": "extension.install",
+          "level": "BROWSER",
+          "status": "PASS"
+        },
+        {
+          "test": "extension.real-options",
+          "level": "BROWSER",
+          "status": "PASS"
+        },
+        {
+          "test": "extension.options-event-storage",
+          "level": "BROWSER",
+          "status": "PASS"
+        },
+        {
+          "test": "mock.manifest-content-script-observer",
+          "level": "MOCK",
+          "status": "PASS"
+        },
+        {
+          "test": "mock.collect-tags-grid",
+          "level": "MOCK",
+          "status": "PASS"
+        },
+        {
+          "test": "mock.search-tag-filter",
+          "level": "MOCK",
+          "status": "PASS"
+        },
+        {
+          "test": "mock.search-clear-restore",
+          "level": "MOCK",
+          "status": "PASS"
+        },
+        {
+          "test": "mock.selection-insert-bridge",
+          "level": "MOCK",
+          "status": "PASS"
+        },
+        {
+          "test": "mock.mutation-navigation-reinitialize",
+          "level": "MOCK",
+          "status": "PASS"
+        },
+        {
+          "test": "mock.metadata-main-codec-edit-serialize",
+          "level": "MOCK",
+          "status": "PASS"
+        },
+        {
+          "test": "site.historical-5039",
+          "level": "SITE",
+          "status": "BLOCKED"
+        },
+        {
+          "test": "site.public-board-300143",
+          "level": "SITE",
+          "status": "PASS"
+        },
+        {
+          "test": "site.actual-public-article",
+          "level": "SITE",
+          "status": "PASS"
+        },
+        {
+          "test": "site.library-ui",
+          "level": "SITE",
+          "status": "BLOCKED"
+        },
+        {
+          "test": "site.screenshot",
+          "level": "SITE",
+          "status": "PASS"
+        },
+        {
+          "test": "site.writer-and-tags-availability",
+          "level": "SITE",
+          "status": "PASS"
+        },
+        {
+          "test": "site.stored-tag-filter",
+          "level": "SITE",
+          "status": "BLOCKED"
+        },
+        {
+          "test": "site.authenticated-insertion",
+          "level": "SITE",
+          "status": "BLOCKED"
+        }
+      ]
+    },
+    {
+      "browser": "chromium",
+      "version": "156.0.8078.4",
+      "report": "docs/results/esm-e2e/reports/20261016-190012-chromium.json",
+      "counts": {
+        "BROWSER/PASS": 4,
+        "MOCK/PASS": 7,
+        "SITE/BLOCKED": 4,
+        "SITE/PASS": 5
+      },
+      "backgroundErrors": [],
+      "networkFixtureErrors": [],
+      "tests": [
+        {
+          "test": "browser.launch",
+          "level": "BROWSER",
+          "status": "PASS"
+        },
+        {
+          "test": "extension.install",
+          "level": "BROWSER",
+          "status": "PASS"
+        },
+        {
+          "test": "extension.real-options",
+          "level": "BROWSER",
+          "status": "PASS"
+        },
+        {
+          "test": "extension.options-event-storage",
+          "level": "BROWSER",
+          "status": "PASS"
+        },
+        {
+          "test": "mock.manifest-content-script-observer",
+          "level": "MOCK",
+          "status": "PASS"
+        },
+        {
+          "test": "mock.collect-tags-grid",
+          "level": "MOCK",
+          "status": "PASS"
+        },
+        {
+          "test": "mock.search-tag-filter",
+          "level": "MOCK",
+          "status": "PASS"
+        },
+        {
+          "test": "mock.search-clear-restore",
+          "level": "MOCK",
+          "status": "PASS"
+        },
+        {
+          "test": "mock.selection-insert-bridge",
+          "level": "MOCK",
+          "status": "PASS"
+        },
+        {
+          "test": "mock.mutation-navigation-reinitialize",
+          "level": "MOCK",
+          "status": "PASS"
+        },
+        {
+          "test": "mock.metadata-main-codec-edit-serialize",
+          "level": "MOCK",
+          "status": "PASS"
+        },
+        {
+          "test": "site.historical-5039",
+          "level": "SITE",
+          "status": "BLOCKED"
+        },
+        {
+          "test": "site.public-board-300143",
+          "level": "SITE",
+          "status": "PASS"
+        },
+        {
+          "test": "site.actual-public-article",
+          "level": "SITE",
+          "status": "PASS"
+        },
+        {
+          "test": "site.library-ui",
+          "level": "SITE",
+          "status": "BLOCKED"
+        },
+        {
+          "test": "site.screenshot",
+          "level": "SITE",
+          "status": "PASS"
+        },
+        {
+          "test": "site.writer-and-tags-availability",
+          "level": "SITE",
+          "status": "PASS"
+        },
+        {
+          "test": "site.stored-tag-filter",
+          "level": "SITE",
+          "status": "BLOCKED"
+        },
+        {
+          "test": "site.content-script-load",
+          "level": "SITE",
+          "status": "PASS"
+        },
+        {
+          "test": "site.authenticated-insertion",
+          "level": "SITE",
+          "status": "BLOCKED"
+        }
+      ]
+    },
+    {
+      "browser": "whale",
+      "version": "150.0.7871.252",
+      "report": "docs/results/esm-e2e/reports/20261016-190012-whale.json",
+      "counts": {
+        "BROWSER/PASS": 4,
+        "MOCK/PASS": 7,
+        "SITE/BLOCKED": 4,
+        "SITE/PASS": 5
+      },
+      "backgroundErrors": [],
+      "networkFixtureErrors": [],
+      "tests": [
+        {
+          "test": "browser.launch",
+          "level": "BROWSER",
+          "status": "PASS"
+        },
+        {
+          "test": "extension.install",
+          "level": "BROWSER",
+          "status": "PASS"
+        },
+        {
+          "test": "extension.real-options",
+          "level": "BROWSER",
+          "status": "PASS"
+        },
+        {
+          "test": "extension.options-event-storage",
+          "level": "BROWSER",
+          "status": "PASS"
+        },
+        {
+          "test": "mock.manifest-content-script-observer",
+          "level": "MOCK",
+          "status": "PASS"
+        },
+        {
+          "test": "mock.collect-tags-grid",
+          "level": "MOCK",
+          "status": "PASS"
+        },
+        {
+          "test": "mock.search-tag-filter",
+          "level": "MOCK",
+          "status": "PASS"
+        },
+        {
+          "test": "mock.search-clear-restore",
+          "level": "MOCK",
+          "status": "PASS"
+        },
+        {
+          "test": "mock.selection-insert-bridge",
+          "level": "MOCK",
+          "status": "PASS"
+        },
+        {
+          "test": "mock.mutation-navigation-reinitialize",
+          "level": "MOCK",
+          "status": "PASS"
+        },
+        {
+          "test": "mock.metadata-main-codec-edit-serialize",
+          "level": "MOCK",
+          "status": "PASS"
+        },
+        {
+          "test": "site.historical-5039",
+          "level": "SITE",
+          "status": "BLOCKED"
+        },
+        {
+          "test": "site.public-board-300143",
+          "level": "SITE",
+          "status": "PASS"
+        },
+        {
+          "test": "site.actual-public-article",
+          "level": "SITE",
+          "status": "PASS"
+        },
+        {
+          "test": "site.library-ui",
+          "level": "SITE",
+          "status": "BLOCKED"
+        },
+        {
+          "test": "site.screenshot",
+          "level": "SITE",
+          "status": "PASS"
+        },
+        {
+          "test": "site.writer-and-tags-availability",
+          "level": "SITE",
+          "status": "PASS"
+        },
+        {
+          "test": "site.stored-tag-filter",
+          "level": "SITE",
+          "status": "BLOCKED"
+        },
+        {
+          "test": "site.content-script-load",
+          "level": "SITE",
+          "status": "PASS"
+        },
+        {
+          "test": "site.authenticated-insertion",
+          "level": "SITE",
+          "status": "BLOCKED"
+        }
+      ]
+    }
+  ],
+  "notVerified": [
+    "외부 WXT 개인 포크의 실제 통합·빌드",
+    "로그인한 작성기의 실제 게시·업로드 및 서버 저장",
+    "실제 Native Host 설치와 사용자 다운로드 파일 생성",
+    "Manifest 최소 지원 버전에서의 별도 E2E",
+    "모바일 실기기"
+  ],
+  "changedFiles": [
+    "CONTRIBUTING.md",
+    "docs/MOBILE-TAGS-READONLY.js",
+    "docs/MOBILE-TAGS-READONLY.mjs",
+    "docs/READONLY-UPLOAD-DIAGNOSTIC.js",
+    "docs/READONLY-UPLOAD-DIAGNOSTIC.mjs",
+    "docs/architecture/esm-completion-validation.json",
+    "docs/architecture/esm-iife-inventory.json",
+    "docs/architecture/esm-wxt-integration.md",
+    "docs/architecture/iife-esm-completion-report.md",
+    "docs/architecture/iife-esm-transition-report.md",
+    "docs/demo/upload-surfaces.js",
+    "docs/demo/upload-surfaces.mjs",
+    "docs/source/body-download/background.mjs",
+    "docs/source/body-download/browser-api.mjs",
+    "docs/source/body-download/content.mjs",
+    "docs/source/body-download/core.mjs",
+    "docs/source/body-download/engine.mjs",
+    "docs/source/body-download/extractor.mjs",
+    "docs/source/body-download/ui.mjs",
+    "docs/source/bundle-generator/bridge.js",
+    "docs/source/bundle-generator/bridge.mjs",
+    "docs/source/bundle-generator/client.js",
+    "docs/source/bundle-generator/client.mjs",
+    "docs/source/bundle-generator/controller.js",
+    "docs/source/bundle-generator/controller.mjs",
+    "docs/source/bundle-generator/core.js",
+    "docs/source/bundle-generator/core.mjs",
+    "docs/source/bundle-generator/search-ui.js",
+    "docs/source/bundle-generator/search-ui.mjs",
+    "docs/source/bundle-generator/search.js",
+    "docs/source/bundle-generator/search.mjs",
+    "docs/source/bundle-generator/ui.js",
+    "docs/source/bundle-generator/ui.mjs",
+    "docs/source/compat/body-download-background.mjs",
+    "docs/source/compat/body-download-browser-api.mjs",
+    "docs/source/compat/body-download-content.mjs",
+    "docs/source/compat/body-download-core.mjs",
+    "docs/source/compat/body-download-engine.mjs",
+    "docs/source/compat/body-download-ui.mjs",
+    "docs/source/compat/bundle-generator-bridge.mjs",
+    "docs/source/compat/bundle-generator-client.mjs",
+    "docs/source/compat/bundle-generator-controller.mjs",
+    "docs/source/compat/bundle-generator-core.mjs",
+    "docs/source/compat/bundle-generator-search-ui.mjs",
+    "docs/source/compat/bundle-generator-search.mjs",
+    "docs/source/compat/bundle-generator-ui.mjs",
+    "docs/source/compat/docs-MOBILE-TAGS-READONLY.mjs",
+    "docs/source/compat/docs-READONLY-UPLOAD-DIAGNOSTIC.mjs",
+    "docs/source/compat/docs-demo-upload-surfaces.mjs",
+    "docs/source/compat/icon-metadata-interface.mjs",
+    "docs/source/compat/platform-firefox-background.mjs",
+    "docs/source/compat/platform-firefox-content.mjs",
+    "docs/source/compat/platform-firefox-options.mjs",
+    "docs/source/compat/platform-whale-background.mjs",
+    "docs/source/compat/platform-whale-content.mjs",
+    "docs/source/compat/platform-whale-options.mjs",
+    "docs/source/compat/ruliweb-icons-background.mjs",
+    "docs/source/compat/ruliweb-icons-catalog.mjs",
+    "docs/source/compat/ruliweb-icons-composer-bridge.mjs",
+    "docs/source/compat/ruliweb-icons-design-system.mjs",
+    "docs/source/compat/ruliweb-icons-feature.mjs",
+    "docs/source/compat/ruliweb-icons-library-reader.mjs",
+    "docs/source/compat/ruliweb-icons-library-search.mjs",
+    "docs/source/compat/ruliweb-icons-picker.mjs",
+    "docs/source/compat/ruliweb-icons-registry.mjs",
+    "docs/source/compat/ruliweb-icons-ui-preferences.mjs",
+    "docs/source/compat/runtime-bundle-main.mjs",
+    "docs/source/compat/runtime-bundle-ui.mjs",
+    "docs/source/compat/runtime-metadata-ui.mjs",
+    "docs/source/compat/runtime-reader.mjs",
+    "docs/source/compat/upload-attribution-core.mjs",
+    "docs/source/compat/upload-attribution-ui.mjs",
+    "docs/source/icon-metadata/interface.js",
+    "docs/source/icon-metadata/interface.mjs",
+    "docs/source/platform/firefox/background.mjs",
+    "docs/source/platform/firefox/content.mjs",
+    "docs/source/platform/firefox/options.mjs",
+    "docs/source/platform/whale/background.mjs",
+    "docs/source/platform/whale/content.mjs",
+    "docs/source/platform/whale/options.mjs",
+    "docs/source/ruliweb-icons/background.js",
+    "docs/source/ruliweb-icons/background.mjs",
+    "docs/source/ruliweb-icons/catalog.js",
+    "docs/source/ruliweb-icons/catalog.mjs",
+    "docs/source/ruliweb-icons/composer-bridge.js",
+    "docs/source/ruliweb-icons/composer-bridge.mjs",
+    "docs/source/ruliweb-icons/design-system.js",
+    "docs/source/ruliweb-icons/design-system.mjs",
+    "docs/source/ruliweb-icons/feature.js",
+    "docs/source/ruliweb-icons/feature.mjs",
+    "docs/source/ruliweb-icons/library-reader.js",
+    "docs/source/ruliweb-icons/library-reader.mjs",
+    "docs/source/ruliweb-icons/library-search.js",
+    "docs/source/ruliweb-icons/library-search.mjs",
+    "docs/source/ruliweb-icons/picker.js",
+    "docs/source/ruliweb-icons/picker.mjs",
+    "docs/source/ruliweb-icons/registry.js",
+    "docs/source/ruliweb-icons/registry.mjs",
+    "docs/source/ruliweb-icons/ui-preferences.js",
+    "docs/source/ruliweb-icons/ui-preferences.mjs",
+    "docs/source/runtime/downloads.mjs",
+    "docs/source/runtime/icons.mjs",
+    "docs/source/runtime/module-scope.mjs",
+    "docs/source/upload-attribution/core.js",
+    "docs/source/upload-attribution/core.mjs",
+    "docs/source/upload-attribution/ui.js",
+    "docs/source/upload-attribution/ui.mjs",
+    "docs/tests/icon-assets/assets.test.cjs",
+    "firefox/background.js",
+    "firefox/content.js",
+    "firefox/features/body-download/background.bundle.js",
+    "firefox/features/body-download/browser-api.js",
+    "firefox/features/body-download/content.bundle.js",
+    "firefox/features/body-download/core.js",
+    "firefox/features/body-download/engine.js",
+    "firefox/features/body-download/ui.js",
+    "firefox/features/bundle-generator/bridge.bundle.js",
+    "firefox/features/bundle-generator/content.bundle.js",
+    "firefox/features/icon-metadata/content.bundle.js",
+    "firefox/features/ruliweb-icons/background.bundle.js",
+    "firefox/features/ruliweb-icons/composer-bridge.js",
+    "firefox/features/ruliweb-icons/content.bundle.js",
+    "firefox/features/upload-attribution/core.js",
+    "firefox/features/upload-attribution/ui.js",
+    "firefox/options.js",
+    "package.json",
+    "tests/esm/completion.test.mjs",
+    "tests/esm/fixtures/completion-baseline.json",
+    "tools/audit-esm.mjs",
+    "tools/build-esm.mjs",
+    "tools/esm-completion-entries.json",
+    "tools/esm-runtime-entries.json",
+    "whale/background.js",
+    "whale/content.js",
+    "whale/features/body-download/background.bundle.js",
+    "whale/features/body-download/browser-api.js",
+    "whale/features/body-download/content.bundle.js",
+    "whale/features/body-download/core.js",
+    "whale/features/body-download/engine.js",
+    "whale/features/body-download/ui.js",
+    "whale/features/bundle-generator/bridge.bundle.js",
+    "whale/features/bundle-generator/content.bundle.js",
+    "whale/features/icon-metadata/content.bundle.js",
+    "whale/features/ruliweb-icons/background.bundle.js",
+    "whale/features/ruliweb-icons/composer-bridge.js",
+    "whale/features/ruliweb-icons/content.bundle.js",
+    "whale/features/upload-attribution/core.js",
+    "whale/features/upload-attribution/ui.js",
+    "whale/options.js"
+  ]
+}

@@ -1,0 +1,34 @@
+[
+  {
+    "file": "firefox/features/ruliweb-icons/content.bundle.js",
+    "entry": "docs/source/compat/runtime-reader.mjs"
+  },
+  {
+    "file": "whale/features/ruliweb-icons/content.bundle.js",
+    "entry": "docs/source/compat/runtime-reader.mjs"
+  },
+  {
+    "file": "firefox/features/icon-metadata/content.bundle.js",
+    "entry": "docs/source/compat/runtime-metadata-ui.mjs"
+  },
+  {
+    "file": "whale/features/icon-metadata/content.bundle.js",
+    "entry": "docs/source/compat/runtime-metadata-ui.mjs"
+  },
+  {
+    "file": "firefox/features/bundle-generator/bridge.bundle.js",
+    "entry": "docs/source/compat/runtime-bundle-main.mjs"
+  },
+  {
+    "file": "whale/features/bundle-generator/bridge.bundle.js",
+    "entry": "docs/source/compat/runtime-bundle-main.mjs"
+  },
+  {
+    "file": "firefox/features/bundle-generator/content.bundle.js",
+    "entry": "docs/source/compat/runtime-bundle-ui.mjs"
+  },
+  {
+    "file": "whale/features/bundle-generator/content.bundle.js",
+    "entry": "docs/source/compat/runtime-bundle-ui.mjs"
+  }
+]

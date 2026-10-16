@@ -1,6 +1,6 @@
 {
   "name": "aru-source-captioner",
-  "version": "0.1.2",
+  "version": "1.0.4",
   "private": true,
   "description": "A browser extension for image source attribution and icon management on Ruliweb.",
   "license": "MIT",
@@ -8,17 +8,24 @@
     "node": ">=24.0.0"
   },
   "scripts": {
-    "build": "node tools/build.mjs",
+    "build": "node tools/build-esm.mjs",
     "verify": "node tools/verify.mjs",
     "test": "node tools/test.mjs",
     "test:historical": "node tools/test-historical.mjs",
     "lint:firefox": "addons-linter firefox --output text",
     "package:firefox": "node tools/package.mjs firefox",
     "lint:firefox:strict": "addons-linter firefox --output text --warnings-as-errors",
-    "package:chromium": "node tools/package.mjs whale"
+    "package:chromium": "node tools/package.mjs whale",
+    "verify:esm": "node tools/build-esm.mjs --check",
+    "test:esm": "node --test --test-concurrency=1 tests/esm/tag-contract.test.mjs tests/esm/modules.test.mjs tests/esm/build.test.mjs tests/esm/completion.test.mjs",
+    "audit:esm": "node tools/audit-esm.mjs",
+    "test:integration": "node --test tests/integration/contracts.test.mjs",
+    "benchmark:integration": "node tools/benchmark-integration.mjs"
   },
   "devDependencies": {
+    "acorn": "8.19.0",
     "addons-linter": "10.14.0",
+    "esbuild": "0.28.2",
     "jquery": "3.7.1",
     "jsdom": "26.1.0"
   }

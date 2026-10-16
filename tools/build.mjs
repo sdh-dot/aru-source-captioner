@@ -11,6 +11,8 @@ fs.writeFileSync(path.join(root,'firefox/lib/exifr.full.umd.js'),'\ufeff'+patche
 await import('../docs/tools/build-generator.mjs');
 const background='/* source: shared/ruliweb-icons/background.js */\n'+read('background')+'\n';
 for(const browser of ['firefox','whale']){
+ const upload=path.join(root,browser,'features/upload-attribution');fs.mkdirSync(upload,{recursive:true});
+ for(const name of ['core','ui'])fs.copyFileSync(path.join(root,'docs/source/upload-attribution',name+'.js'),path.join(upload,name+'.js'));
  fs.writeFileSync(path.join(root,browser,'features/ruliweb-icons/background.bundle.js'),background);
  fs.copyFileSync(path.join(root,'docs/source/ruliweb-icons/composer-bridge.js'),path.join(root,browser,'features/ruliweb-icons/composer-bridge.js'));
  const core=fs.readFileSync(path.join(root,'docs/source/icon-metadata/core.js'),'utf8');
