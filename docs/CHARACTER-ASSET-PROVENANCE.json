@@ -1,0 +1,258 @@
+{
+  "permission": "User confirmed public redistribution permission on 2026-10-15. Character assets are not licensed under the project MIT license.",
+  "uploadImage": "Reuses the existing photo-frame character asset (editor-bundle); no dedicated upload original was included in RC3.",
+  "files": [
+    {
+      "browser": "firefox",
+      "file": "assets/icons/aru-main-128.png",
+      "sha256": "aa7635e3a9b4182df05963785218b2f8d78ca17aac635719327af9d0f3eecbb8",
+      "source": "Existing phase2b-stable-rc3 asset; public redistribution confirmed by user 2026-10-15; not generated or enlarged."
+    },
+    {
+      "browser": "firefox",
+      "file": "assets/icons/aru-main-16.png",
+      "sha256": "97b44a7fc68027f3455472357f61b898814305109f03de872233553612be1943",
+      "source": "Existing phase2b-stable-rc3 asset; public redistribution confirmed by user 2026-10-15; not generated or enlarged."
+    },
+    {
+      "browser": "firefox",
+      "file": "assets/icons/aru-main-32.png",
+      "sha256": "8700b01bb408aee9faaac847f8767048311304df9879080a78a946c533e08784",
+      "source": "Existing phase2b-stable-rc3 asset; public redistribution confirmed by user 2026-10-15; not generated or enlarged."
+    },
+    {
+      "browser": "firefox",
+      "file": "assets/icons/aru-main-48.png",
+      "sha256": "41f8385add86b564daa90a6038fb4ea553f7ae64be05222828c0bab6b3eb3634",
+      "source": "Existing phase2b-stable-rc3 asset; public redistribution confirmed by user 2026-10-15; not generated or enlarged."
+    },
+    {
+      "browser": "firefox",
+      "file": "assets/icons/aru-main-64.png",
+      "sha256": "bfb8dc7e02de2c1eae27fc99ac7890c5370d6bb5e2d57f15b00a4f0d373fc2c8",
+      "source": "Existing phase2b-stable-rc3 asset; public redistribution confirmed by user 2026-10-15; not generated or enlarged."
+    },
+    {
+      "browser": "firefox",
+      "file": "assets/icons/editor-bundle-16.png",
+      "sha256": "fef5376663abc10aab3f164c0e2c61c6c4ab796caa7f8261166a5e40922b8c76",
+      "source": "Existing phase2b-stable-rc3 asset; public redistribution confirmed by user 2026-10-15; not generated or enlarged."
+    },
+    {
+      "browser": "firefox",
+      "file": "assets/icons/editor-bundle-20.png",
+      "sha256": "fae4ca8bfe07f86787efbd19444dc40c1faceeea966ced9b0ffd5548c96fba3e",
+      "source": "Existing phase2b-stable-rc3 asset; public redistribution confirmed by user 2026-10-15; not generated or enlarged."
+    },
+    {
+      "browser": "firefox",
+      "file": "assets/icons/editor-bundle-24.png",
+      "sha256": "d5f796e45dec4fa3b65a39f6d4de7aebacf263814152837f7ca9ba27e4901e0f",
+      "source": "Existing phase2b-stable-rc3 asset; public redistribution confirmed by user 2026-10-15; not generated or enlarged."
+    },
+    {
+      "browser": "firefox",
+      "file": "assets/icons/editor-select-16.png",
+      "sha256": "433e6826af18e0f1aa67b50df872e9f5c5df3a6af8a37ff7b638d07fa5453762",
+      "source": "Existing phase2b-stable-rc3 asset; public redistribution confirmed by user 2026-10-15; not generated or enlarged."
+    },
+    {
+      "browser": "firefox",
+      "file": "assets/icons/editor-select-20.png",
+      "sha256": "e57ba396b317e97278796911380a5de93e1c7ce324cfc67b737b903844a49fd2",
+      "source": "Existing phase2b-stable-rc3 asset; public redistribution confirmed by user 2026-10-15; not generated or enlarged."
+    },
+    {
+      "browser": "firefox",
+      "file": "assets/icons/editor-select-24.png",
+      "sha256": "2d658d835a61a9165d449f973c3f11fde7535d2eff06cc342ff52f1c4e203dfb",
+      "source": "Existing phase2b-stable-rc3 asset; public redistribution confirmed by user 2026-10-15; not generated or enlarged."
+    },
+    {
+      "browser": "firefox",
+      "file": "assets/icons/editor-tags-16.png",
+      "sha256": "78037bbb348ec14d934a1f11830f85966fcf711285a8fe87de27ba1ef49d6ca0",
+      "source": "Existing phase2b-stable-rc3 asset; public redistribution confirmed by user 2026-10-15; not generated or enlarged."
+    },
+    {
+      "browser": "firefox",
+      "file": "assets/icons/editor-tags-20.png",
+      "sha256": "1d1142d6a565ef5679fd1f79aa6cae148da2567fb83aac793368ea945fb281b2",
+      "source": "Existing phase2b-stable-rc3 asset; public redistribution confirmed by user 2026-10-15; not generated or enlarged."
+    },
+    {
+      "browser": "firefox",
+      "file": "assets/icons/editor-tags-24.png",
+      "sha256": "e23619b1e3f58fb255e301affba852ac62aeafb5e2c7b23d083168f5c12ffbd8",
+      "source": "Existing phase2b-stable-rc3 asset; public redistribution confirmed by user 2026-10-15; not generated or enlarged."
+    },
+    {
+      "browser": "firefox",
+      "file": "assets/icons/modal-bundle-256.png",
+      "sha256": "627957113199945497adeb1715d5a1a6e0277033fa6274c712f61b02bf2367cf",
+      "source": "Existing phase2b-stable-rc3 asset; public redistribution confirmed by user 2026-10-15; not generated or enlarged."
+    },
+    {
+      "browser": "firefox",
+      "file": "assets/icons/modal-select-256.png",
+      "sha256": "f951aff4af332335c82bd8c306f31011d488b27cb926216c5a6c1f097410e326",
+      "source": "Existing phase2b-stable-rc3 asset; public redistribution confirmed by user 2026-10-15; not generated or enlarged."
+    },
+    {
+      "browser": "firefox",
+      "file": "assets/icons/modal-tags-256.png",
+      "sha256": "8330ba189760d7ef32ef75aa51b736d53f5b85f65ff3c5fce1e8dfcb2bbf8a1e",
+      "source": "Existing phase2b-stable-rc3 asset; public redistribution confirmed by user 2026-10-15; not generated or enlarged."
+    },
+    {
+      "browser": "firefox",
+      "file": "icons/icon128.png",
+      "sha256": "aa7635e3a9b4182df05963785218b2f8d78ca17aac635719327af9d0f3eecbb8",
+      "source": "Existing phase2b-stable-rc3 asset; public redistribution confirmed by user 2026-10-15; not generated or enlarged."
+    },
+    {
+      "browser": "firefox",
+      "file": "icons/icon16.png",
+      "sha256": "97b44a7fc68027f3455472357f61b898814305109f03de872233553612be1943",
+      "source": "Existing phase2b-stable-rc3 asset; public redistribution confirmed by user 2026-10-15; not generated or enlarged."
+    },
+    {
+      "browser": "firefox",
+      "file": "icons/icon32.png",
+      "sha256": "8700b01bb408aee9faaac847f8767048311304df9879080a78a946c533e08784",
+      "source": "Existing phase2b-stable-rc3 asset; public redistribution confirmed by user 2026-10-15; not generated or enlarged."
+    },
+    {
+      "browser": "firefox",
+      "file": "icons/icon48.png",
+      "sha256": "41f8385add86b564daa90a6038fb4ea553f7ae64be05222828c0bab6b3eb3634",
+      "source": "Existing phase2b-stable-rc3 asset; public redistribution confirmed by user 2026-10-15; not generated or enlarged."
+    },
+    {
+      "browser": "whale",
+      "file": "assets/icons/aru-main-128.png",
+      "sha256": "aa7635e3a9b4182df05963785218b2f8d78ca17aac635719327af9d0f3eecbb8",
+      "source": "Existing phase2b-stable-rc3 asset; public redistribution confirmed by user 2026-10-15; not generated or enlarged."
+    },
+    {
+      "browser": "whale",
+      "file": "assets/icons/aru-main-16.png",
+      "sha256": "97b44a7fc68027f3455472357f61b898814305109f03de872233553612be1943",
+      "source": "Existing phase2b-stable-rc3 asset; public redistribution confirmed by user 2026-10-15; not generated or enlarged."
+    },
+    {
+      "browser": "whale",
+      "file": "assets/icons/aru-main-32.png",
+      "sha256": "8700b01bb408aee9faaac847f8767048311304df9879080a78a946c533e08784",
+      "source": "Existing phase2b-stable-rc3 asset; public redistribution confirmed by user 2026-10-15; not generated or enlarged."
+    },
+    {
+      "browser": "whale",
+      "file": "assets/icons/aru-main-48.png",
+      "sha256": "41f8385add86b564daa90a6038fb4ea553f7ae64be05222828c0bab6b3eb3634",
+      "source": "Existing phase2b-stable-rc3 asset; public redistribution confirmed by user 2026-10-15; not generated or enlarged."
+    },
+    {
+      "browser": "whale",
+      "file": "assets/icons/aru-main-64.png",
+      "sha256": "bfb8dc7e02de2c1eae27fc99ac7890c5370d6bb5e2d57f15b00a4f0d373fc2c8",
+      "source": "Existing phase2b-stable-rc3 asset; public redistribution confirmed by user 2026-10-15; not generated or enlarged."
+    },
+    {
+      "browser": "whale",
+      "file": "assets/icons/editor-bundle-16.png",
+      "sha256": "fef5376663abc10aab3f164c0e2c61c6c4ab796caa7f8261166a5e40922b8c76",
+      "source": "Existing phase2b-stable-rc3 asset; public redistribution confirmed by user 2026-10-15; not generated or enlarged."
+    },
+    {
+      "browser": "whale",
+      "file": "assets/icons/editor-bundle-20.png",
+      "sha256": "fae4ca8bfe07f86787efbd19444dc40c1faceeea966ced9b0ffd5548c96fba3e",
+      "source": "Existing phase2b-stable-rc3 asset; public redistribution confirmed by user 2026-10-15; not generated or enlarged."
+    },
+    {
+      "browser": "whale",
+      "file": "assets/icons/editor-bundle-24.png",
+      "sha256": "d5f796e45dec4fa3b65a39f6d4de7aebacf263814152837f7ca9ba27e4901e0f",
+      "source": "Existing phase2b-stable-rc3 asset; public redistribution confirmed by user 2026-10-15; not generated or enlarged."
+    },
+    {
+      "browser": "whale",
+      "file": "assets/icons/editor-select-16.png",
+      "sha256": "433e6826af18e0f1aa67b50df872e9f5c5df3a6af8a37ff7b638d07fa5453762",
+      "source": "Existing phase2b-stable-rc3 asset; public redistribution confirmed by user 2026-10-15; not generated or enlarged."
+    },
+    {
+      "browser": "whale",
+      "file": "assets/icons/editor-select-20.png",
+      "sha256": "e57ba396b317e97278796911380a5de93e1c7ce324cfc67b737b903844a49fd2",
+      "source": "Existing phase2b-stable-rc3 asset; public redistribution confirmed by user 2026-10-15; not generated or enlarged."
+    },
+    {
+      "browser": "whale",
+      "file": "assets/icons/editor-select-24.png",
+      "sha256": "2d658d835a61a9165d449f973c3f11fde7535d2eff06cc342ff52f1c4e203dfb",
+      "source": "Existing phase2b-stable-rc3 asset; public redistribution confirmed by user 2026-10-15; not generated or enlarged."
+    },
+    {
+      "browser": "whale",
+      "file": "assets/icons/editor-tags-16.png",
+      "sha256": "78037bbb348ec14d934a1f11830f85966fcf711285a8fe87de27ba1ef49d6ca0",
+      "source": "Existing phase2b-stable-rc3 asset; public redistribution confirmed by user 2026-10-15; not generated or enlarged."
+    },
+    {
+      "browser": "whale",
+      "file": "assets/icons/editor-tags-20.png",
+      "sha256": "1d1142d6a565ef5679fd1f79aa6cae148da2567fb83aac793368ea945fb281b2",
+      "source": "Existing phase2b-stable-rc3 asset; public redistribution confirmed by user 2026-10-15; not generated or enlarged."
+    },
+    {
+      "browser": "whale",
+      "file": "assets/icons/editor-tags-24.png",
+      "sha256": "e23619b1e3f58fb255e301affba852ac62aeafb5e2c7b23d083168f5c12ffbd8",
+      "source": "Existing phase2b-stable-rc3 asset; public redistribution confirmed by user 2026-10-15; not generated or enlarged."
+    },
+    {
+      "browser": "whale",
+      "file": "assets/icons/modal-bundle-256.png",
+      "sha256": "627957113199945497adeb1715d5a1a6e0277033fa6274c712f61b02bf2367cf",
+      "source": "Existing phase2b-stable-rc3 asset; public redistribution confirmed by user 2026-10-15; not generated or enlarged."
+    },
+    {
+      "browser": "whale",
+      "file": "assets/icons/modal-select-256.png",
+      "sha256": "f951aff4af332335c82bd8c306f31011d488b27cb926216c5a6c1f097410e326",
+      "source": "Existing phase2b-stable-rc3 asset; public redistribution confirmed by user 2026-10-15; not generated or enlarged."
+    },
+    {
+      "browser": "whale",
+      "file": "assets/icons/modal-tags-256.png",
+      "sha256": "8330ba189760d7ef32ef75aa51b736d53f5b85f65ff3c5fce1e8dfcb2bbf8a1e",
+      "source": "Existing phase2b-stable-rc3 asset; public redistribution confirmed by user 2026-10-15; not generated or enlarged."
+    },
+    {
+      "browser": "whale",
+      "file": "icons/icon128.png",
+      "sha256": "aa7635e3a9b4182df05963785218b2f8d78ca17aac635719327af9d0f3eecbb8",
+      "source": "Existing phase2b-stable-rc3 asset; public redistribution confirmed by user 2026-10-15; not generated or enlarged."
+    },
+    {
+      "browser": "whale",
+      "file": "icons/icon16.png",
+      "sha256": "97b44a7fc68027f3455472357f61b898814305109f03de872233553612be1943",
+      "source": "Existing phase2b-stable-rc3 asset; public redistribution confirmed by user 2026-10-15; not generated or enlarged."
+    },
+    {
+      "browser": "whale",
+      "file": "icons/icon32.png",
+      "sha256": "8700b01bb408aee9faaac847f8767048311304df9879080a78a946c533e08784",
+      "source": "Existing phase2b-stable-rc3 asset; public redistribution confirmed by user 2026-10-15; not generated or enlarged."
+    },
+    {
+      "browser": "whale",
+      "file": "icons/icon48.png",
+      "sha256": "41f8385add86b564daa90a6038fb4ea553f7ae64be05222828c0bab6b3eb3634",
+      "source": "Existing phase2b-stable-rc3 asset; public redistribution confirmed by user 2026-10-15; not generated or enlarged."
+    }
+  ]
+}

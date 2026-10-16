@@ -1,0 +1,248 @@
+{
+  "checkedAt": "2026-10-16T08:58:25.685Z",
+  "branch": "refactor/esm-core-transition",
+  "sourceBase": "4d871f702fb633722c09e0074e6fa0d9429c17f6",
+  "publicMain": "1164afc3745d6af47e4e3fc750540963226f8355",
+  "preservation": {
+    "repositories": [
+      {
+        "directory": "E:\\dev\\VSCode\\personal\\aru_archive",
+        "compared": 8,
+        "changed": [],
+        "headUnchanged": true
+      },
+      {
+        "directory": "E:\\dev\\VSCode\\personal\\aru_archive\\browser-extension/github-publication/repository",
+        "compared": 202,
+        "changed": [],
+        "headUnchanged": true
+      },
+      {
+        "directory": "E:\\dev\\VSCode\\personal\\aru_archive\\browser-extension/android-upload-attribution",
+        "compared": 254,
+        "changed": [],
+        "headUnchanged": true
+      },
+      {
+        "directory": "E:\\dev\\VSCode\\personal\\aru_archive\\browser-extension/android-firefox-loading-ux",
+        "compared": 213,
+        "changed": [],
+        "headUnchanged": true
+      }
+    ],
+    "rootCompared": 14,
+    "changedRootFiles": [],
+    "unchangedContracts": [
+      {
+        "file": "firefox/manifest.json",
+        "unchanged": true
+      },
+      {
+        "file": "whale/manifest.json",
+        "unchanged": true
+      },
+      {
+        "file": "firefox/options.js",
+        "unchanged": true
+      },
+      {
+        "file": "whale/options.js",
+        "unchanged": true
+      },
+      {
+        "file": "firefox/background.js",
+        "unchanged": true
+      },
+      {
+        "file": "whale/background.js",
+        "unchanged": true
+      },
+      {
+        "file": "docs/source/upload-attribution/core.js",
+        "unchanged": true
+      },
+      {
+        "file": "docs/source/upload-attribution/ui.js",
+        "unchanged": true
+      },
+      {
+        "file": "tools/build.mjs",
+        "unchanged": true
+      },
+      {
+        "file": "docs/tools/build-generator.mjs",
+        "unchanged": true
+      }
+    ]
+  },
+  "validation": {
+    "rc3": {
+      "tests": 59,
+      "pass": 59
+    },
+    "hybridWorkingTree": {
+      "tests": 106,
+      "pass": 106
+    },
+    "isolatedLegacy": {
+      "tests": 94,
+      "pass": 94
+    },
+    "esm": {
+      "tests": 41,
+      "pass": 41,
+      "fail": 0,
+      "skipped": 0
+    },
+    "history": {
+      "baseline": {
+        "tests": 287,
+        "pass": 189,
+        "fail": 98,
+        "skipped": 0
+      },
+      "candidate": {
+        "tests": 287,
+        "pass": 193,
+        "fail": 94,
+        "skipped": 0
+      },
+      "newFailures": [],
+      "noLongerFailing": [
+        "new icon styling is scoped, noninteractive and never overrides grid dimensions or palette",
+        "608 and 1548 icon index/query timings and cache reuse are recorded, not claimed as installed-browser speed",
+        "design tokens provide >=4.5 text contrast in both themes; gold remains an accent, not body text",
+        "old r2 BUNDLE reader marker re-reads VIDEO tags; version 2 cache reuse preserves 4998 17 groups and 1548 icons"
+      ]
+    },
+    "firefoxLint": {
+      "baseline": {
+        "errors": 0,
+        "warnings": 9
+      },
+      "candidate": {
+        "errors": 0,
+        "warnings": 9
+      }
+    },
+    "browser": {
+      "firefox": {
+        "file": "docs/results/esm-e2e/reports/20261016-175314-firefox.json",
+        "browserVersion": "158.0",
+        "extensionVersion": "1.0.4",
+        "counts": {
+          "BROWSER:PASS": 4,
+          "MOCK:PASS": 7,
+          "SITE:BLOCKED": 1,
+          "SITE:PASS": 1,
+          "BROWSER:FAIL": 1
+        },
+        "sha256": "66391e0a196faa3429969400e7c8e16e8abab420c5ce669e766608da10210054"
+      },
+      "chromium": {
+        "file": "docs/results/esm-e2e/reports/20261016-175133-chromium.json",
+        "browserVersion": "156.0.8078.4",
+        "extensionVersion": "0.1.3",
+        "counts": {
+          "BROWSER:PASS": 4,
+          "MOCK:PASS": 7,
+          "SITE:BLOCKED": 4,
+          "SITE:PASS": 5
+        },
+        "sha256": "537b337b02586f98817b5087b9f46d3bb381163b8dbd2fbf8819e7afe7cdce28"
+      },
+      "whale": {
+        "file": "docs/results/esm-e2e/reports/20261016-175133-whale.json",
+        "browserVersion": "150.0.7871.252",
+        "extensionVersion": "0.1.3",
+        "counts": {
+          "BROWSER:PASS": 4,
+          "MOCK:PASS": 7,
+          "SITE:BLOCKED": 4,
+          "SITE:PASS": 5
+        },
+        "sha256": "43d0d7cdd54a602f41aa41c3e658aeffff8753a82f2c50662b83c03a7481f1f9"
+      }
+    },
+    "wxt": "미제공 개인 포크: 통합·build 미검증",
+    "browserLimitations": {
+      "firefox": "마지막 실행에서 MOCK 7개 통과 후 실제 공개 페이지 navigation timeout으로 runner exit 1. 앞선 StaleElementReference 실패도 원시 보고에 보존.",
+      "candidateHarnessEarlyFailure": "초기 래퍼는 Report 객체를 exitCode로 직렬화해 실패했다. 집계 코드를 수정하고 재실행했다. 관측 결과를 성공으로 재작성하지 않았다.",
+      "editorFixtureEarlyFailure": "초기 HTML fixture에 toolbar가 없어 UI target 탐색이 timeout. fixture에 실제 controller의 필수 toolbar 계약을 추가한 뒤 재검증."
+    }
+  },
+  "sizes": [
+    {
+      "file": "whale/features/ruliweb-icons/content.bundle.js",
+      "before": 274728,
+      "after": 380195
+    },
+    {
+      "file": "whale/features/bundle-generator/content.bundle.js",
+      "before": 144798,
+      "after": 183091
+    },
+    {
+      "file": "whale/features/icon-metadata/content.bundle.js",
+      "before": 57843,
+      "after": 59273
+    }
+  ],
+  "changedFiles": [
+    "CONTRIBUTING.md",
+    "THIRD_PARTY_NOTICES.md",
+    "docs/architecture/esm-iife-inventory.json",
+    "docs/architecture/esm-validation.json",
+    "docs/architecture/esm-wxt-integration.md",
+    "docs/architecture/iife-esm-transition-report.md",
+    "docs/source/compat/attribute-tags.mjs",
+    "docs/source/compat/browser-adapter.mjs",
+    "docs/source/compat/composer-adapter.mjs",
+    "docs/source/compat/core.mjs",
+    "docs/source/compat/metadata-editor-bridge.mjs",
+    "docs/source/compat/metadata-writer.mjs",
+    "docs/source/compat/metadata.mjs",
+    "docs/source/compat/site-adapter.mjs",
+    "docs/source/icon-metadata/core.js",
+    "docs/source/icon-metadata/editor-bridge.js",
+    "docs/source/icon-metadata/metadata-editor-bridge.mjs",
+    "docs/source/ruliweb-icons/attribute-tags.js",
+    "docs/source/ruliweb-icons/browser-adapter.js",
+    "docs/source/ruliweb-icons/browser-adapter.mjs",
+    "docs/source/ruliweb-icons/composer-adapter.js",
+    "docs/source/ruliweb-icons/composer-adapter.mjs",
+    "docs/source/ruliweb-icons/core.js",
+    "docs/source/ruliweb-icons/core.mjs",
+    "docs/source/ruliweb-icons/metadata-core.mjs",
+    "docs/source/ruliweb-icons/metadata.js",
+    "docs/source/ruliweb-icons/metadata.mjs",
+    "docs/source/ruliweb-icons/site-adapter.js",
+    "docs/source/ruliweb-icons/site-adapter.mjs",
+    "firefox/features/bundle-generator/bridge.bundle.js",
+    "firefox/features/bundle-generator/content.bundle.js",
+    "firefox/features/icon-metadata/bridge.bundle.js",
+    "firefox/features/icon-metadata/content.bundle.js",
+    "firefox/features/ruliweb-icons/content.bundle.js",
+    "package-lock.json",
+    "package.json",
+    "shared/icon-metadata/README.md",
+    "shared/icon-metadata/legacy-adapter.mjs",
+    "shared/icon-metadata/tag-codec.mjs",
+    "shared/icon-metadata/tag-edit-model.mjs",
+    "tests/esm/build.test.mjs",
+    "tests/esm/fixtures/editor-check.js",
+    "tests/esm/fixtures/editor.html",
+    "tests/esm/fixtures/legacy.json",
+    "tests/esm/fixtures/tag-cases.json",
+    "tests/esm/modules.test.mjs",
+    "tests/esm/tag-contract.test.mjs",
+    "tools/audit-esm.mjs",
+    "tools/build-esm.mjs",
+    "tools/test-esm-browser.py",
+    "whale/features/bundle-generator/bridge.bundle.js",
+    "whale/features/bundle-generator/content.bundle.js",
+    "whale/features/icon-metadata/bridge.bundle.js",
+    "whale/features/icon-metadata/content.bundle.js",
+    "whale/features/ruliweb-icons/content.bundle.js"
+  ]
+}
