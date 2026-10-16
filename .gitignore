@@ -1,8 +1,10 @@
+# 의존성은 모든 위치에서, 빌드·검사 출력은 루트에서 제외한다.
 node_modules/
-dist/
-coverage/
-test-results/
-docs/results/
+/dist/
+/coverage/
+/test-results/
+# 테스트·E2E·벤치마크의 실제 출력 경로다. docs/evidence·screenshots·Fixture는 추적한다.
+/docs/results/
 *.log
 *.tap
 *.zip
@@ -20,13 +22,14 @@ Thumbs.db
 __pycache__/
 .vscode/
 .idea/
-profiles/
-browser-profiles/
-cache/
-tmp/
-temp/
+# 로컬 실행 자료는 루트에 둔다. docs/source/cache 같은 향후 원본 경로는 제외하지 않는다.
+/profiles/
+/browser-profiles/
+/cache/
+/tmp/
+/temp/
 
-# WXT 및 로컬 브라우저 실행 출력
+# WXT 출력과 개인 브라우저 실행 설정은 이 Worktree에만 둔다.
 /.output/
 /.wxt/
 /web-ext.config.ts

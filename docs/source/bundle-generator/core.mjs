@@ -20,7 +20,6 @@ export function createBundleCore({ environment = defaultEnvironment, dependencie
         "SourceReader",
     ]);
     let icons = createModuleScope(dependencies.icons, ["Metadata", "SiteAdapter"], []);
-    /* v1 authoring model. Only verified v1 fields are generated; source tags stay at source. */
     const initializeBundleCore = function (g) {
         "use strict";
         const B = (bundle = bundle || {}), M = icons.Metadata;
@@ -244,8 +243,8 @@ export function createBundleCore({ environment = defaultEnvironment, dependencie
                 return draft;
             }
         }
-        // Parse fetched HTML inside an unconnected template. Inert template contents
-        // cannot start source image/video/iframe requests; never attach them to the page.
+        // 조회한 HTML은 문서에 붙이지 않는 template 안에서 파싱한다.
+        // 미디어·iframe 요청이 시작되지 않도록 template 내용을 페이지에 연결하지 않는다.
         async function readPublicDocument(articleId, { signal, origin = g.location.origin, fetchFn = g.fetch, timeoutMs = 10000, } = {}) {
             const url = icons.SiteAdapter.readPath(articleId, origin, "98"), controller = new g.AbortController(), abort = () => controller.abort();
             signal?.addEventListener("abort", abort, { once: true });

@@ -17,7 +17,7 @@ export function installFirefoxBackground({
     ["ownsDownload"],
     [],
   );
-  // Aru Source Captioner — background service worker
+
   //
   // Phase 2A: 기본 옵션 seed 구현.
   // - 신규 설치 또는 업데이트 시 chrome.storage.sync에 누락된 키만 기본값으로 채운다.
@@ -79,7 +79,6 @@ export function installFirefoxBackground({
     seedMissingOptions();
   });
 
-  // ─── Download → Native Host metadata embedding ───────────────────────────────
   // chrome.downloads는 PC Firefox에서만 사용 가능하다.
   // Android Firefox에서는 API 자체가 없으므로 아래 guard가 자연히 처리한다.
 
@@ -103,7 +102,7 @@ export function installFirefoxBackground({
   function _onDownloadComplete(item: Browser.downloads.DownloadItem) {
     if (downloads?.ownsDownload(item)) {
       return;
-    } // Preserve batch original bytes; do not invoke Native Host.
+    } // 일괄 다운로드 원본 바이트를 보존하기 위해 이 경로에서는 Native Host를 호출하지 않는다.
     const ext = _getFileExt(item.filename);
     if (!_IMAGE_EXTS.has(ext)) {
       return;

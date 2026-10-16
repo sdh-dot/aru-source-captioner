@@ -20,7 +20,6 @@ export function createDownloadCore({ environment = defaultEnvironment, dependenc
         "actualName",
         "localManifest",
     ]);
-    /* Local download records; deliberately separate from public aru-icons metadata. */
     const initializeDownloadCore = function (_root) {
         "use strict";
         const D = (downloads = downloads || {});
@@ -91,7 +90,7 @@ export function createDownloadCore({ environment = defaultEnvironment, dependenc
                 .slice(0, max)
                 .join("")
                 .replace(/[. ]+$/u, "");
-            // Keep UTF-16 paths short even for non-BMP titles.
+            // 보조 평면 문자가 포함된 제목도 UTF-16 경로 길이 제한을 넘기지 않게 한다.
             while (text.length > max) {
                 text = [...text].slice(0, -1).join("");
             }
@@ -142,7 +141,7 @@ export function createDownloadCore({ environment = defaultEnvironment, dependenc
                 return false;
             }
         }
-        // Container metadata only: skip compressed payloads, never decode or reencode them.
+        // 컨테이너 구조만 확인하고 압축된 미디어 바이트는 디코딩·재인코딩하지 않는다.
         function isoMedia(b) {
             const text = (p, n) => String.fromCharCode(...b.subarray(p, p + n));
             const u32 = (p) => b[p] * 16777216 + b[p + 1] * 65536 + b[p + 2] * 256 + b[p + 3];
@@ -196,7 +195,7 @@ export function createDownloadCore({ environment = defaultEnvironment, dependenc
                         }
                         boxes(data + 8, limit, depth + 1);
                     }
-                    // Visual sample entries have 78 bytes before child boxes (ISO BMFF).
+                    // ISO BMFF 영상 sample entry의 하위 box는 78바이트 헤더 뒤에서 시작한다.
                     if ([
                         "avc1",
                         "avc3",
@@ -235,7 +234,7 @@ export function createDownloadCore({ environment = defaultEnvironment, dependenc
                 if (encrypted) {
                     return { ext: null, mime: "video/mp4", reason: "encrypted-media" };
                 }
-                // Init segments and isolated media fragments are not standalone downloads.
+                // 초기화 세그먼트나 미디어 조각만으로는 독립 파일로 인정하지 않는다.
                 if (!top.some((x) => x.type === "moov") ||
                     !top.some((x) => x.type === "mdat" && x.end > x.data)) {
                     return null;
@@ -290,7 +289,7 @@ export function createDownloadCore({ environment = defaultEnvironment, dependenc
                     list.push({ id: id.value, data, end: limit });
                     if ([0x6d80, 0x5035].includes(id.value)) {
                         encrypted = true;
-                    } // ContentEncodings / ContentEncryption
+                    } // 암호화 관련 EBML 요소가 있으면 다운로드 대상으로 인정하지 않는다.
                     if ([0x18538067, 0x1654ae6b, 0xae, 0x6d80, 0x6240].includes(id.value)) {
                         elements(data, limit, depth + 1);
                     }

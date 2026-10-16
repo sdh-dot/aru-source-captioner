@@ -2164,7 +2164,6 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
         targetError.setAttribute("role", "alert");
         body.append(targetError);
         let targetValid = options.targetValid !== false;
-        let _catalogRef = null, _catalogPack = null;
         async function chooseCatalog(action) {
           const result3 = await action();
           if (lifecycle.isClosed) {
@@ -3647,7 +3646,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
             indexed: library ? pack?.icons.length || 0 : index?.iconCount || 0,
             query: state.query,
             searchMatched: result2.uniqueCount,
-            // Virtualization intentionally mounts only a window of the logical result.
+            // 가상 목록은 결과 일부만 DOM에 올리므로 렌더링 개수를 전체 결과로 오인하지 않는다.
             displayedTags: [...matched].filter((id) => displayTags.get(id)?.length).length,
             renderedCards: root.querySelectorAll(".icon-card").length,
             renderedTaggedCards: [...root.querySelectorAll(".icon-tags")].filter((node) => node.textContent !== "태그 없음").length
@@ -3765,8 +3764,6 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
           index = null;
           displayTags.clear();
           collectionDiagnostics = null;
-          _catalogRef = null;
-          _catalogPack = null;
           selectedIconId = null;
           result2 = { groups: [], uniqueCount: 0, membershipCount: 0 };
           folds.forEach((item) => item.dispose());
@@ -4133,8 +4130,6 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
             catalogView?.setEntries(entries, message, library?.packs);
           },
           setCatalogPack(ref, next) {
-            _catalogRef = ref;
-            _catalogPack = next;
             catalogView?.setPack(ref, next);
           },
           setQuery(value) {
@@ -4165,8 +4160,6 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
             displayTags.clear();
             collectionDiagnostics = null;
             lastMetadataLog = "";
-            _catalogRef = null;
-            _catalogPack = null;
             selectedIconId = null;
             result2 = { groups: [], uniqueCount: 0, membershipCount: 0 };
             columns.hidden = !!options.catalogMode && !library;

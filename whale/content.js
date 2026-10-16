@@ -154,7 +154,6 @@
         ".fr-element",
         ".editor"
       ];
-      const _BOOT_OBSERVER_TIMEOUT_MS = 6e4;
       const WALK_MAX_DEPTH = 10;
       let uploadAttribution = null;
       const handledFileEvents = /* @__PURE__ */ new WeakSet();
@@ -612,29 +611,6 @@
         }
       }
       __name(safeJsonParse, "safeJsonParse");
-      function pushIfString(arr, v) {
-        if (typeof v === "string") {
-          const t = v.trim();
-          if (t.length > 0) {
-            arr.push(t);
-          }
-        }
-      }
-      __name(pushIfString, "pushIfString");
-      function _pushIfStringOrArray(arr, v) {
-        if (typeof v === "string") {
-          pushIfString(arr, v);
-          return;
-        }
-        if (Array.isArray(v)) {
-          for (const item of v) {
-            if (typeof item === "string") {
-              pushIfString(arr, item);
-            }
-          }
-        }
-      }
-      __name(_pushIfStringOrArray, "_pushIfStringOrArray");
       function uniqueOrdered(arr) {
         const seen = /* @__PURE__ */ new Set();
         const out = [];
@@ -979,8 +955,39 @@
       const COMMENT_IMG_BUTTON_SELECTOR = ".common_img_button";
       const COMMENT_FILE_INPUT_SELECTOR = "input.common_img_input, input[type='file']";
       const COMMENT_BOUND_DATASET_KEY = "aruSourceCommentBound";
-      const COMMENT_FILE_BOUND_DATASET_KEY = "aruSourceFileBound";
       const COMMENT_BUTTON_CLASS = "aru-source-caption-comment-button";
+      function handleCommentSourceButtonClick(textarea) {
+        console.log("[Aru Source Captioner] click: button clicked");
+        if (!(textarea instanceof HTMLTextAreaElement)) {
+          console.warn("[Aru Source Captioner] click: textarea reference is not a textarea");
+          return;
+        }
+        if (!document.contains(textarea)) {
+          console.warn("[Aru Source Captioner] click: textarea is detached from DOM, re-scanning...");
+          try {
+            setupCommentSourceCaptioner();
+          } catch (err) {
+            console.debug("[Aru Source Captioner] click: re-scan failed:", err);
+          }
+          return;
+        }
+        const wrapper = resolveCommentWrapperForTextarea(textarea);
+        const savedSource = wrapper ? wrapperSourceMap.get(wrapper) : null;
+        if (!savedSource) {
+          console.log("[Aru Source Captioner] click: no extracted source — image not attached or has no Aru metadata");
+          try {
+            alert("이미지에 출처 metadata가 없습니다.\nAru Archive로 처리한 이미지를 댓글에 첨부해 주세요.");
+          } catch {
+          }
+          return;
+        }
+        console.log("[Aru Source Captioner] click: using stored source =", savedSource);
+        const sourceText = buildCommentSourceText(savedSource);
+        const result2 = insertSourceIntoCommentTextarea(textarea, sourceText);
+        console.log("[Aru Source Captioner] click: insertion result =", result2);
+      }
+      __name(handleCommentSourceButtonClick, "handleCommentSourceButtonClick");
+      const COMMENT_FILE_BOUND_DATASET_KEY = "aruSourceFileBound";
       const COMMENT_SOURCE_PREFIX = "출처:";
       const wrapperSourceMap = /* @__PURE__ */ new WeakMap();
       let readPageConfig = null;
@@ -1139,37 +1146,6 @@
         return "ok";
       }
       __name(insertSourceIntoCommentTextarea, "insertSourceIntoCommentTextarea");
-      function handleCommentSourceButtonClick(textarea) {
-        console.log("[Aru Source Captioner] click: button clicked");
-        if (!(textarea instanceof HTMLTextAreaElement)) {
-          console.warn("[Aru Source Captioner] click: textarea reference is not a textarea");
-          return;
-        }
-        if (!document.contains(textarea)) {
-          console.warn("[Aru Source Captioner] click: textarea is detached from DOM, re-scanning...");
-          try {
-            setupCommentSourceCaptioner();
-          } catch (err) {
-            console.debug("[Aru Source Captioner] click: re-scan failed:", err);
-          }
-          return;
-        }
-        const wrapper = resolveCommentWrapperForTextarea(textarea);
-        const savedSource = wrapper ? wrapperSourceMap.get(wrapper) : null;
-        if (!savedSource) {
-          console.log("[Aru Source Captioner] click: no extracted source — image not attached or has no Aru metadata");
-          try {
-            alert("이미지에 출처 metadata가 없습니다.\nAru Archive로 처리한 이미지를 댓글에 첨부해 주세요.");
-          } catch {
-          }
-          return;
-        }
-        console.log("[Aru Source Captioner] click: using stored source =", savedSource);
-        const sourceText = buildCommentSourceText(savedSource);
-        const result2 = insertSourceIntoCommentTextarea(textarea, sourceText);
-        console.log("[Aru Source Captioner] click: insertion result =", result2);
-      }
-      __name(handleCommentSourceButtonClick, "handleCommentSourceButtonClick");
       function injectCommentSourceButton(wrapper) {
         if (!(wrapper instanceof HTMLElement)) {
           return false;

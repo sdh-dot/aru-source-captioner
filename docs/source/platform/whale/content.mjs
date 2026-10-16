@@ -16,7 +16,6 @@ export function installWhaleContent({ environment = defaultEnvironment, dependen
         ? (...args) => environment.clearInterval(...args)
         : undefined;
     let attribution = createModuleScope(dependencies.attribution, ["Controller"], []);
-    // Aru Source Captioner — content script
     //
     // Phase 2B: 실 구현.
     // - 사용자가 input[type=file]에서 이미지를 선택하면 exifr로 EXIF/XMP/IPTC/UserComment를 파싱.
@@ -25,7 +24,7 @@ export function installWhaleContent({ environment = defaultEnvironment, dependen
     // - 업로드 순서와 무관한 정확 파일명/속성 검증. 중복·불명확한 대응은 자동 기재하지 않는다.
     // - 안전한 URL이면 부모 <p> 바로 다음에 출처 캡션 <p>를 DOM API로 삽입.
     //
-    // Phase 1 정책(16개 + DOM 관찰 8항)은 docs/phase1-design.md 단일 출처를 따른다.
+    // 저장 태그·출처 정책은 각 검증 함수와 브라우저 설정에서 유지한다.
     //
     // 절대 규칙:
     //   - innerHTML / outerHTML / insertAdjacentHTML 사용 금지.
@@ -63,7 +62,6 @@ export function installWhaleContent({ environment = defaultEnvironment, dependen
             ".fr-element",
             ".editor",
         ];
-        const _BOOT_OBSERVER_TIMEOUT_MS = 60000;
         const WALK_MAX_DEPTH = 10;
         let uploadAttribution = null;
         const handledFileEvents = new WeakSet();
@@ -98,12 +96,7 @@ export function installWhaleContent({ environment = defaultEnvironment, dependen
         }
         function loadConfig() {
             return new Promise((resolve) => {
-                // Defensive: chrome.storage.sync may be undefined in the content script
-                // context if the "storage" permission was revoked at runtime, if the
-                // extension was reloaded but the page wasn't, or if a transient race
-                // strips chrome.storage before init runs. In any such case we fall back
-                // to defaults so init() never throws and the rest of the captioner
-                // (button injection, observers) keeps working.
+                // 권한 회수·확장 재로드 중에는 storage가 없을 수 있어 기본값으로 나머지 기능의 초기화를 유지한다.
                 try {
                     if (!isChromeStorageSyncAvailable()) {
                         console.warn("[Aru Source Captioner] chrome.storage.sync unavailable — using default options");
@@ -170,7 +163,7 @@ export function installWhaleContent({ environment = defaultEnvironment, dependen
                 if (!images.length) {
                     return;
                 }
-                // Keep the existing opt-in pixel-table path and its native event behavior.
+                // 사용자가 켠 pixel table 경로와 사이트의 기존 입력 이벤트를 유지한다.
                 if ((config.pixelTableMode ?? "off") !== "off") {
                     const isMobile = isMobileAutoInsertEnvironment();
                     if (shouldUsePixelTableInsert(config, isMobile)) {
@@ -406,7 +399,7 @@ export function installWhaleContent({ environment = defaultEnvironment, dependen
             }
         }
         // Pixiv 표준 파일명에서 작품 URL을 생성한다.
-        // 88908024_p0_master1200.jpg → https://www.pixiv.net/artworks/88908024
+        // 파일명 예: 88908024_p0_master1200.jpg → https://www.pixiv.net/artworks/88908024
         // 6자리~12자리 숫자 + _p\d+ 패턴만 허용해 일반 파일명 오탐을 방지한다.
         function parsePixivFilenameUrl(filename) {
             if (typeof filename !== "string") {
@@ -574,27 +567,6 @@ export function installWhaleContent({ environment = defaultEnvironment, dependen
                 return null;
             }
         }
-        function pushIfString(arr, v) {
-            if (typeof v === "string") {
-                const t = v.trim();
-                if (t.length > 0) {
-                    arr.push(t);
-                }
-            }
-        }
-        function _pushIfStringOrArray(arr, v) {
-            if (typeof v === "string") {
-                pushIfString(arr, v);
-                return;
-            }
-            if (Array.isArray(v)) {
-                for (const item of v) {
-                    if (typeof item === "string") {
-                        pushIfString(arr, item);
-                    }
-                }
-            }
-        }
         function uniqueOrdered(arr) {
             const seen = new Set();
             const out = [];
@@ -683,7 +655,6 @@ export function installWhaleContent({ environment = defaultEnvironment, dependen
         }
         // ---------------- 픽셀 아트 테이블 삽입 (실험) ----------------
         //
-        // options.pixelTableMode:
         //   "off"         (기본) — 활성화하지 않음.
         //   "manual"      — 항상 픽셀 테이블 삽입.
         //   "auto_android"— 모바일 환경에서만 픽셀 테이블 삽입.
@@ -867,7 +838,7 @@ export function installWhaleContent({ environment = defaultEnvironment, dependen
             const Controller = attribution?.Controller;
             if (!Controller) {
                 return null;
-            } // No unverified/FIFO fallback when the module is unavailable.
+            } // 대응 모듈이 없으면 파일 선택 순서만으로 출처를 추정하지 않는다.
             uploadAttribution = new Controller({
                 document,
                 parse: (file) => parseSourceFromFile(file, {
@@ -926,7 +897,6 @@ export function installWhaleContent({ environment = defaultEnvironment, dependen
         // 매칭되지만 동작이 다르다. URL pathname으로 명확히 분기한다.
         //
         //   write: /community/board/{boardId}/write 등
-        //   read:  /community/board/{boardId}/read/{postId}
         //
         // read 페이지에서는 write용 file input / editor observer를 띄우지 않고,
         // 댓글 영역에 "출처 추가" 버튼만 주입한다.
@@ -994,8 +964,45 @@ export function installWhaleContent({ environment = defaultEnvironment, dependen
         const COMMENT_IMG_BUTTON_SELECTOR = ".common_img_button";
         const COMMENT_FILE_INPUT_SELECTOR = "input.common_img_input, input[type='file']";
         const COMMENT_BOUND_DATASET_KEY = "aruSourceCommentBound";
-        const COMMENT_FILE_BOUND_DATASET_KEY = "aruSourceFileBound";
         const COMMENT_BUTTON_CLASS = "aru-source-caption-comment-button";
+        function handleCommentSourceButtonClick(textarea) {
+            console.log("[Aru Source Captioner] click: button clicked");
+            if (!(textarea instanceof HTMLTextAreaElement)) {
+                console.warn("[Aru Source Captioner] click: textarea reference is not a textarea");
+                return;
+            }
+            // textarea가 detached됐는지 (DOM에서 사라졌다가 다시 생기는 케이스) 검증한다.
+            if (!document.contains(textarea)) {
+                console.warn("[Aru Source Captioner] click: textarea is detached from DOM, re-scanning...");
+                try {
+                    setupCommentSourceCaptioner();
+                }
+                catch (err) {
+                    console.debug("[Aru Source Captioner] click: re-scan failed:", err);
+                }
+                return;
+            }
+            // 정책: 출처는 첨부 이미지의 Aru Archive 메타데이터(artwork_url 등)에서만 가져온다.
+            // 게시글 page URL(location.href)은 fallback으로 사용하지 않는다.
+            // (search_type, #cmt 등 변동 fragment를 출처로 박는 사고 방지)
+            const wrapper = resolveCommentWrapperForTextarea(textarea);
+            const savedSource = wrapper ? wrapperSourceMap.get(wrapper) : null;
+            if (!savedSource) {
+                console.log("[Aru Source Captioner] click: no extracted source — image not attached or has no Aru metadata");
+                try {
+                    alert("이미지에 출처 metadata가 없습니다.\nAru Archive로 처리한 이미지를 댓글에 첨부해 주세요.");
+                }
+                catch {
+                    /* noop — 일부 브라우저/iframe 환경에서 alert이 차단될 수 있다 */
+                }
+                return;
+            }
+            console.log("[Aru Source Captioner] click: using stored source =", savedSource);
+            const sourceText = buildCommentSourceText(savedSource);
+            const result = insertSourceIntoCommentTextarea(textarea, sourceText);
+            console.log("[Aru Source Captioner] click: insertion result =", result);
+        }
+        const COMMENT_FILE_BOUND_DATASET_KEY = "aruSourceFileBound";
         const COMMENT_SOURCE_PREFIX = "출처:";
         // wrapper(HTMLElement) -> 가장 최근에 추출/검증 통과한 source URL(string).
         // 파일 input이 다시 변경되면 갱신된다. Map이 아니라 WeakMap이라 wrapper가
@@ -1174,43 +1181,6 @@ export function installWhaleContent({ environment = defaultEnvironment, dependen
             applyTextareaValue(textarea, newValue);
             console.log("[Aru Source Captioner] insert: completed successfully");
             return "ok";
-        }
-        function handleCommentSourceButtonClick(textarea) {
-            console.log("[Aru Source Captioner] click: button clicked");
-            if (!(textarea instanceof HTMLTextAreaElement)) {
-                console.warn("[Aru Source Captioner] click: textarea reference is not a textarea");
-                return;
-            }
-            // textarea가 detached됐는지 (DOM에서 사라졌다가 다시 생기는 케이스) 검증한다.
-            if (!document.contains(textarea)) {
-                console.warn("[Aru Source Captioner] click: textarea is detached from DOM, re-scanning...");
-                try {
-                    setupCommentSourceCaptioner();
-                }
-                catch (err) {
-                    console.debug("[Aru Source Captioner] click: re-scan failed:", err);
-                }
-                return;
-            }
-            // 정책: 출처는 첨부 이미지의 Aru Archive 메타데이터(artwork_url 등)에서만 가져온다.
-            // 게시글 page URL(location.href)은 fallback으로 사용하지 않는다.
-            // (search_type, #cmt 등 변동 fragment를 출처로 박는 사고 방지)
-            const wrapper = resolveCommentWrapperForTextarea(textarea);
-            const savedSource = wrapper ? wrapperSourceMap.get(wrapper) : null;
-            if (!savedSource) {
-                console.log("[Aru Source Captioner] click: no extracted source — image not attached or has no Aru metadata");
-                try {
-                    alert("이미지에 출처 metadata가 없습니다.\nAru Archive로 처리한 이미지를 댓글에 첨부해 주세요.");
-                }
-                catch {
-                    /* noop — 일부 브라우저/iframe 환경에서 alert이 차단될 수 있다 */
-                }
-                return;
-            }
-            console.log("[Aru Source Captioner] click: using stored source =", savedSource);
-            const sourceText = buildCommentSourceText(savedSource);
-            const result = insertSourceIntoCommentTextarea(textarea, sourceText);
-            console.log("[Aru Source Captioner] click: insertion result =", result);
         }
         function injectCommentSourceButton(wrapper) {
             if (!(wrapper instanceof HTMLElement)) {
@@ -1460,7 +1430,6 @@ export function installWhaleContent({ environment = defaultEnvironment, dependen
         }
         // ---------------- 루리웹 AI 제한 게시글 열기 ----------------
         //
-        // options.ruliwebAiRevealMode:
         //   "off"          (기본) — 아무것도 하지 않음.
         //   "click_overlay"— #board_read .board_main_view 중앙을 elementFromPoint로
         //                    안전하게 클릭. a/button/input 등 내부면 중단.

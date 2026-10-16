@@ -5,7 +5,6 @@ import { createModuleScope } from "../../runtime/module-scope.mjs";
 export function installWhaleBackground({ environment = defaultEnvironment, dependencies = {}, } = {}) {
     const { chrome, console } = environment;
     let downloads = createModuleScope(dependencies.downloads, ["ownsDownload"], []);
-    // Aru Source Captioner — background service worker
     //
     // Phase 2A: 기본 옵션 seed 구현.
     // - 신규 설치 또는 업데이트 시 chrome.storage.sync에 누락된 키만 기본값으로 채운다.
@@ -55,7 +54,6 @@ export function installWhaleBackground({ environment = defaultEnvironment, depen
         // install / update / chrome_update / shared_module_update 모두에 대해 누락 키만 보강한다.
         seedMissingOptions();
     });
-    // ─── Download → Native Host metadata embedding ───────────────────────────────
     const NATIVE_HOST_ID = "net.aru_archive.host";
     const _IMAGE_EXTS = new Set(["jpg", "jpeg", "png", "webp", "gif"]);
     const _PIXIV_CDN_RE = /\/(\d{6,12})_p\d+/;
@@ -73,7 +71,7 @@ export function installWhaleBackground({ environment = defaultEnvironment, depen
     function _onDownloadComplete(item) {
         if (downloads?.ownsDownload(item)) {
             return;
-        } // Preserve batch original bytes; do not invoke Native Host.
+        } // 일괄 다운로드 원본 바이트를 보존하기 위해 이 경로에서는 Native Host를 호출하지 않는다.
         const ext = _getFileExt(item.filename);
         if (!_IMAGE_EXTS.has(ext)) {
             return;
@@ -124,7 +122,5 @@ export function installWhaleBackground({ environment = defaultEnvironment, depen
             });
         });
     }
-    // Independent opt-in icon cache. Existing download/Native Host handlers remain intact.
-    // Independent user-confirmed article-body downloads.
     return {};
 }

@@ -6,7 +6,6 @@ export function createBundleBridge({ environment = defaultEnvironment, dependenc
     const { TextEncoder, URL } = environment;
     let bundle = createModuleScope(dependencies.bundle, ["fail", "existing", "validate", "preserveUnknown"], []);
     let icons = createModuleScope(dependencies.icons, ["Metadata"], []);
-    /* MAIN world: isolated BUNDLE commands using the verified Summernote history/change/serializer API. */
     const initializeBundleBridge = function (g) {
         "use strict";
         const B = bundle, d = g.document;
@@ -84,7 +83,7 @@ export function createBundleBridge({ environment = defaultEnvironment, dependenc
             }
             const session = uuid();
             sessions.set(session, { ...t, touched: Date.now(), preview: null });
-            // Only public carrier data crosses the bridge. Never return the user's body text.
+            // 브리지는 공개 carrier만 반환하며 작성 중인 본문은 전달하지 않는다.
             return { session, articleId: t.articleId, value };
         }
         function current(id) {

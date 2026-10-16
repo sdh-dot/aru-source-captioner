@@ -19,7 +19,7 @@ export function createDownloadExtractor({
     ["error", "article", "mediaUrl", "streamMedia", "originalFilename"],
     [],
   );
-  // Same articleBody selectors as Phase 1 SiteAdapter. Never fall back to document/body.
+  // 본문을 하나로 식별할 수 없으면 document나 body 전체를 수집하지 않는다.
   function body(doc: Document) {
     let nodes = [
         ...doc.querySelectorAll('.view_content[itemprop="articleBody"]'),
@@ -88,11 +88,11 @@ export function createDownloadExtractor({
         alternatives = [];
       if (tag === "SOURCE" && node.closest("video")) {
         continue;
-      } // handled once with its owning video
+      } // video가 소유한 source는 부모 미디어와 한 번만 처리한다.
       if (tag === "A") {
         const raw = node.getAttribute("href"),
           type = node.getAttribute("type") || "";
-        // Ordinary article/navigation links are not download candidates.
+        // 일반 게시글·이동 링크를 미디어 다운로드 대상으로 오인하지 않는다.
         if (
           !node.matches("a.img_load") &&
           !/\.(?:png|jpe?g|gif|webp|avif|mp4|webm|m3u8|mpd|m4s|ts)(?:[?#]|$)/i.test(
@@ -105,7 +105,7 @@ export function createDownloadExtractor({
         candidates.push({ value: raw, attribute: "href", type });
       }
       if (tag === "IMG") {
-        // Prefer only explicit observed original links, never synthesize a webp from an mp4.
+        // 확인한 원본 링크만 사용하며 확장자를 바꿔 다른 파일 주소를 추정하지 않는다.
         const link = node.closest("a.img_load[href]");
         if (link) {
           continue;
@@ -154,7 +154,7 @@ export function createDownloadExtractor({
           unsupported.push({ position: ++position, reason: "encrypted-media" });
           continue;
         }
-        // A selected blob/MSE or playlist is outside scope: do not substitute a source.
+        // 선택된 스트림이 blob/MSE·재생 목록이면 다른 source로 바꾸지 않는다.
         if (
           (node as HTMLVideoElement).currentSrc &&
           (/^blob:/i.test((node as HTMLVideoElement).currentSrc) ||
@@ -227,7 +227,7 @@ export function createDownloadExtractor({
           });
         }
       }
-      // An explicit stream type must still win when currentSrc/src already named the URL.
+      // 같은 URL이 currentSrc에 있어도 명시된 스트림 MIME 유형을 우선한다.
       const streams = new Set();
       for (const candidate of candidates) {
         try {

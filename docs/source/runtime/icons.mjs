@@ -43,7 +43,6 @@ function createIconBase(environment) {
     });
     return icons;
 }
-/** @param {{ environment?: typeof globalThis, metrics?: ReturnType<typeof import("../performance/metrics.mjs").createPerformanceMetrics> | null }} options */
 function createIconReader({ environment = defaultEnvironment, metrics = null, } = {}) {
     const icons = createIconBase(environment);
     let part;

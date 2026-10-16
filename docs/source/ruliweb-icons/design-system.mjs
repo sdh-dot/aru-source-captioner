@@ -4,7 +4,7 @@ import { defaultEnvironment, } from "../runtime/contracts.mjs";
 import { createModuleScope, selectModuleExports, } from "../runtime/module-scope.mjs";
 export function createIconsDesignSystem({ environment = defaultEnvironment, dependencies = {}, } = {}) {
     let icons = createModuleScope(dependencies.icons, ["DesignSystem"], ["DesignSystem"]);
-    /* Phase 2B-3 design foundation. No DOM, storage or font requests until attach(). */
+    // attach() 전에는 DOM 설치·저장소 접근·폰트 요청을 수행하지 않는다.
     const initializeIconsDesignSystem = function (g) {
         "use strict";
         const A = (icons = icons || {});
@@ -209,7 +209,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
             if (!watch) {
                 const hosts = new Set(), mq = g.matchMedia?.("(prefers-color-scheme: dark)");
                 const detect = () => {
-                    // Read the site's actual painted background; no assumed theme class names.
+                    // 사이트 테마 클래스명을 추측하지 않고 실제 배경색을 읽는다.
                     for (const node of [doc.body, doc.documentElement]) {
                         const c = node && g.getComputedStyle(node).backgroundColor, values = c?.match(/[\d.]+/g)?.map(Number);
                         if (values &&
@@ -333,7 +333,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
             image.src = url;
             return image;
         }
-        // Shared decorative header only; no editor, picker or metadata state is touched.
+        // 공통 헤더 장식만 적용하며 작성기·Picker·메타데이터 상태는 바꾸지 않는다.
         const modalHeaderCss = `
     .dialog .aru-modal-header{--aru-header-art:128px;display:grid;grid-template-columns:minmax(0,1fr) var(--aru-header-art) auto;align-items:center;gap:16px;padding:12px 20px;flex-shrink:0;box-sizing:border-box}
     .dialog .aru-modal-heading{min-width:0;flex-basis:auto;overflow-wrap:anywhere}

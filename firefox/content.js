@@ -147,13 +147,6 @@
         "Description",
         "ImageDescription"
       ];
-      const _EDITOR_ROOT_SELECTORS = [
-        '[contenteditable="true"]',
-        ".cke_editable",
-        ".fr-element",
-        ".editor"
-      ];
-      const _BOOT_OBSERVER_TIMEOUT_MS = 6e4;
       const WALK_MAX_DEPTH = 10;
       let uploadAttribution = null;
       const handledFileEvents = /* @__PURE__ */ new WeakSet();
@@ -644,29 +637,6 @@
         }
       }
       __name(safeJsonParse, "safeJsonParse");
-      function pushIfString(arr, v) {
-        if (typeof v === "string") {
-          const t = v.trim();
-          if (t.length > 0) {
-            arr.push(t);
-          }
-        }
-      }
-      __name(pushIfString, "pushIfString");
-      function _pushIfStringOrArray(arr, v) {
-        if (typeof v === "string") {
-          pushIfString(arr, v);
-          return;
-        }
-        if (Array.isArray(v)) {
-          for (const item of v) {
-            if (typeof item === "string") {
-              pushIfString(arr, item);
-            }
-          }
-        }
-      }
-      __name(_pushIfStringOrArray, "_pushIfStringOrArray");
       function uniqueOrdered(arr) {
         const seen = /* @__PURE__ */ new Set();
         const out = [];
@@ -828,13 +798,10 @@
       ].join(", ");
       const COMMENT_IMG_BUTTON_SELECTOR = ".common_img_button";
       const COMMENT_FILE_INPUT_SELECTOR = "input.common_img_input, input[type='file']";
-      const COMMENT_BOUND_DATASET_KEY = "aruSourceCommentBound";
       const COMMENT_FILE_BOUND_DATASET_KEY = "aruSourceFileBound";
-      const COMMENT_BUTTON_CLASS = "aru-source-caption-comment-button";
       const COMMENT_SOURCE_PREFIX = "출처:";
       const wrapperSourceMap = /* @__PURE__ */ new WeakMap();
       let readPageConfig = null;
-      let _cachedConfig = null;
       function resolveCommentWrapperForTextarea(textarea) {
         const outer = textarea.closest(".border_box.after_clear");
         if (outer) {
@@ -990,88 +957,6 @@
         return "ok";
       }
       __name(insertSourceIntoCommentTextarea, "insertSourceIntoCommentTextarea");
-      function handleCommentSourceButtonClick(textarea) {
-        console.log("[Aru Source Captioner] click: button clicked");
-        if (!(textarea instanceof HTMLTextAreaElement)) {
-          console.warn("[Aru Source Captioner] click: textarea reference is not a textarea");
-          return;
-        }
-        if (!document.contains(textarea)) {
-          console.warn("[Aru Source Captioner] click: textarea is detached from DOM, re-scanning...");
-          try {
-            setupCommentSourceCaptioner();
-          } catch (err) {
-            console.debug("[Aru Source Captioner] click: re-scan failed:", err);
-          }
-          return;
-        }
-        const wrapper = resolveCommentWrapperForTextarea(textarea);
-        const savedSource = wrapper ? wrapperSourceMap.get(wrapper) : null;
-        if (!savedSource) {
-          console.log("[Aru Source Captioner] click: no extracted source — image not attached or has no Aru metadata");
-          try {
-            alert("이미지에 출처 metadata가 없습니다.\nAru Archive로 처리한 이미지를 댓글에 첨부해 주세요.");
-          } catch {
-          }
-          return;
-        }
-        console.log("[Aru Source Captioner] click: using stored source =", savedSource);
-        const sourceText = buildCommentSourceText(savedSource);
-        const result2 = insertSourceIntoCommentTextarea(textarea, sourceText);
-        console.log("[Aru Source Captioner] click: insertion result =", result2);
-      }
-      __name(handleCommentSourceButtonClick, "handleCommentSourceButtonClick");
-      function _injectCommentSourceButton(wrapper) {
-        if (!(wrapper instanceof HTMLElement)) {
-          return false;
-        }
-        if (wrapper.dataset[COMMENT_BOUND_DATASET_KEY] === "1") {
-          console.log("[Aru Source Captioner] inject: skipped (already bound)", wrapper);
-          return false;
-        }
-        const textarea = wrapper.querySelector(COMMENT_TEXTAREA_SELECTOR);
-        if (!(textarea instanceof HTMLTextAreaElement)) {
-          console.log("[Aru Source Captioner] inject: skipped (no textarea)", wrapper);
-          return false;
-        }
-        if (wrapper.querySelector("." + COMMENT_BUTTON_CLASS)) {
-          wrapper.dataset[COMMENT_BOUND_DATASET_KEY] = "1";
-          console.log("[Aru Source Captioner] inject: skipped (button already in this wrapper)", wrapper);
-          return false;
-        }
-        const imgButton = wrapper.querySelector(COMMENT_IMG_BUTTON_SELECTOR);
-        const button = document.createElement("button");
-        button.type = "button";
-        button.className = COMMENT_BUTTON_CLASS;
-        button.textContent = "출처 추가";
-        button.title = "현재 게시글 URL을 댓글에 출처로 추가합니다";
-        button.dataset.aruSourceCommentButton = "1";
-        button.addEventListener("click", (ev) => {
-          try {
-            ev.preventDefault();
-          } catch {
-          }
-          try {
-            ev.stopPropagation();
-          } catch {
-          }
-          handleCommentSourceButtonClick(textarea);
-        });
-        try {
-          if (imgButton instanceof HTMLElement) {
-            imgButton.after(button);
-          } else {
-            textarea.after(button);
-            console.log("[Aru Source Captioner] inject: used textarea fallback (no .common_img_button)", { wrapper, textarea });
-          }
-        } catch (err) {
-          console.debug("[Aru Source Captioner] comment button insert failed:", err);
-          return false;
-        }
-        console.log("[Aru Source Captioner] inject: button added", { wrapper });
-        return true;
-      }
-      __name(_injectCommentSourceButton, "_injectCommentSourceButton");
       function hookCommentFileInput(wrapper, config) {
         if (!(wrapper instanceof HTMLElement)) {
           return false;
@@ -1501,7 +1386,6 @@
           exifrAvailable: typeof exifr !== "undefined"
         });
         const config = await loadConfig();
-        _cachedConfig = config;
         if (!config.enabled) {
           console.info("[Aru Source Captioner] disabled — skipping content script");
           return;

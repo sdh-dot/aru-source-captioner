@@ -16,7 +16,6 @@ export function installFirefoxContent({ environment = defaultEnvironment, depend
         ? (...args) => environment.clearInterval(...args)
         : undefined;
     let attribution = createModuleScope(dependencies.attribution, ["Controller"], []);
-    // Aru Source Captioner — content script
     //
     // Phase 2B: 실 구현.
     // - 사용자가 input[type=file]에서 이미지를 선택하면 exifr로 EXIF/XMP/IPTC/UserComment를 파싱.
@@ -25,7 +24,7 @@ export function installFirefoxContent({ environment = defaultEnvironment, depend
     // - 업로드 순서와 무관한 정확 파일명/속성 검증. 중복·불명확한 대응은 자동 기재하지 않는다.
     // - 안전한 URL이면 부모 <p> 바로 다음에 출처 캡션 <p>를 DOM API로 삽입.
     //
-    // Phase 1 정책(16개 + DOM 관찰 8항)은 docs/phase1-design.md 단일 출처를 따른다.
+    // 저장 태그·출처 정책은 각 검증 함수와 브라우저 설정에서 유지한다.
     //
     // 절대 규칙:
     //   - innerHTML / outerHTML / insertAdjacentHTML 사용 금지.
@@ -58,13 +57,6 @@ export function installFirefoxContent({ environment = defaultEnvironment, depend
             "Description",
             "ImageDescription",
         ];
-        const _EDITOR_ROOT_SELECTORS = [
-            '[contenteditable="true"]',
-            ".cke_editable",
-            ".fr-element",
-            ".editor",
-        ];
-        const _BOOT_OBSERVER_TIMEOUT_MS = 60000;
         const WALK_MAX_DEPTH = 10;
         let uploadAttribution = null;
         const handledFileEvents = new WeakSet();
@@ -109,12 +101,7 @@ export function installFirefoxContent({ environment = defaultEnvironment, depend
         }
         function loadConfig() {
             return new Promise((resolve) => {
-                // Defensive: chrome.storage.sync may be undefined in the content script
-                // context if the "storage" permission was revoked at runtime, if the
-                // extension was reloaded but the page wasn't, or if a transient race
-                // strips chrome.storage before init runs. In any such case we fall back
-                // to defaults so init() never throws and the rest of the captioner
-                // (button injection, observers) keeps working.
+                // 권한 회수·확장 재로드 중에는 storage가 없을 수 있어 기본값으로 나머지 기능의 초기화를 유지한다.
                 try {
                     if (!isChromeStorageSyncAvailable()) {
                         console.warn("[Aru Source Captioner] chrome.storage.sync unavailable — using default options");
@@ -429,9 +416,9 @@ export function installFirefoxContent({ environment = defaultEnvironment, depend
         }
         // Pixiv 파일명에서 artwork URL을 생성한다.
         // 지원 패턴:
-        //   112278708_p0_master1200.jpg  → https://www.pixiv.net/artworks/112278708
-        //   112278708_p0.jpg             → https://www.pixiv.net/artworks/112278708
-        //   112278708.jpg                → https://www.pixiv.net/artworks/112278708
+        // 파일명 예: 112278708_p0_master1200.jpg  → https://www.pixiv.net/artworks/112278708
+        // 파일명 예: 112278708_p0.jpg             → https://www.pixiv.net/artworks/112278708
+        // 파일명 예: 112278708.jpg                → https://www.pixiv.net/artworks/112278708
         //   pixiv_112278708_p0_master1200.jpg  → (prefix 포함)
         //   illust_112278708_p0_master1200.png → (prefix 포함)
         //   C:\Downloads\112278708_p0_master1200.jpg → (Windows 경로 포함)
@@ -637,27 +624,6 @@ export function installFirefoxContent({ environment = defaultEnvironment, depend
                 return null;
             }
         }
-        function pushIfString(arr, v) {
-            if (typeof v === "string") {
-                const t = v.trim();
-                if (t.length > 0) {
-                    arr.push(t);
-                }
-            }
-        }
-        function _pushIfStringOrArray(arr, v) {
-            if (typeof v === "string") {
-                pushIfString(arr, v);
-                return;
-            }
-            if (Array.isArray(v)) {
-                for (const item of v) {
-                    if (typeof item === "string") {
-                        pushIfString(arr, item);
-                    }
-                }
-            }
-        }
         function uniqueOrdered(arr) {
             const seen = new Set();
             const out = [];
@@ -735,7 +701,7 @@ export function installFirefoxContent({ environment = defaultEnvironment, depend
             const Controller = attribution?.Controller;
             if (!Controller) {
                 return null;
-            } // No unverified/FIFO fallback when the module is unavailable.
+            } // 대응 모듈이 없으면 파일 선택 순서만으로 출처를 추정하지 않는다.
             uploadAttribution = new Controller({
                 document,
                 parse: (file) => parseSourceFromFile(file, {
@@ -794,7 +760,6 @@ export function installFirefoxContent({ environment = defaultEnvironment, depend
         // 매칭되지만 동작이 다르다. URL pathname으로 명확히 분기한다.
         //
         //   write: /community/board/{boardId}/write 등
-        //   read:  /community/board/{boardId}/read/{postId}
         //
         // read 페이지에서는 write용 file input / editor observer를 띄우지 않고,
         // 댓글 영역에 "출처 추가" 버튼만 주입한다.
@@ -861,9 +826,7 @@ export function installFirefoxContent({ environment = defaultEnvironment, depend
         ].join(", ");
         const COMMENT_IMG_BUTTON_SELECTOR = ".common_img_button";
         const COMMENT_FILE_INPUT_SELECTOR = "input.common_img_input, input[type='file']";
-        const COMMENT_BOUND_DATASET_KEY = "aruSourceCommentBound";
         const COMMENT_FILE_BOUND_DATASET_KEY = "aruSourceFileBound";
-        const COMMENT_BUTTON_CLASS = "aru-source-caption-comment-button";
         const COMMENT_SOURCE_PREFIX = "출처:";
         // wrapper(HTMLElement) -> 가장 최근에 추출/검증 통과한 source URL(string).
         // 파일 input이 다시 변경되면 갱신된다. Map이 아니라 WeakMap이라 wrapper가
@@ -878,7 +841,6 @@ export function installFirefoxContent({ environment = defaultEnvironment, depend
         // 글쓰기 페이지의 파일 change 이벤트는 attachFileInputListeners(config) 클로저 안에
         // config를 가지지만, 모바일 직접 삽입 경로는 handleSelectedImageFiles 스코프에서
         // config가 필요하다. 여기에 캐시해 두어 항상 유효한 config를 참조할 수 있게 한다.
-        let _cachedConfig = null;
         // textarea로부터 외곽 wrapper(.common_img_button을 sibling으로 가진 컨테이너)를
         // 우선순위대로 단계별 closest()로 찾는다. closest()를 OR로 묶으면 .common_input_wrapper
         // 같은 직계 부모에서 멈춰 .common_img_button(외곽 wrapper의 자식이며 inner wrapper의
@@ -1047,106 +1009,6 @@ export function installFirefoxContent({ environment = defaultEnvironment, depend
             applyTextareaValue(textarea, newValue);
             console.log("[Aru Source Captioner] insert: completed successfully");
             return "ok";
-        }
-        function handleCommentSourceButtonClick(textarea) {
-            console.log("[Aru Source Captioner] click: button clicked");
-            if (!(textarea instanceof HTMLTextAreaElement)) {
-                console.warn("[Aru Source Captioner] click: textarea reference is not a textarea");
-                return;
-            }
-            // textarea가 detached됐는지 (DOM에서 사라졌다가 다시 생기는 케이스) 검증한다.
-            if (!document.contains(textarea)) {
-                console.warn("[Aru Source Captioner] click: textarea is detached from DOM, re-scanning...");
-                try {
-                    setupCommentSourceCaptioner();
-                }
-                catch (err) {
-                    console.debug("[Aru Source Captioner] click: re-scan failed:", err);
-                }
-                return;
-            }
-            // 정책: 출처는 첨부 이미지의 Aru Archive 메타데이터(artwork_url 등)에서만 가져온다.
-            // 게시글 page URL(location.href)은 fallback으로 사용하지 않는다.
-            // (search_type, #cmt 등 변동 fragment를 출처로 박는 사고 방지)
-            const wrapper = resolveCommentWrapperForTextarea(textarea);
-            const savedSource = wrapper ? wrapperSourceMap.get(wrapper) : null;
-            if (!savedSource) {
-                console.log("[Aru Source Captioner] click: no extracted source — image not attached or has no Aru metadata");
-                try {
-                    alert("이미지에 출처 metadata가 없습니다.\nAru Archive로 처리한 이미지를 댓글에 첨부해 주세요.");
-                }
-                catch {
-                    /* noop — 일부 브라우저/iframe 환경에서 alert이 차단될 수 있다 */
-                }
-                return;
-            }
-            console.log("[Aru Source Captioner] click: using stored source =", savedSource);
-            const sourceText = buildCommentSourceText(savedSource);
-            const result = insertSourceIntoCommentTextarea(textarea, sourceText);
-            console.log("[Aru Source Captioner] click: insertion result =", result);
-        }
-        function _injectCommentSourceButton(wrapper) {
-            if (!(wrapper instanceof HTMLElement)) {
-                return false;
-            }
-            if (wrapper.dataset[COMMENT_BOUND_DATASET_KEY] === "1") {
-                console.log("[Aru Source Captioner] inject: skipped (already bound)", wrapper);
-                return false;
-            }
-            const textarea = wrapper.querySelector(COMMENT_TEXTAREA_SELECTOR);
-            if (!(textarea instanceof HTMLTextAreaElement)) {
-                console.log("[Aru Source Captioner] inject: skipped (no textarea)", wrapper);
-                return false;
-            }
-            // 이미 동일 wrapper에 주입된 적이 있으면 (DOM 재구성 등) 추가 주입 방지.
-            // 일반 댓글과 대댓글은 각각 독립된 wrapper를 가지므로 page-level dedupe는
-            // 하지 않는다 — 첫 wrapper에 button이 들어가면 대댓글 wrapper가 영원히
-            // skip되는 사고를 막기 위함이다. wrapper-level guard만 유지한다.
-            if (wrapper.querySelector("." + COMMENT_BUTTON_CLASS)) {
-                wrapper.dataset[COMMENT_BOUND_DATASET_KEY] = "1";
-                console.log("[Aru Source Captioner] inject: skipped (button already in this wrapper)", wrapper);
-                return false;
-            }
-            const imgButton = wrapper.querySelector(COMMENT_IMG_BUTTON_SELECTOR);
-            const button = document.createElement("button");
-            button.type = "button";
-            button.className = COMMENT_BUTTON_CLASS;
-            button.textContent = "출처 추가";
-            button.title = "현재 게시글 URL을 댓글에 출처로 추가합니다";
-            button.dataset.aruSourceCommentButton = "1";
-            button.addEventListener("click", (ev) => {
-                // 사이트의 form submit / 다른 핸들러 트리거를 막는다.
-                try {
-                    ev.preventDefault();
-                }
-                catch {
-                    /* noop */
-                }
-                try {
-                    ev.stopPropagation();
-                }
-                catch {
-                    /* noop */
-                }
-                handleCommentSourceButtonClick(textarea);
-            });
-            try {
-                // 1순위: .common_img_button 옆에 삽입.
-                // 2순위: textarea 직후에 삽입 (Ruliweb DOM 변형 대응).
-                if (imgButton instanceof HTMLElement) {
-                    imgButton.after(button);
-                }
-                else {
-                    textarea.after(button);
-                    console.log("[Aru Source Captioner] inject: used textarea fallback (no .common_img_button)", { wrapper, textarea });
-                }
-            }
-            catch (err) {
-                console.debug("[Aru Source Captioner] comment button insert failed:", err);
-                return false;
-            }
-            console.log("[Aru Source Captioner] inject: button added", { wrapper });
-            return true;
         }
         // 첨부된 이미지 file input에서 첫 번째 이미지의 Aru Archive metadata를 파싱하여
         // 안전한 source URL로 정제한 뒤 wrapperSourceMap에 저장하고, textarea에 자동으로
@@ -1325,7 +1187,6 @@ export function installFirefoxContent({ environment = defaultEnvironment, depend
         }
         // ---------------- 루리웹 AI 제한 게시글 열기 ----------------
         //
-        // options.ruliwebAiRevealMode:
         //   "off"          (기본) — 아무것도 하지 않음.
         //   "click_overlay"— #board_read .board_main_view 중앙을 elementFromPoint로
         //                    안전하게 클릭. a/button/input 등 내부면 중단.
@@ -1643,7 +1504,6 @@ export function installFirefoxContent({ environment = defaultEnvironment, depend
                 exifrAvailable: typeof exifr !== "undefined",
             });
             const config = await loadConfig();
-            _cachedConfig = config;
             if (!config.enabled) {
                 console.info("[Aru Source Captioner] disabled — skipping content script");
                 return;

@@ -101,3 +101,9 @@ Native Host가 필요한 다운로드 후 메타데이터 기록은 별도의 Ar
 ## 라이선스
 
 자체 소스·문서·직접 생성한 기하학 PNG에는 [MIT License](LICENSE)를 적용합니다. 이 라이선스는 제3자 저작물·캐릭터 에셋·외부 아이콘팩에 적용되지 않습니다. exifr의 원래 MIT 고지와 Pretendard의 SIL OFL 1.1 조건은 별도로 유지합니다. [제3자 고지](THIRD_PARTY_NOTICES.md)와 [캐릭터 에셋 고지](docs/CHARACTER-ASSETS-NOTICE.md)를 확인하세요.
+
+## WXT·TypeScript 통합 개발
+
+현재 로컬 통합 원본은 `src/**/*.ts`, 실행 진입점은 `entrypoints/`다. `docs/source/**/*.mjs`와 Firefox·Whale classic JS는 호환 빌드 출력이므로 직접 편집하지 않는다. `npm ci --ignore-scripts` 후 `npm run prepare:wxt`, `npm run build`, `npm run typecheck`로 확인한다. `npm run dev`는 Chromium, `npm run dev:firefox`는 Firefox 개발 실행이다.
+
+[WXT 통합 보고서](docs/architecture/wxt-unification-report.md), [공개 API와 연결 안내](docs/architecture/esm-wxt-integration.md), [소스 구조](src/README.md)를 확인한다. 정리 기준은 [저장소 정리 보고서](docs/maintenance/repository-cleanup-report.md), [소스 품질 검토](docs/maintenance/source-quality-review.md), [단계별 계획](docs/maintenance/refactoring-plan.md)에 보존했다.

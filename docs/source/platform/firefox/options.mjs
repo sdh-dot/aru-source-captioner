@@ -3,7 +3,6 @@ import { defaultEnvironment, } from "../../runtime/contracts.mjs";
 // 브라우저별 기존 초기화·저장 키·사용자 설정과 이벤트 계약을 유지한다.
 export function installFirefoxOptions({ environment = defaultEnvironment, dependencies: _dependencies = {}, } = {}) {
     const { document, chrome, console } = environment;
-    // Aru Source Captioner — options page script
     //
     // Phase 2A: chrome.storage.sync 기반 옵션 로드/저장 구현.
     // - DOMContentLoaded 시점에 현재 설정을 폼에 반영.

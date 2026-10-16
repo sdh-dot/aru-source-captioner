@@ -26,7 +26,7 @@ export function createIconsCatalog({ environment = defaultEnvironment, dependenc
         "MediaBudget",
         "CatalogSources",
     ], ["Catalog", "CatalogView", "MediaBudget", "CatalogSources"]);
-    /* Source catalog only. Favorites remain a live view of the native menu, never a new store. */
+    // 즐겨찾기는 사이트 메뉴의 현재 상태를 읽으며 별도 저장소에 복제하지 않는다.
     const initializeIconsCatalog = function (_global) {
         "use strict";
         const A = (icons = icons || {}), MAX_ROWS = 16, ROW_HEIGHT = 76, MAX_INDEXED = 6;
@@ -110,7 +110,7 @@ export function createIconsCatalog({ environment = defaultEnvironment, dependenc
         function favorites(panel) {
             const seen = new Set(), list = [];
             for (const node of panel?.querySelectorAll(".icon_data_show_target[onclick]") || []) {
-                // Native recommendation entries lack this marker. Never label them as the user's favorites.
+                // 즐겨찾기 제거 표시가 없는 사이트 추천 항목을 사용자의 즐겨찾기로 분류하지 않는다.
                 if (![...(node.parentElement?.querySelectorAll("[onclick]") || [])].some((n) => /^\s*(?:window\.)?app\.comment_icon_pick_remove\(/.test(n.getAttribute("onclick") || ""))) {
                     continue;
                 }
@@ -217,7 +217,7 @@ export function createIconsCatalog({ environment = defaultEnvironment, dependenc
                 this.indexed.clear();
             }
         }
-        // Limits concurrent src assignments and detaches pending media on group/pack changes.
+        // src 할당 수를 제한하고 그룹·팩 변경 시 대기 중 미디어를 해제한다.
         class MediaBudget {
             constructor(limit = 4) {
                 this.limit = limit;

@@ -11,7 +11,7 @@ export function createIconsBackground({ environment = defaultEnvironment, depend
         ? (...args) => environment.clearTimeout(...args)
         : undefined;
     let icons = createModuleScope(dependencies.icons, ["CacheProtocol"], ["CacheProtocol"]);
-    /* Public icon snapshots only; extension-origin IndexedDB. No fetch or Native Host calls. */
+    // 확장 출처 IndexedDB에는 공개 스냅샷만 저장하며 조회·Native Host 호출을 섞지 않는다.
     const initializeIconsBackground = function (root) {
         "use strict";
         const namespace = (icons = icons || {});
@@ -55,7 +55,7 @@ export function createIconsBackground({ environment = defaultEnvironment, depend
             value.code = code;
             return value;
         }
-        // Same wire representation as BrowserAdapter, including Chromium JSON message transport.
+        // Chromium JSON 메시지에서도 BrowserAdapter와 같은 원본 바이트 포맷을 사용한다.
         const BYTE_MARKER = "$aruIconsBytesV1";
         function carrierBytes(value, encode) {
             let nodes = 0;
@@ -223,7 +223,7 @@ export function createIconsBackground({ environment = defaultEnvironment, depend
                     ":" +
                     articleId);
             }
-            return boardId + ":" + articleId; // Preserve all existing keys and database records.
+            return boardId + ":" + articleId; // 기존 캐시 키와 저장 레코드를 그대로 읽을 수 있어야 한다.
         }
         function validPublicUrl(text) {
             if (typeof text !== "string" ||
@@ -250,7 +250,7 @@ export function createIconsBackground({ environment = defaultEnvironment, depend
                 return false;
             }
         }
-        // Limits are enforced before IDB is opened. The cache never accepts private options or arbitrary HTML.
+        // 저장소를 열기 전에 용량과 공개 데이터 규칙을 검사해 사용자 설정·본문 HTML 유입을 막는다.
         function bytesArray(value) {
             return (ArrayBuffer.isView(value) &&
                 Object.prototype.toString.call(value) === "[object Uint8Array]");
@@ -327,7 +327,7 @@ export function createIconsBackground({ environment = defaultEnvironment, depend
             visit(value, 0);
             return value;
         }
-        // Estimate public serialized data plus actual decoded byte payloads; IDB's internal overhead is browser-specific.
+        // 직렬화 크기에 원본 바이트를 더한다. IndexedDB 내부 오버헤드는 브라우저마다 다르다.
         function byteSize(value) {
             let binaryBytes = 0;
             const json = JSON.stringify(value, (_, item) => {
@@ -374,7 +374,7 @@ export function createIconsBackground({ environment = defaultEnvironment, depend
                 throw error("INVALID_REQUEST");
             }
             const acquiredAt = Date.now();
-            // JSON public model and byte-preserving original carriers are deliberately separate.
+            // 공개 JSON과 원문 바이트 carrier를 분리해 재직렬화로 digest가 바뀌지 않게 한다.
             const record = {
                 cacheKey: key,
                 snapshot: JSON.parse(JSON.stringify(payload.snapshot)),
@@ -484,7 +484,7 @@ export function createIconsBackground({ environment = defaultEnvironment, depend
                         ? error("CACHE_CANCELLED")
                         : explicitError || classify(tx.error));
                 };
-                tx.onerror = () => { }; // onabort is the authoritative atomic failure.
+                tx.onerror = () => { }; // 원자적 실패 처리는 onabort에서 한 번만 확정한다.
                 try {
                     run(tx.objectStore("packSnapshots"), (value) => {
                         result = value;
@@ -567,7 +567,7 @@ export function createIconsBackground({ environment = defaultEnvironment, depend
                     const candidates = request.result.filter((item) => item.cacheKey !== record.cacheKey);
                     let bytes = candidates.reduce((sum, item) => sum + item.byteSize, record.byteSize);
                     let count = candidates.length + 1;
-                    // Stale public snapshots first, then least recently used. No private store is opened.
+                    // 만료된 공개 스냅샷부터 제거하고 이후 최근 사용 시각을 따른다. 개인 저장소는 열지 않는다.
                     candidates.sort((a, b) => Number(a.expiresAt > Date.now()) -
                         Number(b.expiresAt > Date.now()) ||
                         a.lastAccess - b.lastAccess);

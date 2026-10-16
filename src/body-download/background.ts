@@ -48,7 +48,7 @@ export function createDownloadBackground({
       return run;
     };
     async function menu() {
-      // Idempotent create/update works across Chromium service-worker lifetimes.
+      // 서비스 워커가 다시 시작되어도 같은 메뉴 ID를 갱신해 중복 등록을 피한다.
       const routes = ["https://bbs.ruliweb.com/community/board/98/read/*"];
       if (
         api.runtime
@@ -139,7 +139,7 @@ export function createDownloadBackground({
             return;
           }
         } catch (_) {}
-        // Preserve the previous incomplete run without replaying image requests.
+        // 이전 미완료 기록은 보존하되 이미지 요청을 자동 재실행하지 않는다.
         for (const image of prior.images) {
           if (
             image.downloadId == null ||
@@ -229,7 +229,7 @@ export function createDownloadBackground({
     api.contextMenus.onClicked.addListener((info: any, tab: any) => {
       serialize(() => clicked(info, tab)).catch(async (err) => {
         console.warn("[Aru body download]", err.code || "ERROR", err.message);
-        // Keep errors visible without collecting the entire page or starting a download.
+        // 실패는 관리 화면에 표시하며 페이지 전체 수집이나 다운로드로 대체하지 않는다.
         const id = root.crypto.randomUUID();
         const job = {
           id,

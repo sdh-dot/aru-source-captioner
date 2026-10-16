@@ -32,7 +32,7 @@ export function createBundleSearch({
     ],
   );
   let icons = createModuleScope(dependencies.icons, ["Metadata"], []);
-  /* Native board_list.js title-search parameters; HTML only, same-origin. */
+  // 제목 검색은 사이트 board_list.js의 매개변수를 따르며 같은 출처의 HTML만 읽는다.
   const initializeBoardSearch = function (g: RuntimeEnvironment) {
     "use strict";
     const B = bundle;

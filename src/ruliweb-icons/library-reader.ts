@@ -224,9 +224,7 @@ export function createIconsLibraryReader({
             rawMetadata: parsed.rawMetadata,
           });
         } catch (error) {
-          this.check(
-            signal,
-          ); /* Cache unavailable: still return the actual public model. */
+          this.check(signal); // 캐시를 쓸 수 없어도 실제 공개 자료를 읽는 경로는 유지한다.
         }
         return {
           pack,

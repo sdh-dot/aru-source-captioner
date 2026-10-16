@@ -5,7 +5,6 @@ import { createModuleScope } from "../../runtime/module-scope.mjs";
 export function installFirefoxBackground({ environment = defaultEnvironment, dependencies = {}, } = {}) {
     const { chrome, console } = environment;
     let downloads = createModuleScope(dependencies.downloads, ["ownsDownload"], []);
-    // Aru Source Captioner — background service worker
     //
     // Phase 2A: 기본 옵션 seed 구현.
     // - 신규 설치 또는 업데이트 시 chrome.storage.sync에 누락된 키만 기본값으로 채운다.
@@ -51,7 +50,6 @@ export function installFirefoxBackground({ environment = defaultEnvironment, dep
         // install / update / chrome_update / shared_module_update 모두에 대해 누락 키만 보강한다.
         seedMissingOptions();
     });
-    // ─── Download → Native Host metadata embedding ───────────────────────────────
     // chrome.downloads는 PC Firefox에서만 사용 가능하다.
     // Android Firefox에서는 API 자체가 없으므로 아래 guard가 자연히 처리한다.
     const NATIVE_HOST_ID = "net.aru_archive.host";
@@ -71,7 +69,7 @@ export function installFirefoxBackground({ environment = defaultEnvironment, dep
     function _onDownloadComplete(item) {
         if (downloads?.ownsDownload(item)) {
             return;
-        } // Preserve batch original bytes; do not invoke Native Host.
+        } // 일괄 다운로드 원본 바이트를 보존하기 위해 이 경로에서는 Native Host를 호출하지 않는다.
         const ext = _getFileExt(item.filename);
         if (!_IMAGE_EXTS.has(ext)) {
             return;

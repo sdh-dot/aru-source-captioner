@@ -11,7 +11,6 @@ export function installFirefoxOptions({
 }: FactoryOptions = {}) {
   const { document, chrome, console } = environment;
 
-  // Aru Source Captioner — options page script
   //
   // Phase 2A: chrome.storage.sync 기반 옵션 로드/저장 구현.
   // - DOMContentLoaded 시점에 현재 설정을 폼에 반영.

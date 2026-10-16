@@ -47,7 +47,7 @@ function createIconBase(environment?: RuntimeEnvironment | undefined) {
   });
   return icons;
 }
-/** @param {{ environment?: typeof globalThis, metrics?: ReturnType<typeof import("../performance/metrics.mjs").createPerformanceMetrics> | null }} options */
+
 function createIconReader({
   environment = defaultEnvironment,
   metrics = null,

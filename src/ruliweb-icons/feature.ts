@@ -38,7 +38,7 @@ export function createIconsFeature(
     ],
     ["IconFeature", "feature"],
   );
-  /* Independent opt-in lifecycle. Existing caption/download listeners are untouched. */
+
   const initializeIconsFeature = function (global: RuntimeEnvironment) {
     "use strict";
     const API = (icons = icons || {});
@@ -206,7 +206,7 @@ export function createIconsFeature(
         );
       }
       onClick(event: MouseEvent) {
-        // Phase 2A's native button retains its own behavior. Aru entries own the extension picker.
+        // 사이트 버튼의 기존 동작과 확장 Picker의 실행 진입점을 구분한다.
         if (API.ComposerController) {
           return;
         }
@@ -221,7 +221,7 @@ export function createIconsFeature(
         if (!articleId || !panel) {
           return;
         }
-        // The original event still reaches the site's own listener. No preventDefault/bridge.
+        // 기존 이벤트가 사이트 리스너에 도달하도록 기본 동작을 취소하거나 브리지로 대체하지 않는다.
         const closingSame =
           this.current?.articleId === articleId &&
           this.current?.panel === panel;
@@ -287,12 +287,12 @@ export function createIconsFeature(
                 "#editor_common_write_wrapper .comment_icon",
               )
             : entry.root.querySelector(".comment_icon");
-        // Let the site's normal button load its own catalog/module; never call the denied API directly.
-        // Viewing favorites is independent of whether an insertion session was captured.
+        // 사이트 버튼이 자체 목록·모듈을 준비하도록 두며 거부된 내부 API를 직접 호출하지 않는다.
+        // 삽입 세션을 확보하지 못해도 즐겨찾기 조회는 가능해야 한다.
         if (entry.kind !== "post" && panel && !panel.children.length) {
           entry.anchor.click();
         }
-        // A composer target is independent of its media source. Never auto-select the current article.
+        // 작성기 대상과 미디어 출처는 별개이므로 현재 게시글을 출처로 자동 선택하지 않는다.
         await this.open({
           articleId: null,
           boardId: "98",
@@ -320,8 +320,8 @@ export function createIconsFeature(
         if (!this.current || !this.picker) {
           return Promise.resolve({ ok: false });
         }
-        // A repeated tap on the same loading entry joins its existing task. A
-        // different entry still cancels the old request and restores its context.
+        // 같은 항목을 다시 누르면 진행 중인 조회를 재사용한다.
+        // 다른 항목으로 바뀌면 이전 요청을 취소하고 해당 문맥을 복원한다.
         let ref;
         try {
           ref = API.CatalogSources
@@ -473,7 +473,7 @@ export function createIconsFeature(
         this.stopSession(true);
         this.current = context;
         context.readBudget = readBudget;
-        // Current-pack reads retain the existing collector; all-pack UI uses the bounded library reader.
+        // 현재 팩 수집과 전체 팩 조회를 구분하며 전체 조회에는 수집 상한을 적용한다.
         if (API.LibrarySearchEngine && API.LibraryPackReader) {
           this.librarySearch = new API.LibrarySearchEngine({
             reader: new API.LibraryPackReader({
@@ -879,8 +879,8 @@ export function createIconsFeature(
                 normal &&
                 !!context.panel &&
                 cachedPack.collectionMode === "article-body-v1";
-              // Read entries have the current DOM: an old native/body NORMAL cache must not
-              // mask missing/changed metadata or perpetuate an empty list.
+              // 읽기 화면에서는 현재 DOM의 태그 상태를 우선한다.
+              // 이전 NORMAL 캐시가 변경된 메타데이터나 빈 목록을 계속 가리지 않게 한다.
               const readCurrent = normal && !context.panel;
               const readAttributes =
                 cachedPack?.kind === "BUNDLE" &&
@@ -937,7 +937,7 @@ export function createIconsFeature(
                   fetchedAt: cached.acquiredAt,
                   busy: false,
                 });
-                // Cache cannot establish current native availability or current source verification.
+                // 캐시만으로 현재 네이티브 목록의 준비 상태나 출처 검증 완료를 판단하지 않는다.
                 if (transactional) {
                   ensure();
                   commit(pendingPack, pendingData);
@@ -1171,7 +1171,7 @@ export function createIconsFeature(
                 },
               });
               ensure();
-              // A new pack identity rebuilds the catalog's previously computed index too.
+              // 팩 객체가 바뀌면 목록에 저장된 검색 인덱스도 다시 구성한다.
               pack = {
                 ...pack,
                 attributeReaderVersion: 2,
@@ -1249,7 +1249,7 @@ export function createIconsFeature(
             }
             return;
           }
-          // Existing v1 partial source verification remains a warning, not a new pack rejection policy.
+          // 기존 v1의 부분 출처 검증은 경고로 유지하며 새로운 팩 거절 조건으로 바꾸지 않는다.
           const completedProgress = {
             ...(latestProgress as DynamicApi | null),
             phase: "ready",
@@ -1323,7 +1323,7 @@ export function createIconsFeature(
       }
     }
     API.IconFeature = IconFeature;
-    // All expensive work is gated by both stored toggles; loading this file creates no site UI.
+    // 저장된 두 설정이 모두 켜진 경우에만 수집하며 import만으로 사이트 UI를 만들지 않는다.
     if (
       global.document &&
       API.BrowserAdapter &&

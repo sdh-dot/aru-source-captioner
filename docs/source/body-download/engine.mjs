@@ -162,7 +162,7 @@ export function createDownloadEngine({ environment = defaultEnvironment, depende
                 const blobUrl = root.URL.createObjectURL(new Blob([bytes], { type: mime }));
                 let id = null, changed, timer, abort;
                 try {
-                    // Listen before starting: small local blobs may finish before download() resolves.
+                    // 작은 Blob은 download() 응답 전에 완료될 수 있어 변경 리스너부터 설치한다.
                     let wake = () => { };
                     changed = (delta) => {
                         if (delta.id === id) {
@@ -271,7 +271,7 @@ export function createDownloadEngine({ environment = defaultEnvironment, depende
                 if (job.status !== "prepared") {
                     throw D.error("STATE", "새 확인 화면에서 다운로드를 시작해 주세요. 자동 재개하지 않습니다.");
                 }
-                // Reserve before the asynchronous settings read so simultaneous starts cannot race.
+                // 비동기 설정 조회 전에 실행권을 확보해 동시 시작을 막는다.
                 this.running = true;
                 this.cancelled = false;
                 try {
@@ -392,7 +392,7 @@ export function createDownloadEngine({ environment = defaultEnvironment, depende
                     job.currentIndex = null;
                     job.finishedAt = new Date().toISOString();
                     await this.notify(job);
-                    // Cancellation ends image requests. Save only the local record for the already-approved run.
+                    // 취소 후에는 이미지 요청을 멈추고 승인한 실행의 로컬 기록만 저장한다.
                     await this.saveManifest(job);
                     return job;
                 }

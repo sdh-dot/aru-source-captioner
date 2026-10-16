@@ -351,8 +351,8 @@ export function createIconsLibrarySearch({ environment = defaultEnvironment, dep
                     };
                     await Promise.all(Array.from({ length: Math.min(this.concurrency, rows.length) }, worker));
                 };
-                // Hydrate all registered cache entries before starting slow public-page reads.
-                // Cache unavailability does not make an otherwise public pack inaccessible.
+                // 느린 공개 페이지 조회 전에 등록된 캐시 항목을 먼저 반영한다.
+                // 캐시 실패를 공개 팩 자체의 조회 실패로 취급하지 않는다.
                 try {
                     if (!refresh) {
                         await parallel(refs, async ([id, ref]) => {

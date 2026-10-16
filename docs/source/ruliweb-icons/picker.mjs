@@ -31,7 +31,6 @@ export function createIconsPicker({ environment = defaultEnvironment, dependenci
         "ComposerAdapter",
         "libraryFixedTags",
     ], ["isMouseDoubleClick", "iconTagLabels", "createPicker"]);
-    /* Aru Source Captioner: isolated icon library; unified virtual grid and native insertion. */
     const initializeIconsPicker = function (global) {
         "use strict";
         const api = (icons = icons || {});
@@ -55,7 +54,7 @@ export function createIconsPicker({ environment = defaultEnvironment, dependenci
         }
         api.isMouseDoubleClick = mouseDoubleClick;
         let nextPickerId = 0;
-        // Shared per-document lock: closing a picker restores the page's own overflow.
+        // 여러 Picker가 문서 잠금을 공유하며 마지막 창이 닫힐 때 원래 overflow를 복원한다.
         const scrollLocks = new WeakMap();
         function lockPage(doc) {
             let lock = scrollLocks.get(doc);
@@ -92,8 +91,8 @@ export function createIconsPicker({ environment = defaultEnvironment, dependenci
                 scrollLocks.delete(doc);
             };
         }
-        // Public image tags and dictionary tag IDs have separate meanings. Search-only
-        // keywords (names/aliases/carrier terms) are never presented as image tags.
+        // 이미지 공개 태그와 사전 태그 ID는 구분한다.
+        // 검색 전용 이름·별칭·carrier 단어를 이미지 태그로 표시하지 않는다.
         function iconTagLabels(icon, dictionary = new Map()) {
             return [
                 ...new Set([
@@ -137,7 +136,7 @@ export function createIconsPicker({ environment = defaultEnvironment, dependenci
             if (typeof value !== "string") {
                 return null;
             }
-            // Published packs pass the metadata URL validator. Data images exist only in local fixtures.
+            // 게시 팩은 메타데이터 URL 검증을 거치며 data 이미지 허용은 로컬 Fixture로 한정한다.
             if (/^data:image\/(?:png|gif|jpeg|webp|svg\+xml);/i.test(value)) {
                 return /^(?:127\.0\.0\.1|localhost)$/.test((global.location && global.location.hostname) || "")
                     ? value
@@ -393,7 +392,6 @@ export function createIconsPicker({ environment = defaultEnvironment, dependenci
             targetError.setAttribute("role", "alert");
             body.append(targetError);
             let targetValid = options.targetValid !== false;
-            let _catalogRef = null, _catalogPack = null;
             async function chooseCatalog(action) {
                 const result = await action();
                 if (lifecycle.isClosed) {
@@ -817,7 +815,7 @@ export function createIconsPicker({ environment = defaultEnvironment, dependenci
             let basePack = null, libraryResult = null, collectionKey = "", libraryFrame = 0;
             const projections = new WeakMap();
             let currentProgress = null;
-            // UI layout only: NORMAL/BUNDLE collection and metadata remain distinct.
+            // 표시 레이아웃을 공유해도 NORMAL·BUNDLE의 수집·메타데이터 규칙은 구분한다.
             const isGrid = () => true;
             function syncLayout() {
                 dialog.classList.toggle("bundle-view", isGrid());
@@ -918,7 +916,7 @@ export function createIconsPicker({ environment = defaultEnvironment, dependenci
                     code,
                     eventCode,
                 };
-                // Bounded, public-media-only diagnostics; never include editor/session data.
+                // 진단은 상한이 있는 공개 미디어 정보만 포함하며 작성기·세션 데이터를 담지 않는다.
                 const key = icon.id + ":" + stage;
                 mediaFailures.set(key, row);
                 if (mediaFailures.size > 100) {
@@ -976,8 +974,8 @@ export function createIconsPicker({ environment = defaultEnvironment, dependenci
                     cover.dataset.mediaState = "loading";
                     cover.setAttribute("aria-label", "동영상 썸네일 로딩 중");
                 }
-                // The common grid uses the existing BUNDLE visibility/request budget for both kinds.
-                // Legacy grouped presentation is retained only as an inactive compatibility branch.
+                // 공통 그리드에서는 두 팩 유형 모두 기존 BUNDLE의 가시성·요청 예산을 따른다.
+                // 그룹형 표시는 비활성 호환 분기로만 보존한다.
                 const capped = !preview &&
                     !isGrid() &&
                     options.catalogMode &&
@@ -1001,8 +999,8 @@ export function createIconsPicker({ environment = defaultEnvironment, dependenci
                     media.setAttribute("aria-label", (icon.name || "원본 아이콘") + ", 동영상");
                 }
                 else {
-                    // The virtual window and budget decide visibility before assigning src.
-                    // A selected preview must not wait for native lazy-load heuristics.
+                    // 가상 목록과 요청 예산이 표시 대상을 결정한 뒤에만 src를 할당한다.
+                    // 선택한 미리보기는 브라우저의 지연 로딩 판정을 기다리지 않는다.
                     media.loading =
                         preview || isGrid() ? "eager" : "lazy";
                     media.decoding = "async";
@@ -1272,7 +1270,7 @@ export function createIconsPicker({ environment = defaultEnvironment, dependenci
                     select(icon);
                     selection.scrollIntoView?.({ block: "nearest" });
                 });
-                // Sibling button avoids nested interactive elements. Same virtual item owns both.
+                // 카드 선택과 미리보기 버튼을 형제로 두어 중첩 버튼을 피하고 같은 가상 항목에 연결한다.
                 card.append(preview);
                 preview.addEventListener("click", (event) => event.stopPropagation());
                 preview.addEventListener("dblclick", (event) => event.stopPropagation());
@@ -1355,9 +1353,9 @@ export function createIconsPicker({ environment = defaultEnvironment, dependenci
                     return;
                 }
                 let remaining = MAX_CARDS;
-                // Count the new virtual windows, including cards built in detached fragments.
+                // 문서에 붙이기 전 fragment 카드도 새 가상 목록 예산에 포함한다.
                 const renderMedia = { animatedRemaining: 4 };
-                // Focused groups get their window first so keyboard navigation cannot lose its item to the DOM budget.
+                // 키보드 탐색 대상이 DOM 상한 때문에 사라지지 않도록 포커스 그룹을 먼저 구성한다.
                 const active = root.activeElement?.closest(".icon-card") || root.activeElement;
                 const ordered = contexts
                     .slice()
@@ -1369,7 +1367,7 @@ export function createIconsPicker({ environment = defaultEnvironment, dependenci
                         (Math.ceil((context.viewport.clientHeight || 248) / rowHeight) +
                             2)) || 2));
                     let resizedTop = null;
-                    // Keep the logical first visible item when responsive column count changes.
+                    // 반응형 열 수가 바뀌어도 처음 보이던 논리 항목 위치를 유지한다.
                     if (isGrid() &&
                         context.lastWindow &&
                         (context.columns !== nextColumns || context.rowHeight !== rowHeight)) {
@@ -1397,8 +1395,7 @@ export function createIconsPicker({ environment = defaultEnvironment, dependenci
                     const rows = Math.ceil(context.group.icons.length / context.columns);
                     const height = rows * rowHeight + 8;
                     context.content.style.height = height + "px";
-                    // Set the new content height first: real browsers otherwise clamp the
-                    // requested position to the old, shorter scroll range.
+                    // 브라우저가 이전 높이로 스크롤을 제한하지 않도록 새 콘텐츠 높이를 먼저 적용한다.
                     if (resizedTop !== null) {
                         context.viewport.scrollTop = resizedTop;
                     }
@@ -1416,7 +1413,7 @@ export function createIconsPicker({ environment = defaultEnvironment, dependenci
                         return;
                     }
                     const firstRow = Math.max(0, Math.floor(context.viewport.scrollTop / rowHeight) - 1);
-                    // Cover every visible row plus one row on each side, including the final partial row.
+                    // 마지막 미완성 행까지 보이는 모든 행과 앞뒤 한 행을 준비한다.
                     const lastRow = Math.min(rows, Math.ceil((context.viewport.scrollTop + context.viewport.clientHeight) /
                         rowHeight) + 1);
                     let first = firstRow * context.columns;
@@ -1453,8 +1450,8 @@ export function createIconsPicker({ environment = defaultEnvironment, dependenci
                         return;
                     }
                     context.lastWindow = key;
-                    // Keep overlapping cards (and their media requests) alive. Reuse requires
-                    // the same icon ID, index and column layout; never rebind an old image/tag.
+                    // 겹치는 카드를 재사용해 진행 중인 미디어 요청을 유지한다.
+                    // ID·인덱스·열 배치가 모두 같을 때만 재사용해 다른 이미지나 태그에 연결하지 않는다.
                     if (!isGrid()) {
                         pauseMedia(context.content);
                         const fragment = document.createDocumentFragment();
@@ -1530,7 +1527,7 @@ export function createIconsPicker({ environment = defaultEnvironment, dependenci
                             chip.dataset.tagId = tag.id;
                             chip.addEventListener("click", () => {
                                 cancelSearch();
-                                // A chip commits the current input, even if its debounce has not fired yet.
+                                // 검색 지연 타이머 전에도 태그 칩을 누르면 현재 입력을 반영한다.
                                 if (!composing) {
                                     state.query = input.value;
                                 }
@@ -1799,8 +1796,8 @@ export function createIconsPicker({ environment = defaultEnvironment, dependenci
                 const memberPack = library.packs.get(membership?.packKey)?.pack, memberIcon = memberPack?.icons[membership?.position] || row.icon;
                 const source = (memberPack?.sources || []).find((s) => s.sourceId === memberIcon.sourceId ||
                     String(s.articleId) === String(row.icon.origin?.articleId));
-                // Public tags may be fresher in another membership; category IDs belong to
-                // the current pack and must never leak from a merged BUNDLE membership.
+                // 공개 태그는 다른 팩에서 더 최근에 읽었을 수 있다.
+                // 분류 ID는 현재 팩에 속하므로 합친 BUNDLE의 다른 분류를 가져오지 않는다.
                 const icon = {
                     ...row.icon,
                     categoryIds: scope.value === "current"
@@ -1883,7 +1880,7 @@ export function createIconsPicker({ environment = defaultEnvironment, dependenci
                     storage: "팩을 저장하고 있어요.",
                     native: "아이콘 목록을 읽고 있어요.",
                 };
-                // Only reader-supplied counts are displayed; a progress bar without value is indeterminate.
+                // 판독기가 제공한 개수만 표시하며 전체 수를 모르면 진행률을 확정하지 않는다.
                 const processed = Number.isFinite(info.processed)
                     ? info.processed
                     : Number.isFinite(info.loaded)
@@ -1962,7 +1959,7 @@ export function createIconsPicker({ environment = defaultEnvironment, dependenci
                 const ordered = libraryResult.items
                     .map((row) => byIdentity.get(row.identity))
                     .filter(Boolean);
-                // Keep NORMAL categories while applying ranked order inside each category.
+                // NORMAL 분류는 유지하면서 각 분류 안에서 검색 순위를 적용한다.
                 if (!isGrid() && pack.categories.length) {
                     const groups = pack
                         .categories.map((category) => ({
@@ -2122,7 +2119,7 @@ export function createIconsPicker({ environment = defaultEnvironment, dependenci
                     indexed: library ? pack?.icons.length || 0 : index?.iconCount || 0,
                     query: state.query,
                     searchMatched: result.uniqueCount,
-                    // Virtualization intentionally mounts only a window of the logical result.
+                    // 가상 목록은 결과 일부만 DOM에 올리므로 렌더링 개수를 전체 결과로 오인하지 않는다.
                     displayedTags: [...matched].filter((id) => displayTags.get(id)?.length).length,
                     renderedCards: root.querySelectorAll(".icon-card").length,
                     renderedTaggedCards: [...root.querySelectorAll(".icon-tags")].filter((node) => node.textContent !== "태그 없음").length,
@@ -2241,8 +2238,6 @@ export function createIconsPicker({ environment = defaultEnvironment, dependenci
                 index = null;
                 displayTags.clear();
                 collectionDiagnostics = null;
-                _catalogRef = null;
-                _catalogPack = null;
                 selectedIconId = null;
                 result = { groups: [], uniqueCount: 0, membershipCount: 0 };
                 folds.forEach((item) => item.dispose());
@@ -2511,7 +2506,7 @@ export function createIconsPicker({ environment = defaultEnvironment, dependenci
                 }
                 previewCleanup();
                 previewState = { iconId: null, status: "none", code: null };
-                // Retry only this media, using the exact URL and no query rewriting.
+                // 해당 미디어만 같은 URL로 재시도하며 쿼리를 바꾸지 않는다.
                 for (const card of root.querySelectorAll(".icon-card")) {
                     if (card.dataset.iconId === icon.id &&
                         card.querySelector('[data-media-state="error"]')) {
@@ -2560,7 +2555,7 @@ export function createIconsPicker({ environment = defaultEnvironment, dependenci
             listen(prepare, "click", requestInsertion);
             listen(collapsedInsert, "click", requestInsertion);
             listen(root, "keydown", (event) => {
-                // Keep picker keystrokes out of the site's editor shortcuts while preserving input behavior.
+                // 입력은 유지하면서 Picker 키 이벤트가 사이트 작성기 단축키로 전파되지 않게 한다.
                 event.stopPropagation();
                 if (event.key === "Escape" && !event.isComposing) {
                     event.preventDefault();
@@ -2616,8 +2611,8 @@ export function createIconsPicker({ environment = defaultEnvironment, dependenci
             }
             initialFocusFrame = requestAnimationFrame(() => {
                 initialFocusFrame = 0;
-                // Do not steal a click/keyboard focus established before the first frame,
-                // or try to focus a catalog that a cached BUNDLE has already hidden.
+                // 첫 프레임 전에 사용자가 정한 포커스를 가져오지 않는다.
+                // 캐시된 BUNDLE이 이미 목록을 숨긴 경우 그 목록에 포커스를 주지 않는다.
                 if (!lifecycle.isClosed && !root.activeElement) {
                     (mobileInput()
                         ? catalogOpen
@@ -2665,8 +2660,6 @@ export function createIconsPicker({ environment = defaultEnvironment, dependenci
                     catalogView?.setEntries(entries, message, library?.packs);
                 },
                 setCatalogPack(ref, next) {
-                    _catalogRef = ref;
-                    _catalogPack = next;
                     catalogView?.setPack(ref, next);
                 },
                 setQuery(value) {
@@ -2703,8 +2696,6 @@ export function createIconsPicker({ environment = defaultEnvironment, dependenci
                     displayTags.clear();
                     collectionDiagnostics = null;
                     lastMetadataLog = "";
-                    _catalogRef = null;
-                    _catalogPack = null;
                     selectedIconId = null;
                     result = { groups: [], uniqueCount: 0, membershipCount: 0 };
                     columns.hidden = !!options.catalogMode && !library;

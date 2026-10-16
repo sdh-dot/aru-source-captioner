@@ -15,18 +15,18 @@ export function hasPngSignature(buffer) {
 }
 export function* parsePngItxtChunks(buffer) {
     const view = new DataView(buffer);
-    let offset = 8; // skip PNG signature
+    let offset = 8;
     // 각 chunk: length(4 BE) + type(4 ASCII) + data(length bytes) + crc(4) = 12 + length bytes
     while (offset + 12 <= buffer.byteLength) {
         const length = view.getUint32(offset, false);
         if (length > 0x7fffffff) {
             return;
-        } // sanity guard against malformed PNG
+        } // 비정상 길이로 버퍼 범위를 넘지 않게 한다.
         const dataStart = offset + 8;
         const dataEnd = dataStart + length;
         if (dataEnd + 4 > buffer.byteLength) {
             return;
-        } // truncated
+        }
         const t0 = view.getUint8(offset + 4);
         const t1 = view.getUint8(offset + 5);
         const t2 = view.getUint8(offset + 6);
@@ -38,14 +38,13 @@ export function* parsePngItxtChunks(buffer) {
         if (type === "IEND") {
             return;
         }
-        offset = dataEnd + 4; // skip CRC
+        offset = dataEnd + 4;
     }
 }
 export function parseItxtChunk(data) {
     if (!data || data.length < 6) {
         return null;
     }
-    // 1. keyword (1-79 bytes Latin-1, null-terminated)
     let kwEnd = -1;
     const maxKw = Math.min(data.length, 80);
     for (let i = 0; i < maxKw; i++) {
@@ -64,13 +63,11 @@ export function parseItxtChunk(data) {
     catch {
         return null;
     }
-    // 2. compression_flag (1 byte) + compression_method (1 byte)
     if (kwEnd + 2 >= data.length) {
         return null;
     }
     const compressionFlag = data[kwEnd + 1];
     const compressionMethod = data[kwEnd + 2];
-    // 3. language_tag (variable, null-terminated)
     let langEnd = -1;
     for (let i = kwEnd + 3; i < data.length; i++) {
         if (data[i] === 0) {
@@ -81,7 +78,6 @@ export function parseItxtChunk(data) {
     if (langEnd === -1) {
         return null;
     }
-    // 4. translated_keyword (variable, null-terminated)
     let tkwEnd = -1;
     for (let i = langEnd + 1; i < data.length; i++) {
         if (data[i] === 0) {
@@ -92,7 +88,6 @@ export function parseItxtChunk(data) {
     if (tkwEnd === -1) {
         return null;
     }
-    // 5. text (remainder)
     const textBytes = data.subarray(tkwEnd + 1);
     return { keyword, compressionFlag, compressionMethod, textBytes };
 }

@@ -2,7 +2,6 @@
 import { defaultEnvironment, } from "../runtime/contracts.mjs";
 // 업로드 출처 매칭 결과를 작성기 수명에 맞춰 연결하며 기존 이벤트 계약을 보존한다.
 import { createModuleScope } from "../runtime/module-scope.mjs";
-/** @param {{ environment?: typeof globalThis, dependencies?: object, metrics?: ReturnType<typeof import("../performance/metrics.mjs").createPerformanceMetrics> | null }} options */
 export function createAttributionUi({ environment = defaultEnvironment, dependencies = {}, metrics = null, } = {}) {
     let icons = createModuleScope(dependencies.icons, ["DesignSystem"], []);
     let uploadUI = createModuleScope(dependencies.uploadUI, [], []);
@@ -144,8 +143,8 @@ export function createAttributionUi({ environment = defaultEnvironment, dependen
                         if (input.closest(".common_write_wrapper")) {
                             continue;
                         }
-                        // An accept filter proves this is an image picker; arbitrary file
-                        // attachments or unrelated editor controls are left unchanged.
+                        // accept가 이미지 선택기임을 나타내는 경우에만 장식을 적용한다.
+                        // 일반 첨부와 관련 없는 작성기 컨트롤은 그대로 둔다.
                         if (!/image|\.jpe?g|\.png|\.gif|\.webp/i.test(input.accept)) {
                             continue;
                         }
@@ -154,7 +153,7 @@ export function createAttributionUi({ environment = defaultEnvironment, dependen
                             labels.forEach((label) => this.decorate(label));
                         }
                         else if (input.getClientRects().length) {
-                            input.dataset.aruNativeFile = ""; // Keep the OS file picker label/behavior.
+                            input.dataset.aruNativeFile = ""; // 운영체제 파일 선택기의 라벨과 기본 동작을 유지한다.
                         }
                     }
                     const toolbar = this.doc.querySelector(".note-toolbar") ||

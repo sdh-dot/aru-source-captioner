@@ -16,7 +16,6 @@ import {
   selectModuleExports,
 } from "../runtime/module-scope.ts";
 
-/** @param {{ environment?: typeof globalThis, dependencies?: object, metrics?: ReturnType<typeof import("../performance/metrics.mjs").createPerformanceMetrics> | null }} options */
 export function createAttributionCore({
   environment = defaultEnvironment,
   dependencies = {},

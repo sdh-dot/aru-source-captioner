@@ -3,7 +3,6 @@ import { defaultEnvironment, } from "../runtime/contracts.mjs";
 // 페이지 작성기 API와 동기 DOM 이벤트 계약을 연결하며 직접 게시하지 않는다.
 export function createIconsComposerBridge({ environment = defaultEnvironment, dependencies: _dependencies = {}, } = {}) {
     const { CustomEvent, URL } = environment;
-    /* MAIN world: narrowly scoped native composer operations, no extension/network APIs. */
     const initializeIconsComposerBridge = function (global) {
         "use strict";
         const doc = global.document;
@@ -66,8 +65,8 @@ export function createIconsComposerBridge({ environment = defaultEnvironment, de
                     (!reply || !/^rct_[1-9]\d*$/.test(reply.id))) {
                     fail("REPLY_INVALID", "답글 작성기의 대상 ID를 확인할 수 없습니다.");
                 }
-                // Native comment.js initializes comment_info on .comment_container (not its wrapper).
-                // Prefer the authoritative container; keep older wrapper-only markup compatible.
+                // 사이트 comment.js는 comment_info를 .comment_container에 등록한다.
+                // 해당 컨테이너를 우선하되 이전 wrapper 전용 마크업도 처리한다.
                 const owner = root.closest(".comment_container") ||
                     root.closest(".comment_wrapper");
                 const info = owner && global.jQuery?.(owner).data("comment_info");
@@ -84,7 +83,7 @@ export function createIconsComposerBridge({ environment = defaultEnvironment, de
                     !/^[1-9]\d*$/.test(String(info.article_id))) {
                     fail("COMPOSER_NOT_READY", "사이트의 댓글 작성기 정보를 확인할 수 없습니다. 페이지와 해당 작성기 상태를 확인한 뒤 다시 열어 주세요.");
                 }
-                // comment_reply_submit chooses #rct_active_reply_id, independently of the clicked wrapper.
+                // 답글 제출 대상은 클릭한 wrapper와 별개인 #rct_active_reply_id를 기준으로 확인한다.
                 if (reply &&
                     (!info || String(info.active_reply_id) !== reply.id.slice(4))) {
                     fail("REPLY_CHANGED", "활성 답글 대상이 바뀌었습니다. 해당 답글에서 다시 열어 주세요.");
@@ -197,7 +196,7 @@ export function createIconsComposerBridge({ environment = defaultEnvironment, de
                     !t.input.contains(range.ec)) {
                     fail("CARET_MISSING", "본문을 클릭하여 삽입할 커서 위치를 먼저 정해 주세요.");
                 }
-                // Retain node references, not a shared global "last range" which the picker can replace.
+                // Picker가 전역 커서를 바꿀 수 있으므로 선택 시점의 노드 참조를 보존한다.
                 s.range = global.jQuery.summernote.range.create(range.sc, range.so, range.ec, range.eo);
                 s.html = t.input.innerHTML;
                 s.sourceApi = global.app.editor_insertContents;
@@ -226,7 +225,7 @@ export function createIconsComposerBridge({ environment = defaultEnvironment, de
                 app.g_comment_icon_data?.is_editor === true) {
                 fail("NATIVE_API_UNAVAILABLE", "댓글용 네이티브 아이콘 모듈이 준비되지 않았습니다. 기존 아이콘 버튼으로 목록을 연 뒤 다시 시도해 주세요.");
             }
-            // Native select_icon removes upload previews. Reject rather than discarding a pending upload.
+            // 사이트 select_icon은 첨부 미리보기를 제거하므로 업로드 대기 중에는 삽입을 거절한다.
             if (s.root.querySelector(".preview") ||
                 s.root.uploadFile ||
                 s.root.preview) {
@@ -243,7 +242,7 @@ export function createIconsComposerBridge({ environment = defaultEnvironment, de
             argument.setAttribute("src", m.url);
             s.root.append(argument);
             try {
-                // jQuery.remove inside the native API clears handlers; detach backups before invoking it.
+                // 사이트 API의 jQuery.remove가 리스너를 지우기 전에 복원할 노드를 detach한다.
                 for (const p of previous) {
                     global.jQuery(p.node).detach();
                 }
@@ -300,7 +299,7 @@ export function createIconsComposerBridge({ environment = defaultEnvironment, de
                 typeof s.context.modules.editor.commit !== "function") {
                 fail("EDITOR_API_UNAVAILABLE", "에디터 실행 취소 상태를 확인할 수 없습니다.");
             }
-            // Commit pending typing through the editor before a new command, so Undo cannot erase the existing draft.
+            // 새 삽입 전 입력 내용을 편집기 history에 확정해 Undo가 기존 초안을 지우지 않게 한다.
             s.editor.summernote("editor.commit");
             const offset = history.stackOffset;
             const count = (html) => {
@@ -311,7 +310,7 @@ export function createIconsComposerBridge({ environment = defaultEnvironment, de
                 ].filter((n) => n.getAttribute("src") === m.url).length;
             };
             const originalCount = count(before);
-            // Reproduce the native callback's media markup through the confirmed site insertion API.
+            // 검증된 사이트 삽입 API로 네이티브 콜백과 같은 미디어 마크업을 만든다.
             const node = doc.createElement(m.video ? "video" : "img");
             node.setAttribute("src", m.url);
             if (m.video) {
@@ -342,7 +341,7 @@ export function createIconsComposerBridge({ environment = defaultEnvironment, de
                 return { kind: "post", tag: node.tagName, serialized: true };
             }
             catch (error) {
-                // Exactly one insertContents call: undo its history entry using the editor, never rewrite the editable DOM.
+                // insertContents는 한 번만 호출하며 실패 복원도 DOM 재작성 대신 편집기 history를 사용한다.
                 if (history.stackOffset > offset) {
                     s.editor.summernote("undo");
                 }
@@ -395,7 +394,7 @@ export function createIconsComposerBridge({ environment = defaultEnvironment, de
             return result;
         }
         doc.addEventListener(REQUEST, (event) => {
-            // String detail avoids Firefox cross-world object wrappers. No functions, selectors or arbitrary code accepted.
+            // Firefox World 간 객체 래퍼 제약 때문에 detail은 문자열만 쓰며 함수·선택자·임의 코드를 받지 않는다.
             if (event.target !== doc ||
                 typeof event.detail !== "string" ||
                 event.detail.length > 5000) {

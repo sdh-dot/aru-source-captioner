@@ -2,7 +2,6 @@
 import { defaultEnvironment, } from "../runtime/contracts.mjs";
 // 업로드한 파일의 출처 매칭과 게시판 이미지 증거를 분리해 잘못된 자동 연결을 막는다.
 import { createModuleScope, selectModuleExports, } from "../runtime/module-scope.mjs";
-/** @param {{ environment?: typeof globalThis, dependencies?: object, metrics?: ReturnType<typeof import("../performance/metrics.mjs").createPerformanceMetrics> | null }} options */
 export function createAttributionCore({ environment = defaultEnvironment, dependencies = {}, metrics = null, } = {}) {
     const { URL } = environment;
     let attribution = createModuleScope(dependencies.attribution, [], ["Registry", "Controller"]);

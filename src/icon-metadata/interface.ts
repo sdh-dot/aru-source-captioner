@@ -24,7 +24,7 @@ export function createMetadataInterface({
     ["Client", "Browser", "Panel", "Controller", "countLabel"],
   );
   let icons = createModuleScope(dependencies.icons, ["DesignSystem"], []);
-  /* ISOLATED world: string event bridge and read-only browser option adapter. */
+
   const initializeMetadataClient = function (g: RuntimeEnvironment) {
     "use strict";
     const M = metadata;
@@ -154,7 +154,7 @@ export function createMetadataInterface({
   };
   initializeMetadataClient(environment);
 
-  /* Shadow-root UI: visible rows only; selection uses per-element opaque handles. */
+  // 보이는 행만 렌더링하며 선택 대상은 이미지별 handle로 유지한다.
   const initializeMetadataPanel = function (g: RuntimeEnvironment) {
     "use strict";
     const M = metadata;
@@ -782,7 +782,6 @@ export function createMetadataInterface({
   };
   initializeMetadataPanel(environment);
 
-  /* Independent opt-in feature; existing captioner/icons/downloader files are untouched. */
   const initializeMetadataController = function (g: RuntimeEnvironment) {
     "use strict";
     const M = metadata;
@@ -875,7 +874,7 @@ export function createMetadataInterface({
         };
         this.doc.addEventListener("aru-metadata-count-v1", this.countListener);
         this.observer = new g.MutationObserver((records) => {
-          // Ignore ads, captions, modal rendering and arbitrary body mutations.
+          // 광고·캡션·모달 갱신을 작성기 교체로 오인해 다시 초기화하지 않는다.
           if (
             records.some((r) =>
               [...r.addedNodes, ...r.removedNodes].some(
@@ -959,7 +958,7 @@ export function createMetadataInterface({
           rec.label!.textContent = countLabel(null);
           rec.button!.addEventListener("click", () => this.open(rec));
           this.startWatch(rec);
-          // Scope cleanup to this editor, including destruction of the editable only.
+          // 편집 영역만 제거된 경우에도 해당 작성기 인스턴스의 자원을 해제한다.
           rec.observer = new g.MutationObserver(() => {
             if (!root.querySelector(".note-editable") || !host.isConnected) {
               this.schedule();
@@ -984,7 +983,7 @@ export function createMetadataInterface({
             }
             rec.label.textContent = "미디어 수 확인 불가";
             rec.label.title = e.message;
-            // Summernote DOM may mount before the site's serializer. Bounded initial readiness retry only.
+            // DOM보다 serializer가 늦게 준비될 수 있어 최초 준비 확인만 제한 횟수로 재시도한다.
             if (e.code === "EDITOR_API_UNAVAILABLE" && attempt < 4) {
               rec.readyTimer = g.setTimeout(
                 () => {
@@ -1005,7 +1004,7 @@ export function createMetadataInterface({
           this.panel.q(".search").focus();
           return;
         }
-        // Button click resynchronizes count after upload/paste completion.
+        // 업로드·붙여넣기 완료 후 표시 수가 어긋나지 않도록 버튼 조작 시 다시 확인한다.
         g.clearTimeout(rec.readyTimer);
         this.client
           .request("watch", { token: rec.token })

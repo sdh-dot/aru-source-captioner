@@ -4,7 +4,7 @@ import { defaultEnvironment, } from "../runtime/contracts.mjs";
 import { createModuleScope, selectModuleExports, } from "../runtime/module-scope.mjs";
 export function createIconsUiPreferences({ environment = defaultEnvironment, dependencies = {}, } = {}) {
     let icons = createModuleScope(dependencies.icons, ["createUiPreferences", "UiPreferences"], ["createUiPreferences", "UiPreferences"]);
-    /* Picker appearance only. No cache, sync settings, favorites or metadata writes. */
+    // Picker 표시 설정만 다루며 캐시·동기화 설정·즐겨찾기·메타데이터는 수정하지 않는다.
     const initializeIconsUiPreferences = function (g) {
         "use strict";
         const A = (icons = icons || {}), key = "aruIconsPickerUiV1";

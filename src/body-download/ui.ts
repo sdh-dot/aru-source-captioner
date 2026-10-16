@@ -128,7 +128,7 @@ export function createDownloadUi({
         !["interrupted", "partial", "cancelled", "blocked"].includes(
           job!.status,
         ) && job!.manifest?.status !== "failed";
-      // Details are populated on demand; progress updates do not rebuild thousands of rows.
+      // 상세 목록은 펼쳤을 때만 구성해 진행 갱신마다 대량 행을 다시 만들지 않는다.
       if (($("results")! as HTMLDetailsElement).open) {
         renderResults();
       }
@@ -167,7 +167,7 @@ export function createDownloadUi({
       }
       job = stored;
       runner = new D.DownloadRunner({ onProgress: render });
-      // Lock held for the lifetime of this manager, including before confirmation.
+      // 확인 화면부터 창 종료까지 잠금을 유지해 중복 실행을 막는다.
       if (!root.navigator.locks) {
         throw D.error(
           "LOCK_UNAVAILABLE",

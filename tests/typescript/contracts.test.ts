@@ -52,3 +52,27 @@ test("AST 비교는 단일 제어문 중괄호만 무시하고 조건과 선언 
  assert.notDeepEqual(ast("if(a){let x=1;use(x);}"),ast("if(a){let x=2;use(x);}"));
  assert.notDeepEqual(ast("if(a){let x=1;}"),ast("if(a){var x=1;}"));
 });
+
+test("Whale의 활성 댓글 출처 버튼은 기존 네이티브 동작과 본문을 보존한다",async()=>{
+ const {JSDOM}=await import("jsdom");
+ const observe=async(source:string)=>{
+  const dom=new JSDOM('<form class="border_box after_clear"><div class="common_input_wrapper"><textarea class="comment_input">보존할 댓글</textarea></div><button class="common_img_button" type="button">기존 첨부</button></form>',{url:'https://bbs.ruliweb.com/community/board/98/read/6000',runScripts:'outside-only',pretendToBeVisual:true});
+  const w=dom.window;let nativeClicks=0,alerts=0;const warnings:unknown[]=[];
+  w.chrome={runtime:{},storage:{sync:{get(_keys:unknown,callback:(value:object)=>void){callback({enabled:true});}}}};
+  w.TextDecoder=TextDecoder;w.TextEncoder=TextEncoder;w.alert=()=>{alerts++;};
+  w.console={info(){},log(){},debug(){},warn(...args:unknown[]){warnings.push(args);}} as Console;
+  w.document.querySelector('.common_img_button')!.addEventListener('click',()=>nativeClicks++);
+  try{
+   w.eval(source);await new Promise(resolve=>setTimeout(resolve,20));
+   const button=w.document.querySelector<HTMLButtonElement>('.aru-source-caption-comment-button');assert.ok(button,'활성 read 경로에 출처 버튼이 있어야 한다');
+   button.click();(w.document.querySelector('.common_img_button') as HTMLButtonElement).click();
+   const wrapper=w.document.createElement('form');wrapper.className='border_box after_clear';wrapper.innerHTML='<textarea class="reply_input">보존할 답글</textarea><button class="common_img_button" type="button">기존 첨부</button>';w.document.body.append(wrapper);
+   await new Promise(resolve=>setTimeout(resolve,20));
+   assert.equal(w.document.querySelectorAll('.aru-source-caption-comment-button').length,2,'늦게 생긴 답글에도 중복 없이 설치한다');
+   assert.equal(warnings.some(x=>String(x).includes('init failed')),false);
+   return {nativeClicks,alerts,text:w.document.querySelector('textarea')!.value,buttons:w.document.querySelectorAll('.aru-source-caption-comment-button').length};
+  }finally{w.close();}
+ };
+ const expected=await observe(baseline.files['whale/content.js'].source),actual=await observe(fs.readFileSync(new URL('../../whale/content.js',import.meta.url),'utf8'));
+ assert.deepEqual(actual,expected);assert.deepEqual(actual,{nativeClicks:1,alerts:1,text:'보존할 댓글',buttons:2});
+});
