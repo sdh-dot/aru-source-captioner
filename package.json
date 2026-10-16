@@ -17,7 +17,7 @@
     "lint:firefox:strict": "addons-linter firefox --output text --warnings-as-errors",
     "package:chromium": "node tools/package.mjs whale",
     "verify:esm": "node tools/build-esm.mjs --check",
-    "test:esm": "node --test tests/esm/tag-contract.test.mjs tests/esm/modules.test.mjs tests/esm/build.test.mjs",
+    "test:esm": "node --test tests/esm/tag-contract.test.mjs tests/esm/modules.test.mjs tests/esm/build.test.mjs tests/esm/completion.test.mjs",
     "audit:esm": "node tools/audit-esm.mjs"
   },
   "devDependencies": {

@@ -1,11 +1,36 @@
-/* Phase 2B-3 design foundation. No DOM, storage or font requests until attach(). */
-(function(g){
-  'use strict';
-  const A=g.AruIcons=g.AruIcons||{};
-  const LIGHT=Object.freeze({background:'#FAF7F2',surface:'#FFFFFF',soft:'#F4EDE7',text:'#30252B',muted:'#69535D',wine:'#923F61',deepWine:'#642940',gold:'#C5A268',softGold:'#E5CFA7',border:'#B9A8AE',primary:'#923F61',primaryText:'#FFFFFF',accentText:'#FFFFFF',selected:'#F5E9D4',selectedText:'#642940',danger:'#8C2929',dangerBackground:'#FFF0E9'});
-  const DARK=Object.freeze({background:'#21181E',surface:'#2E232A',soft:'#3B2C34',text:'#F7EEE9',muted:'#D2BDC6',wine:'#E59AB6',deepWine:'#F2B7CF',gold:'#D9B77F',softGold:'#E5CFA7',border:'#947E89',primary:'#C5A268',primaryText:'#21181E',accentText:'#2B1721',selected:'#4D392C',selectedText:'#F7E3BE',danger:'#FFC1B1',dangerBackground:'#482A2A'});
-  const variables=palette=>Object.entries(palette).map(([name,value])=>'--aru-'+name.replace(/[A-Z]/g,c=>'-'+c.toLowerCase())+':'+value+';').join('');
-  const css=`:host{${variables(LIGHT)}font-family:"Aru Pretendard",Pretendard,system-ui,-apple-system,"Malgun Gothic",sans-serif!important;color:var(--aru-text)!important;color-scheme:light}
+// 자동 생성: tools/build-esm.mjs. docs/source/compat 및 .mjs 원본만 수정한다.
+(() => {
+  var __defProp = Object.defineProperty;
+  var __name = (target, value) => __defProp(target, "name", { value, configurable: true });
+
+  // docs/source/runtime/module-scope.mjs
+  function createModuleScope(resolvers = {}, names = [], own = []) {
+    const scope = {};
+    for (const name of names) {
+      if (own.includes(name)) scope[name] = resolvers[name]?.();
+      else Object.defineProperty(scope, name, { enumerable: true, get: /* @__PURE__ */ __name(() => resolvers[name]?.(), "get") });
+    }
+    return scope;
+  }
+  __name(createModuleScope, "createModuleScope");
+  function selectModuleExports(scope, names) {
+    return Object.fromEntries(names.map((name) => [name, scope[name]]));
+  }
+  __name(selectModuleExports, "selectModuleExports");
+
+  // docs/source/ruliweb-icons/design-system.mjs
+  function createIconsDesignSystem({ environment = globalThis, dependencies = {} } = {}) {
+    const { chrome, browser, MutationObserver } = environment;
+    const getComputedStyle = typeof environment.getComputedStyle === "function" ? (...args) => environment.getComputedStyle(...args) : void 0;
+    const matchMedia = typeof environment.matchMedia === "function" ? (...args) => environment.matchMedia(...args) : void 0;
+    let icons2 = createModuleScope(dependencies.icons, ["DesignSystem"], ["DesignSystem"]);
+    const initializeIconsDesignSystem = /* @__PURE__ */ __name(function(g) {
+      "use strict";
+      const A = icons2 = icons2 || {};
+      const LIGHT = Object.freeze({ background: "#FAF7F2", surface: "#FFFFFF", soft: "#F4EDE7", text: "#30252B", muted: "#69535D", wine: "#923F61", deepWine: "#642940", gold: "#C5A268", softGold: "#E5CFA7", border: "#B9A8AE", primary: "#923F61", primaryText: "#FFFFFF", accentText: "#FFFFFF", selected: "#F5E9D4", selectedText: "#642940", danger: "#8C2929", dangerBackground: "#FFF0E9" });
+      const DARK = Object.freeze({ background: "#21181E", surface: "#2E232A", soft: "#3B2C34", text: "#F7EEE9", muted: "#D2BDC6", wine: "#E59AB6", deepWine: "#F2B7CF", gold: "#D9B77F", softGold: "#E5CFA7", border: "#947E89", primary: "#C5A268", primaryText: "#21181E", accentText: "#2B1721", selected: "#4D392C", selectedText: "#F7E3BE", danger: "#FFC1B1", dangerBackground: "#482A2A" });
+      const variables = /* @__PURE__ */ __name((palette) => Object.entries(palette).map(([name, value]) => "--aru-" + name.replace(/[A-Z]/g, (c) => "-" + c.toLowerCase()) + ":" + value + ";").join(""), "variables");
+      const css = `:host{${variables(LIGHT)}font-family:"Aru Pretendard",Pretendard,system-ui,-apple-system,"Malgun Gothic",sans-serif!important;color:var(--aru-text)!important;color-scheme:light}
   @media(prefers-color-scheme:dark){:host{${variables(DARK)}color-scheme:dark}}
   :host([data-aru-theme="light"]){${variables(LIGHT)}color-scheme:light}
   :host([data-aru-theme="dark"]){${variables(DARK)}color-scheme:dark}
@@ -36,8 +61,7 @@
   .clear-search,.search-symbol,.arrow{color:var(--aru-muted)}
   @media(forced-colors:active){.icon-card[aria-pressed="true"]{outline:2px solid Highlight}}
   `;
-
-  const entryCss=`:host{display:inline-flex;flex-wrap:wrap;align-items:center;gap:4px;max-width:100%;vertical-align:middle;margin:3px;font-size:13px;line-height:1.4}
+      const entryCss = `:host{display:inline-flex;flex-wrap:wrap;align-items:center;gap:4px;max-width:100%;vertical-align:middle;margin:3px;font-size:13px;line-height:1.4}
   .aru-entry-button{all:unset;box-sizing:border-box;font:inherit;font-weight:700;display:inline-flex;align-items:center;justify-content:center;min-height:34px;max-width:100%;padding:6px 10px;border:1px solid var(--aru-border);border-radius:7px;background:var(--aru-surface);color:var(--aru-deep-wine);cursor:pointer;touch-action:manipulation;white-space:normal}
   .aru-entry-button[data-priority="primary"],.primary{background:var(--aru-primary);color:var(--aru-primary-text);border-color:var(--aru-primary);font-weight:800}
   .aru-entry-button{gap:6px}.aru-entry-icon{display:block;flex:0 0 20px;width:20px;height:20px;object-fit:contain;pointer-events:none}
@@ -49,7 +73,7 @@
   .aru-media-count{font-size:11px;color:var(--aru-muted);padding:3px 5px;overflow-wrap:anywhere;cursor:default}.aru-media-count.warn{color:var(--aru-danger)}
   @media(pointer:coarse){.aru-entry-button{min-height:44px}}
   `;
-  const polish=`/* RC1 presentation only. Virtual card dimensions remain owned by picker.js. */
+      const polish = `/* RC1 presentation only. Virtual card dimensions remain owned by picker.js. */
 :host{--aru-space-1:4px;--aru-space-2:8px;--aru-space-3:12px;--aru-space-4:16px;--aru-space-5:24px;--aru-radius:8px;--aru-divider:color-mix(in srgb,var(--aru-border) 48%,var(--aru-surface));--aru-shadow:0 20px 64px #170e1938;font-size:14px;line-height:1.5}
 *{scrollbar-color:var(--aru-border) var(--aru-surface);scrollbar-width:thin}
 ::selection{background:var(--aru-selected);color:var(--aru-selected-text)}
@@ -155,53 +179,100 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 @media(prefers-reduced-motion:reduce){button{transition:none}.aru-entry-button:active:enabled{transform:none}}
 @media(forced-colors:active){.dialog .icon-card[aria-pressed="true"],.dialog .card[aria-pressed="true"],.dialog .catalog-row[aria-current="true"],.dialog .tag-button[aria-pressed="true"]{outline:2px solid Highlight;outline-offset:-2px}.dialog svg{forced-color-adjust:auto}}
 `;
-  const fonts=new WeakMap(),themes=new WeakMap();
-  function observeTheme(shadow){
-    const doc=shadow.host.ownerDocument;
-    let watch=themes.get(doc);
-    if(!watch){
-      const hosts=new Set(),mq=g.matchMedia?.('(prefers-color-scheme: dark)');
-      const detect=()=>{
-        // Read the site's actual painted background; no assumed theme class names.
-        for(const node of [doc.body,doc.documentElement]){
-          const c=node&&g.getComputedStyle(node).backgroundColor,values=c?.match(/[\d.]+/g)?.map(Number);
-          if(values?.length>=3&&(values.length<4||values[3]>=.95))return (.2126*values[0]+.7152*values[1]+.0722*values[2])<128?'dark':'light';
+      const fonts = /* @__PURE__ */ new WeakMap(), themes = /* @__PURE__ */ new WeakMap();
+      function observeTheme(shadow) {
+        const doc = shadow.host.ownerDocument;
+        let watch = themes.get(doc);
+        if (!watch) {
+          const hosts = /* @__PURE__ */ new Set(), mq = g.matchMedia?.("(prefers-color-scheme: dark)");
+          const detect = /* @__PURE__ */ __name(() => {
+            for (const node of [doc.body, doc.documentElement]) {
+              const c = node && g.getComputedStyle(node).backgroundColor, values = c?.match(/[\d.]+/g)?.map(Number);
+              if (values?.length >= 3 && (values.length < 4 || values[3] >= 0.95)) return 0.2126 * values[0] + 0.7152 * values[1] + 0.0722 * values[2] < 128 ? "dark" : "light";
+            }
+            return mq?.matches ? "dark" : "light";
+          }, "detect");
+          const update = /* @__PURE__ */ __name(() => {
+            const theme = detect();
+            for (const host of hosts) host.dataset.aruTheme = theme;
+          }, "update");
+          const observer = g.MutationObserver ? new g.MutationObserver(update) : null;
+          for (const node of [doc.documentElement, doc.body]) if (node) observer?.observe(node, { attributes: true, attributeFilter: ["class", "style", "data-theme", "data-color-scheme"] });
+          mq?.addEventListener?.("change", update);
+          watch = { hosts, update, observer, mq };
+          themes.set(doc, watch);
         }
-        return mq?.matches?'dark':'light';
-      };
-      const update=()=>{const theme=detect();for(const host of hosts)host.dataset.aruTheme=theme;};
-      const observer=g.MutationObserver?new g.MutationObserver(update):null;
-      for(const node of [doc.documentElement,doc.body])if(node)observer?.observe(node,{attributes:true,attributeFilter:['class','style','data-theme','data-color-scheme']});
-      mq?.addEventListener?.('change',update);
-      watch={hosts,update,observer,mq};themes.set(doc,watch);
-    }
-    watch.hosts.add(shadow.host);watch.update();
-    return ()=>{watch.hosts.delete(shadow.host);if(!watch.hosts.size){watch.observer?.disconnect();watch.mq?.removeEventListener?.('change',watch.update);themes.delete(doc);}};
-  }
-  function entry(shadow,{label,tooltip,priority='secondary',fontURL}={}){
-    const cleanup=attach(shadow,{fontURL});
-    const style=shadow.host.ownerDocument.createElement('style');style.textContent=entryCss;shadow.append(style);
-    const button=shadow.querySelector('button');button.classList.add('aru-entry-button');button.dataset.priority=priority;button.textContent=label;button.title=tooltip;
-    const iconName={'아이콘 선택':'editor-select','아이콘 통합':'editor-bundle','아이콘 태그':'editor-tags','이미지 첨부':'editor-upload'}[label];
-    const icon=iconName&&assetImage(shadow.host.ownerDocument,'assets/icons/'+iconName+'-20.png',iconName,'aru-entry-icon');
-    if(icon)button.prepend(icon);
-    return cleanup;
-  }
-  function fallbackIcon(doc,kind,className){
-    const ns='http://www.w3.org/2000/svg',svg=doc.createElementNS(ns,'svg');svg.setAttribute('viewBox','0 0 24 24');svg.setAttribute('aria-hidden','true');svg.setAttribute('focusable','false');svg.setAttribute('class',className);svg.setAttribute('fill','none');svg.setAttribute('stroke','currentColor');svg.setAttribute('stroke-width','1.6');
-    const path=doc.createElementNS(ns,'path');path.setAttribute('d',String(kind).includes('tags')?'M3 3h8l10 10-8 8L3 11Z M7 7h.01':'M4 5h16v14H4Z M4 15l5-5 5 5 3-3 3 3');svg.append(path);return svg;
-  }
-  function assetURL(file){
-    try{return g.browser?.runtime?.getURL?.(file)||g.chrome?.runtime?.getURL?.(file)||null;}catch(_){return null;}
-  }
-  function assetImage(doc,file,kind,className,onFallback){
-    const url=file.startsWith('assets/icons/')?assetURL('assets/icons/'+file.slice('assets/icons/'.length)):assetURL(file);
-    if(!url)return fallbackIcon(doc,kind,className);
-    const image=doc.createElement('img');image.className=className;image.alt='';image.setAttribute('aria-hidden','true');image.width=20;image.height=20;image.draggable=false;
-    image.addEventListener('error',()=>{const fallback=fallbackIcon(doc,kind,className);image.replaceWith(fallback);onFallback?.(fallback);},{once:true});image.src=url;return image;
-  }
-  // Shared decorative header only; no editor, picker or metadata state is touched.
-  const modalHeaderCss=`
+        watch.hosts.add(shadow.host);
+        watch.update();
+        return () => {
+          watch.hosts.delete(shadow.host);
+          if (!watch.hosts.size) {
+            watch.observer?.disconnect();
+            watch.mq?.removeEventListener?.("change", watch.update);
+            themes.delete(doc);
+          }
+        };
+      }
+      __name(observeTheme, "observeTheme");
+      function entry(shadow, { label, tooltip, priority = "secondary", fontURL } = {}) {
+        const cleanup = attach(shadow, { fontURL });
+        const style = shadow.host.ownerDocument.createElement("style");
+        style.textContent = entryCss;
+        shadow.append(style);
+        const button = shadow.querySelector("button");
+        button.classList.add("aru-entry-button");
+        button.dataset.priority = priority;
+        button.textContent = label;
+        button.title = tooltip;
+        const iconName = { "아이콘 선택": "editor-select", "아이콘 통합": "editor-bundle", "아이콘 태그": "editor-tags", "이미지 첨부": "editor-upload" }[label];
+        const icon = iconName && assetImage(shadow.host.ownerDocument, "assets/icons/" + iconName + "-20.png", iconName, "aru-entry-icon");
+        if (icon) button.prepend(icon);
+        return cleanup;
+      }
+      __name(entry, "entry");
+      function fallbackIcon(doc, kind, className) {
+        const ns = "http://www.w3.org/2000/svg", svg = doc.createElementNS(ns, "svg");
+        svg.setAttribute("viewBox", "0 0 24 24");
+        svg.setAttribute("aria-hidden", "true");
+        svg.setAttribute("focusable", "false");
+        svg.setAttribute("class", className);
+        svg.setAttribute("fill", "none");
+        svg.setAttribute("stroke", "currentColor");
+        svg.setAttribute("stroke-width", "1.6");
+        const path = doc.createElementNS(ns, "path");
+        path.setAttribute("d", String(kind).includes("tags") ? "M3 3h8l10 10-8 8L3 11Z M7 7h.01" : "M4 5h16v14H4Z M4 15l5-5 5 5 3-3 3 3");
+        svg.append(path);
+        return svg;
+      }
+      __name(fallbackIcon, "fallbackIcon");
+      function assetURL(file) {
+        try {
+          return g.browser?.runtime?.getURL?.(file) || g.chrome?.runtime?.getURL?.(file) || null;
+        } catch (_) {
+          return null;
+        }
+      }
+      __name(assetURL, "assetURL");
+      function assetImage(doc, file, kind, className, onFallback) {
+        const url = file.startsWith("assets/icons/") ? assetURL("assets/icons/" + file.slice("assets/icons/".length)) : assetURL(file);
+        if (!url) return fallbackIcon(doc, kind, className);
+        const image = doc.createElement("img");
+        image.className = className;
+        image.alt = "";
+        image.setAttribute("aria-hidden", "true");
+        image.width = 20;
+        image.height = 20;
+        image.draggable = false;
+        image.addEventListener("error", () => {
+          const fallback = fallbackIcon(doc, kind, className);
+          image.replaceWith(fallback);
+          onFallback?.(fallback);
+        }, { once: true });
+        image.src = url;
+        return image;
+      }
+      __name(assetImage, "assetImage");
+      const modalHeaderCss = `
     .dialog .aru-modal-header{--aru-header-art:128px;display:grid;grid-template-columns:minmax(0,1fr) var(--aru-header-art) auto;align-items:center;gap:16px;padding:12px 20px;flex-shrink:0;box-sizing:border-box}
     .dialog .aru-modal-heading{min-width:0;flex-basis:auto;overflow-wrap:anywhere}
     .dialog .aru-modal-heading h1,.dialog .aru-modal-heading h2{margin:0}
@@ -217,33 +288,83 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
     @media(max-height:600px){.dialog .aru-modal-header{--aru-header-art:32px;gap:6px;padding:6px 10px}.dialog .aru-modal-character{margin:0}}
     @media(max-width:500px){.dialog .aru-modal-header .header-actions{flex-direction:column;align-items:flex-end;gap:4px}.dialog .aru-modal-header #catalog-dock{font-size:11px;padding:4px 6px}.dialog .aru-modal-description{font-size:11px}}
   `;
-  function modalHeader(header,{kind,description}={}){
-    const file={select:'modal-select',bundle:'modal-bundle',tags:'modal-tags'}[kind];
-    if(!header||!file||header.classList.contains('aru-modal-header'))return;
-    const doc=header.ownerDocument,shadow=header.getRootNode();
-    let heading=header.querySelector('.header-title,h1,h2,strong');
-    if(!heading)return;
-    if(!heading.classList.contains('header-title')){const wrapper=doc.createElement('div');header.insertBefore(wrapper,heading);wrapper.append(heading);heading=wrapper;}
-    heading.classList.add('aru-modal-heading');header.classList.add('aru-modal-header');
-    if(description){const note=doc.createElement('p');note.className='aru-modal-description';note.textContent=description;heading.append(note);}
-    if(!shadow.querySelector('[data-aru-modal-header-style]')){const style=doc.createElement('style');style.dataset.aruModalHeaderStyle='';style.textContent=modalHeaderCss;shadow.append(style);}
-    const compactFallback=fallback=>{header.classList.add('aru-modal-no-art');heading.prepend(fallback);};
-    const image=assetImage(doc,'assets/icons/'+file+'-256.png',kind,'aru-modal-character',compactFallback);image.setAttribute('width','128');image.setAttribute('height','128');
-    if(image.tagName.toLowerCase()==='svg')compactFallback(image);else heading.after(image);
+      function modalHeader(header, { kind, description } = {}) {
+        const file = { select: "modal-select", bundle: "modal-bundle", tags: "modal-tags" }[kind];
+        if (!header || !file || header.classList.contains("aru-modal-header")) return;
+        const doc = header.ownerDocument, shadow = header.getRootNode();
+        let heading = header.querySelector(".header-title,h1,h2,strong");
+        if (!heading) return;
+        if (!heading.classList.contains("header-title")) {
+          const wrapper = doc.createElement("div");
+          header.insertBefore(wrapper, heading);
+          wrapper.append(heading);
+          heading = wrapper;
+        }
+        heading.classList.add("aru-modal-heading");
+        header.classList.add("aru-modal-header");
+        if (description) {
+          const note = doc.createElement("p");
+          note.className = "aru-modal-description";
+          note.textContent = description;
+          heading.append(note);
+        }
+        if (!shadow.querySelector("[data-aru-modal-header-style]")) {
+          const style = doc.createElement("style");
+          style.dataset.aruModalHeaderStyle = "";
+          style.textContent = modalHeaderCss;
+          shadow.append(style);
+        }
+        const compactFallback = /* @__PURE__ */ __name((fallback) => {
+          header.classList.add("aru-modal-no-art");
+          heading.prepend(fallback);
+        }, "compactFallback");
+        const image = assetImage(doc, "assets/icons/" + file + "-256.png", kind, "aru-modal-character", compactFallback);
+        image.setAttribute("width", "128");
+        image.setAttribute("height", "128");
+        if (image.tagName.toLowerCase() === "svg") compactFallback(image);
+        else heading.after(image);
+      }
+      __name(modalHeader, "modalHeader");
+      function attach(shadow, { fontURL } = {}) {
+        if (!shadow || shadow.querySelector("[data-aru-design-tokens]")) return () => {
+        };
+        const doc = shadow.host.ownerDocument, style = doc.createElement("style");
+        style.dataset.aruDesignTokens = "";
+        style.textContent = css + polish + " .primary{background:var(--aru-primary);border-color:var(--aru-primary);color:var(--aru-primary-text)}";
+        shadow.append(style);
+        if (!fonts.has(doc) && g.FontFace && doc.fonts) {
+          const url = fontURL || assetURL("assets/fonts/PretendardVariable.woff2");
+          if (url) {
+            try {
+              const face = new g.FontFace("Aru Pretendard", 'url("' + url + '")', { weight: "45 920", display: "swap" });
+              doc.fonts.add(face);
+              fonts.set(doc, face.load().then(() => true).catch(() => false));
+            } catch (_) {
+              fonts.set(doc, Promise.resolve(false));
+            }
+          }
+        }
+        return observeTheme(shadow);
+      }
+      __name(attach, "attach");
+      function contrast(foreground, background) {
+        const luminance = /* @__PURE__ */ __name((hex) => {
+          const rgb = hex.slice(1).match(/../g).map((n) => parseInt(n, 16) / 255).map((n) => n <= 0.04045 ? n / 12.92 : ((n + 0.055) / 1.055) ** 2.4);
+          return rgb[0] * 0.2126 + rgb[1] * 0.7152 + rgb[2] * 0.0722;
+        }, "luminance");
+        const a = luminance(foreground), b = luminance(background);
+        return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
+      }
+      __name(contrast, "contrast");
+      A.DesignSystem = Object.freeze({ LIGHT, DARK, css: css + entryCss + polish, attach, entry, observeTheme, contrast, assetURL, assetImage, modalHeader });
+    }, "initializeIconsDesignSystem");
+    initializeIconsDesignSystem(environment);
+    return { "icons": selectModuleExports(icons2, ["DesignSystem"]) };
   }
-  function attach(shadow,{fontURL}={}){
-    if(!shadow||shadow.querySelector('[data-aru-design-tokens]'))return ()=>{};
-    const doc=shadow.host.ownerDocument,style=doc.createElement('style');style.dataset.aruDesignTokens='';style.textContent=css+polish+' .primary{background:var(--aru-primary);border-color:var(--aru-primary);color:var(--aru-primary-text)}';shadow.append(style);
-    if(!fonts.has(doc)&&g.FontFace&&doc.fonts){
-      const url=fontURL||assetURL('assets/fonts/PretendardVariable.woff2');
-      if(url){try{const face=new g.FontFace('Aru Pretendard','url("'+url+'")',{weight:'45 920',display:'swap'});doc.fonts.add(face);
-        fonts.set(doc,face.load().then(()=>true).catch(()=>false));}catch(_){fonts.set(doc,Promise.resolve(false));}}
-    }
-    return observeTheme(shadow);
-  }
-  function contrast(foreground,background){
-    const luminance=hex=>{const rgb=hex.slice(1).match(/../g).map(n=>parseInt(n,16)/255).map(n=>n<=.04045?n/12.92:((n+.055)/1.055)**2.4);return rgb[0]*.2126+rgb[1]*.7152+rgb[2]*.0722;};
-    const a=luminance(foreground),b=luminance(background);return (Math.max(a,b)+.05)/(Math.min(a,b)+.05);
-  }
-  A.DesignSystem=Object.freeze({LIGHT,DARK,css:css+entryCss+polish,attach,entry,observeTheme,contrast,assetURL,assetImage,modalHeader});
-})(globalThis);
+  __name(createIconsDesignSystem, "createIconsDesignSystem");
+
+  // docs/source/compat/ruliweb-icons-design-system.mjs
+  var icons = globalThis.AruIcons = globalThis.AruIcons || {};
+  var result = createIconsDesignSystem({ environment: globalThis, dependencies: { icons: { "DesignSystem": /* @__PURE__ */ __name(() => icons["DesignSystem"], "DesignSystem") } } });
+  Object.assign(icons, result.icons);
+})();

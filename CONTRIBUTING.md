@@ -4,7 +4,7 @@
 
 1. 저장소를 Fork하고 자신의 Fork를 clone합니다.
 2. `git switch -c fix/short-description`으로 작업 브랜치를 만듭니다.
-3. `npm ci --ignore-scripts` 후 수정합니다. 아이콘·태그·통합 UI의 원본은 `docs/source/`입니다. 브라우저별 출처 캡션과 Native/다운로드 코드는 각 브라우저 폴더의 읽을 수 있는 JavaScript입니다.
+3. `npm ci --ignore-scripts` 후 수정합니다. 아이콘·태그·통합 UI와 다운로드의 원본은 `docs/source/`의 `.mjs`입니다. 브라우저별 출처 캡션·옵션·Background 원본은 `docs/source/platform/{firefox,whale}/`에 있습니다. 브라우저 폴더의 JavaScript는 생성물입니다.
 4. `npm run build`, `npm run verify`, `npm test`, `npm run lint:firefox`를 실행합니다. `npm run test:historical`의 기존 실패와 신규 실패도 구분해 기록합니다.
 5. 실제 기능 변경이면 별도 프로필에서 [수동 검증](docs/MANUAL-TESTING.md)을 합니다. 게시글·댓글을 자동 등록하지 않습니다.
 6. 의도한 소스와 생성된 파일만 commit하고 Fork의 브랜치에 push합니다.

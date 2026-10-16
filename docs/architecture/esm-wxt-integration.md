@@ -46,7 +46,7 @@ const { ComposerAdapter, ComposerController } = createComposerAdapter({
 3. BrowserAdapter에는 현재 Firefox `browser` 또는 Chromium `chrome` API가 있는 환경을 전달한다. 메시지 `ARU_ICONS_CACHE`, `$aruIconsBytesV1`, 저장 키·옵션 unknown 필드를 보존한다.
 4. 작성기 ISOLATED 어댑터와 MAIN bridge를 별도 entry로 유지한다. DOM 이벤트는 기존 이름·문자열 detail·동기 응답을 지켜야 한다. 비동기 응답으로 바꾸면 `BRIDGE_UNAVAILABLE`이 발생한다.
 5. MAIN metadata entry에서는 `installMetadataEditorBridge(globalThis)`를 한 번 호출한다. 이 함수는 공통 태그 ESM을 직접 import하며 import만으로 설치하지 않는다. 기존 중복 설치 flag와 pagehide 정리는 유지한다. metadata UI와 MAIN은 서로 다른 실행 영역이므로 같은 인스턴스를 공유한다고 가정하지 않는다.
-6. 기존 feature/UI의 namespace 소비자를 import/주입으로 옮긴 다음에만 대응 compat entry를 제거한다. 댓글 MAIN composer bridge·통합팩 MAIN bridge와 전체 UI/업로드 초기화는 이번에 ESM화하지 않았다.
+6. 댓글 MAIN composer bridge·통합팩 MAIN bridge·UI·업로드·다운로드·브라우저별 초기화도 ESM으로 전환했다. 아래 runtime 조립 함수를 재사용하거나 개별 factory에 의존성을 주입한다. WXT 쪽 소비자를 전환하고 실제 실행을 검증한 뒤에만 대응 compat entry를 제거한다.
 7. Firefox/Chromium/Whale의 실제 설치·초기화·검색·삽입·재탐색을 각각 검증한다. 최신 개인 포크와 연결한 WXT build는 별도 필수 단계다.
 
 ## 데이터·예외 계약
@@ -59,8 +59,42 @@ const { ComposerAdapter, ComposerController } = createComposerAdapter({
 
 ## 기존 배포와 호환 출력
 
-`docs/source/compat/*.mjs` 8개가 기존 namespace 등록과 MAIN bridge 설치를 연결한다. 알고리즘은 import한 ESM에만 둔다. `shared/icon-metadata/legacy-adapter.mjs`는 명시적으로 호출할 수 있는 추가 호환 API이며 production compat entry에서 자동 호출하지 않는다.
+`docs/source/compat/*.mjs`가 기존 namespace 등록과 MAIN bridge 설치를 연결한다. 알고리즘은 import한 ESM에만 둔다. `shared/icon-metadata/legacy-adapter.mjs`는 명시적으로 호출할 수 있는 추가 호환 API이며 production compat entry에서 자동 호출하지 않는다.
 
-`npm run build`는 esbuild로 `.js` 위치 8개와 MAIN metadata bridge 2개를 생성한 뒤, 기존 `tools/build.mjs`를 실행한다. `.js` 첫 줄의 자동 생성 안내를 따른다. `docs/source/icon-metadata/editor-bridge.js`도 생성물이다. MAIN entry는 writer 호환 등록과 설치 함수를 함께 import해 코덱을 한 번만 포함한다. WXT에서는 생성된 `.js`나 `compat`가 아닌 ESM을 직접 import한다.
+`npm run build`는 호환 출력 51개를 생성하고 기존 `tools/build.mjs`를 실행한 뒤, reader·metadata UI·bundle MAIN/UI의 최종 출력 8개를 각각 하나의 ESM 그래프로 생성한다. 대상과 공개 API는 `tools/esm-completion-entries.json`, runtime 출력은 `tools/esm-runtime-entries.json`에 명시한다. `tools/build.mjs`와 `docs/tools/build-generator.mjs`, Manifest는 변경하지 않았다. `.js` 첫 줄의 자동 생성 안내를 따른다. WXT에서는 생성된 `.js`나 `compat`가 아닌 ESM을 직접 import한다.
 
-지금은 기존 여러 classic 스크립트의 독립 로드를 유지하므로 의존 ESM이 각 생성물에 반복 포함될 수 있다. 관리 원본의 알고리즘 중복은 없지만 출력 크기는 증가했다. WXT에서 하나의 entry 그래프로 묶으면 번들러가 같은 import를 합칠 수 있다. 이를 이유로 현재 미제공 WXT 빌드 구조를 선제적으로 수정하지 않는다.
+reader와 bundle UI 내부의 의존성은 하나의 import 그래프에서 합친다. 서로 다른 MAIN/ISOLATED/Background 및 독립 classic 파일 사이의 코드 중복은 기존 등록 계약 때문에 남을 수 있다. 이는 관리 원본의 중복이 아니다. 미제공 WXT 빌드 구조는 수정하지 않는다.
+
+## 잔여 기능의 공개 진입점
+
+| 경로 | export | 책임 / 반환 |
+|---|---|---|
+| `docs/source/runtime/icons.mjs` | `createIconReader` | 아이콘 catalog·library·picker·composer·feature를 기존 순서로 조립, 로컬 icons API 반환 |
+| 위와 같음 | `createMetadataUi` | `{icons, metadata}` 반환, 기존 `initialIcons.DesignSystem` 재사용 |
+| 위와 같음 | `createBundleMain` | `{icons, bundle}` 반환, MAIN bridge 설치, 기존 Metadata 인스턴스 재사용 |
+| 위와 같음 | `createBundleUiRuntime` | `{icons, bundle}` 반환, 통합팩 검색·편집·Controller 조립 |
+| `docs/source/runtime/downloads.mjs` | `installDownloadContent`, `installDownloadBackground` | 공통 Core/API와 본문 extractor 또는 Background 연결, `{downloads}` 반환 |
+| `docs/source/ruliweb-icons/*.mjs` | `createIconsCatalog`, `createIconsLibrarySearch`, `createIconsLibraryReader`, `createIconsPicker`, `createIconsFeature` 등 | 개별 UI/조회 factory, `{icons: 공개 API}` 반환 |
+| `docs/source/bundle-generator/*.mjs` | `createBundleCore`, `createBundleSearch`, `createBundleBridge`, `createBundleClient`, `createBundleSearchUi`, `createBundleUi`, `createBundleController` | 개별 통합팩 factory, 공개 bundle API 반환 또는 이벤트 설치 |
+| `docs/source/icon-metadata/interface.mjs` | `createMetadataInterface` | 태그 Client/Browser·Panel·Controller, `{metadata}` 반환 |
+| `docs/source/upload-attribution/{core,ui}.mjs` | `createAttributionCore`, `createAttributionUi` | 기존 Registry/Controller 및 UI 연결, 공개 attribution/uploadUI 반환 |
+| `docs/source/body-download/*.mjs` | `createDownloadCore`, `createDownloadExtractor`, `createDownloadBrowserApi`, `createDownloadEngine`, `createDownloadUi`, `createDownloadContent`, `createDownloadBackground` | 로컬 다운로드 모델·관측 본문 수집·브라우저 실행 경계 |
+| `docs/source/platform/{firefox,whale}/{content,options,background}.mjs` | `installFirefoxContent/Options/Background`, `installWhaleContent/Options/Background` | 기존 캡션·설정·Native 초기화. 해당 실행 영역에서 한 번 호출 |
+
+개별 factory는 `{environment, dependencies}`를 받으며 `dependencies.icons.Metadata: () => metadata`처럼 공개 함수/인스턴스의 getter를 받는다. 기존 초기화 순서에서 늦게 생성되던 의존성을 조회하기 위한 계약이며, 다른 모듈의 내부 상태를 전달하지 않는다. 소유한 API만 반환한다. 각 factory의 정확한 의존 키와 반환 키는 `esm-completion-entries.json`의 `dependencies`/`exports`를 따른다. 공통 extractor는 runtime이 `error`, `article`, `mediaUrl`, `streamMedia`, `originalFilename`을 주입한다.
+
+프로젝트 루트에 놓인 연결 모듈을 가정한 예시:
+
+```js
+import { createIconReader, createMetadataUi } from './docs/source/runtime/icons.mjs';
+import { installDownloadContent } from './docs/source/runtime/downloads.mjs';
+
+const icons = createIconReader({ environment: globalThis });
+const { metadata } = createMetadataUi({ environment: globalThis, initialIcons: icons });
+const { downloads } = installDownloadContent({ environment: globalThis });
+// 각 실행 영역의 소유자가 기존 수명주기에 맞춰 Controller와 feature를 정리한다.
+```
+
+WXT에 이미 UI/Controller가 있으면 전체 runtime을 중복 설치하지 않고 필요한 순수 함수나 개별 factory만 import한다. MAIN과 ISOLATED 진입점을 합치지 않는다. Chromium Background는 `installWhaleBackground` → `createIconsBackground` → `installDownloadBackground` 순서로 설치하고, 기존 `ownsDownload` getter를 먼저 주입한다. Firefox는 기존 Manifest가 분리 등록한 파일 순서를 유지한다. 별도 브라우저 API·Native Host 권한·설정은 추가하지 않는다.
+
+ESM 자체는 브라우저 없이 import할 수 있다. registry의 JSON import attribute는 Node 24/현재 esbuild에서 지원하며 브라우저 배포물에는 inline된다. 실제 호출에는 해당 문서의 DOM 생성자·WebCrypto·브라우저 API가 있는 환경이 필요하다. classic 산출물은 기존 ES2022 대상이며 Manifest의 Firefox 데스크톱 140.0·Android 142.0 최소 버전과 기존 Chromium 등록 정책을 유지한다. 새로운 WXT 설정·entrypoint·TypeScript 옵션·Manifest 생성 정책은 상대 브랜치를 받은 뒤 비교·통합·빌드·브라우저 검증한다.

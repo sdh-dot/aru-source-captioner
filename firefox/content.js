@@ -1,1689 +1,1410 @@
-// Aru Source Captioner — content script
-//
-// Phase 2B: 실 구현.
-// - 사용자가 input[type=file]에서 이미지를 선택하면 exifr로 EXIF/XMP/IPTC/UserComment를 파싱.
-// - 메타데이터에서 우선순위 6단계로 출처 URL을 추출.
-// - 루리웹 글쓰기 에디터가 <p><img alt="..."> 형태로 이미지를 삽입하면 MutationObserver가 감지.
-// - 업로드 순서와 무관한 정확 파일명/속성 검증. 중복·불명확한 대응은 자동 기재하지 않는다.
-// - 안전한 URL이면 부모 <p> 바로 다음에 출처 캡션 <p>를 DOM API로 삽입.
-//
-// Phase 1 정책(16개 + DOM 관찰 8항)은 docs/phase1-design.md 단일 출처를 따른다.
-//
-// 절대 규칙:
-//   - innerHTML / outerHTML / insertAdjacentHTML 사용 금지.
-//   - eval / new Function 사용 금지.
-//   - "출처 없음" placeholder 절대 삽입 금지.
-//   - 페이지 상단의 출처 입력란은 절대 건드리지 않는다.
-//   - 파일별 대응 또는 가능한 모든 출처의 일치를 확인한다. img.src나 업로드 순서로 추측하지 않는다.
-//   - URL이 없거나 unsafe면 본문에 아무것도 삽입하지 않는다.
+// 자동 생성: tools/build-esm.mjs. docs/source/compat 및 .mjs 원본만 수정한다.
+(() => {
+  var __defProp = Object.defineProperty;
+  var __name = (target, value) => __defProp(target, "name", { value, configurable: true });
 
-(function bootstrap() {
-  "use strict";
-
-  // 동기 boot 로그 — async init() 이전에 즉시 실행.
-  // Console에 이 로그가 없으면 manifest content_scripts.matches/host_permissions 누락이 원인.
-  console.log("[Aru Source Captioner] content script loaded", { href: location.href });
-
-  const DEFAULT_OPTIONS = Object.freeze({
-    enabled: true,
-    allowHttp: false,
-    strictAllowlist: false,
-    allowedHosts: ["pixiv.net", "x.com", "twitter.com"],
-    ruliwebAiRevealMode: "off",
-    ruliwebAiRevealAllowKeywords: ["AI", "노출 제한", "노출이 제한"],
-    ruliwebAiRevealBlockKeywords: ["스포일러", "본문 내용 보기"]
-  });
-
-  const URL_PATTERN =/https?:\/\/[^\s"'<>]+/g;
-
-  const TEXT_FIELDS_FOR_JSON = [
-    "UserComment", "userComment", "Comment",
-    "Description", "ImageDescription"
-  ];
-
-  const EDITOR_ROOT_SELECTORS = [
-    '[contenteditable="true"]',
-    '.cke_editable',
-    '.fr-element',
-    '.editor'
-  ];
-
-  const BOOT_OBSERVER_TIMEOUT_MS = 60000;
-  const WALK_MAX_DEPTH = 10;
-
-  let uploadAttribution = null;
-  const handledFileEvents = new WeakSet();
-
-  function isMobileAutoInsertEnvironment() {
-    try {
-      return /Android/i.test(navigator.userAgent || "") ||
-        (window.innerWidth < 768 && window.matchMedia?.("(pointer: coarse)").matches === true);
-    } catch (_) { return false; }
-  }
-
-  // ---------------- 옵션 로드 (Phase 2A 재사용) ----------------
-
-  // chrome.storage.sync 가용성 검증 — 모든 체인을 명시적 &&로 검증한다.
-  // optional chaining(`?.`)만으로는 일부 환경(특히 content script가 격리된
-  // realm에서 chrome 객체가 frozen / partial인 경우)에서 placement에 따라
-  // 여전히 throw할 수 있다는 보고가 있어, 한 단계씩 typeof + 명시적 &&로
-  // 검증하여 어느 한 단계라도 missing이면 false를 반환한다.
-  function isChromeStorageSyncAvailable() {
-    try {
-      if (typeof chrome === "undefined") return false;
-      if (!chrome) return false;
-      if (!chrome.storage) return false;
-      if (!chrome.storage.sync) return false;
-      if (typeof chrome.storage.sync.get !== "function") return false;
-      return true;
-    } catch {
-      return false;
+  // docs/source/runtime/module-scope.mjs
+  function createModuleScope(resolvers = {}, names = [], own = []) {
+    const scope = {};
+    for (const name of names) {
+      if (own.includes(name)) scope[name] = resolvers[name]?.();
+      else Object.defineProperty(scope, name, { enumerable: true, get: /* @__PURE__ */ __name(() => resolvers[name]?.(), "get") });
     }
+    return scope;
   }
+  __name(createModuleScope, "createModuleScope");
 
-  function loadConfig() {
-    return new Promise((resolve) => {
-      // Defensive: chrome.storage.sync may be undefined in the content script
-      // context if the "storage" permission was revoked at runtime, if the
-      // extension was reloaded but the page wasn't, or if a transient race
-      // strips chrome.storage before init runs. In any such case we fall back
-      // to defaults so init() never throws and the rest of the captioner
-      // (button injection, observers) keeps working.
-      try {
-        if (!isChromeStorageSyncAvailable()) {
-          console.warn(
-            "[Aru Source Captioner] chrome.storage.sync unavailable — using default options"
-          );
-          resolve({ ...DEFAULT_OPTIONS });
-          return;
+  // docs/source/platform/firefox/content.mjs
+  function installFirefoxContent({ environment = globalThis, dependencies = {} } = {}) {
+    const window = environment.window ?? environment;
+    const { document, location, navigator, chrome, MutationObserver, HTMLElement, TextDecoder, URL, exifr, console } = environment;
+    const setTimeout = typeof environment.setTimeout === "function" ? (...args) => environment.setTimeout(...args) : void 0;
+    const setInterval = typeof environment.setInterval === "function" ? (...args) => environment.setInterval(...args) : void 0;
+    const clearInterval = typeof environment.clearInterval === "function" ? (...args) => environment.clearInterval(...args) : void 0;
+    const getComputedStyle = typeof environment.getComputedStyle === "function" ? (...args) => environment.getComputedStyle(...args) : void 0;
+    const matchMedia = typeof environment.matchMedia === "function" ? (...args) => environment.matchMedia(...args) : void 0;
+    let attribution2 = createModuleScope(dependencies.attribution, ["Controller"], []);
+    const runBootstrap1 = /* @__PURE__ */ __name(function bootstrap() {
+      "use strict";
+      console.log("[Aru Source Captioner] content script loaded", { href: location.href });
+      const DEFAULT_OPTIONS = Object.freeze({
+        enabled: true,
+        allowHttp: false,
+        strictAllowlist: false,
+        allowedHosts: ["pixiv.net", "x.com", "twitter.com"],
+        ruliwebAiRevealMode: "off",
+        ruliwebAiRevealAllowKeywords: ["AI", "노출 제한", "노출이 제한"],
+        ruliwebAiRevealBlockKeywords: ["스포일러", "본문 내용 보기"]
+      });
+      const URL_PATTERN = /https?:\/\/[^\s"'<>]+/g;
+      const TEXT_FIELDS_FOR_JSON = [
+        "UserComment",
+        "userComment",
+        "Comment",
+        "Description",
+        "ImageDescription"
+      ];
+      const EDITOR_ROOT_SELECTORS = [
+        '[contenteditable="true"]',
+        ".cke_editable",
+        ".fr-element",
+        ".editor"
+      ];
+      const BOOT_OBSERVER_TIMEOUT_MS = 6e4;
+      const WALK_MAX_DEPTH = 10;
+      let uploadAttribution = null;
+      const handledFileEvents = /* @__PURE__ */ new WeakSet();
+      function isMobileAutoInsertEnvironment() {
+        try {
+          return /Android/i.test(navigator.userAgent || "") || window.innerWidth < 768 && window.matchMedia?.("(pointer: coarse)").matches === true;
+        } catch (_) {
+          return false;
         }
-        chrome.storage.sync.get(null, (items) => {
-          // chrome이 inject한 callback 내부에서 throw가 새어나가면 unhandled
-          // promise/error로 page에 노출되므로 callback 전체를 try/catch로 감싼다.
+      }
+      __name(isMobileAutoInsertEnvironment, "isMobileAutoInsertEnvironment");
+      function isChromeStorageSyncAvailable() {
+        try {
+          if (typeof chrome === "undefined") return false;
+          if (!chrome) return false;
+          if (!chrome.storage) return false;
+          if (!chrome.storage.sync) return false;
+          if (typeof chrome.storage.sync.get !== "function") return false;
+          return true;
+        } catch {
+          return false;
+        }
+      }
+      __name(isChromeStorageSyncAvailable, "isChromeStorageSyncAvailable");
+      function loadConfig() {
+        return new Promise((resolve) => {
           try {
-            // chrome.runtime이 없는 경우(예: extension context invalidated)에도
-            // throw하지 않도록 명시적 &&로 검증한다.
-            if (
-              typeof chrome !== "undefined" &&
-              chrome &&
-              chrome.runtime &&
-              chrome.runtime.lastError
-            ) {
+            if (!isChromeStorageSyncAvailable()) {
               console.warn(
-                "[Aru Source Captioner] storage.get failed, falling back to defaults:",
-                chrome.runtime.lastError.message
+                "[Aru Source Captioner] chrome.storage.sync unavailable — using default options"
               );
               resolve({ ...DEFAULT_OPTIONS });
               return;
             }
-            const merged = { ...DEFAULT_OPTIONS };
-            const safeItems = items && typeof items === "object" ? items : {};
-            for (const key of Object.keys(DEFAULT_OPTIONS)) {
-              if (key in safeItems) {
-                merged[key] = safeItems[key];
+            chrome.storage.sync.get(null, (items) => {
+              try {
+                if (typeof chrome !== "undefined" && chrome && chrome.runtime && chrome.runtime.lastError) {
+                  console.warn(
+                    "[Aru Source Captioner] storage.get failed, falling back to defaults:",
+                    chrome.runtime.lastError.message
+                  );
+                  resolve({ ...DEFAULT_OPTIONS });
+                  return;
+                }
+                const merged = { ...DEFAULT_OPTIONS };
+                const safeItems = items && typeof items === "object" ? items : {};
+                for (const key of Object.keys(DEFAULT_OPTIONS)) {
+                  if (key in safeItems) {
+                    merged[key] = safeItems[key];
+                  }
+                }
+                resolve(merged);
+              } catch (callbackErr) {
+                console.warn(
+                  "[Aru Source Captioner] storage.get callback threw, falling back to defaults:",
+                  callbackErr
+                );
+                resolve({ ...DEFAULT_OPTIONS });
               }
-            }
-            resolve(merged);
-          } catch (callbackErr) {
+            });
+          } catch (err) {
             console.warn(
-              "[Aru Source Captioner] storage.get callback threw, falling back to defaults:",
-              callbackErr
+              "[Aru Source Captioner] loadConfig threw, falling back to defaults:",
+              err
             );
             resolve({ ...DEFAULT_OPTIONS });
           }
         });
-      } catch (err) {
-        console.warn(
-          "[Aru Source Captioner] loadConfig threw, falling back to defaults:",
-          err
+      }
+      __name(loadConfig, "loadConfig");
+      function publishUploadStatus(snapshot) {
+        const value = JSON.stringify(snapshot);
+        if (document.documentElement.dataset.aruUploadDiagnostic !== value) {
+          document.documentElement.dataset.aruUploadDiagnostic = value;
+        }
+      }
+      __name(publishUploadStatus, "publishUploadStatus");
+      function attachFileInputListeners(config) {
+        document.addEventListener("change", async (ev) => {
+          const target = ev.target;
+          if (!(target instanceof HTMLInputElement) || target.type !== "file" || !target.files?.length) return;
+          if (handledFileEvents.has(ev)) return;
+          handledFileEvents.add(ev);
+          const images = Array.from(target.files).filter((file) => file?.type?.startsWith("image/"));
+          if (!images.length) return;
+          await handleSelectedImageFiles(images, target);
+        }, true);
+      }
+      __name(attachFileInputListeners, "attachFileInputListeners");
+      async function handleSelectedImageFiles(files, input) {
+        if (uploadAttribution) await uploadAttribution.select(files, input);
+        else publishUploadStatus({ state: "editor-unavailable", selected: files.length });
+      }
+      __name(handleSelectedImageFiles, "handleSelectedImageFiles");
+      const PNG_SIGNATURE = [137, 80, 78, 71, 13, 10, 26, 10];
+      const ARU_ITXT_KEYWORD = "AruArchive";
+      const ARU_PAYLOAD_URL_KEYS = ["artwork_url", "source_url", "artworkUrl"];
+      function isPngFile(file) {
+        if (!file) return false;
+        if (typeof file.type === "string" && file.type === "image/png") return true;
+        if (typeof file.name === "string" && /\.png$/i.test(file.name)) return true;
+        return false;
+      }
+      __name(isPngFile, "isPngFile");
+      function hasPngSignature(buffer) {
+        if (!buffer || buffer.byteLength < 8) return false;
+        const sig = new Uint8Array(buffer, 0, 8);
+        for (let i = 0; i < PNG_SIGNATURE.length; i++) {
+          if (sig[i] !== PNG_SIGNATURE[i]) return false;
+        }
+        return true;
+      }
+      __name(hasPngSignature, "hasPngSignature");
+      function decodeAruPayloadFromItxtText(textBytes) {
+        let jsonText;
+        try {
+          jsonText = new TextDecoder("utf-8", { fatal: false }).decode(textBytes);
+        } catch {
+          return { status: "error", url: null, reason: "png_itxt_invalid_chunk" };
+        }
+        let payload;
+        try {
+          payload = JSON.parse(jsonText);
+        } catch {
+          return { status: "error", url: null, reason: "png_itxt_json_parse_failed" };
+        }
+        return extractSourceFromAruArchivePayload(payload);
+      }
+      __name(decodeAruPayloadFromItxtText, "decodeAruPayloadFromItxtText");
+      async function parseAruArchivePngItxt(file) {
+        let buffer;
+        try {
+          buffer = await file.arrayBuffer();
+        } catch {
+          return { status: "error", url: null, reason: "arraybuffer_failed" };
+        }
+        if (!hasPngSignature(buffer)) {
+          return { status: "missing", url: null, reason: "png_itxt_invalid_signature" };
+        }
+        for (const chunkBytes of parsePngItxtChunks(buffer)) {
+          const itxt = parseItxtChunk(chunkBytes);
+          if (!itxt) continue;
+          if (itxt.keyword !== ARU_ITXT_KEYWORD) continue;
+          if (itxt.compressionFlag !== 0) {
+            return { status: "missing", url: null, reason: "png_itxt_compressed_unsupported" };
+          }
+          return decodeAruPayloadFromItxtText(itxt.textBytes);
+        }
+        return { status: "missing", url: null, reason: "png_itxt_missing" };
+      }
+      __name(parseAruArchivePngItxt, "parseAruArchivePngItxt");
+      function* parsePngItxtChunks(buffer) {
+        const view = new DataView(buffer);
+        let offset = 8;
+        while (offset + 12 <= buffer.byteLength) {
+          const length = view.getUint32(offset, false);
+          if (length > 2147483647) return;
+          const dataStart = offset + 8;
+          const dataEnd = dataStart + length;
+          if (dataEnd + 4 > buffer.byteLength) return;
+          const t0 = view.getUint8(offset + 4);
+          const t1 = view.getUint8(offset + 5);
+          const t2 = view.getUint8(offset + 6);
+          const t3 = view.getUint8(offset + 7);
+          const type = String.fromCodePoint(t0, t1, t2, t3);
+          if (type === "iTXt" && length > 0) {
+            yield new Uint8Array(buffer, dataStart, length);
+          }
+          if (type === "IEND") return;
+          offset = dataEnd + 4;
+        }
+      }
+      __name(parsePngItxtChunks, "parsePngItxtChunks");
+      function parseItxtChunk(data) {
+        if (!data || data.length < 6) return null;
+        let kwEnd = -1;
+        const maxKw = Math.min(data.length, 80);
+        for (let i = 0; i < maxKw; i++) {
+          if (data[i] === 0) {
+            kwEnd = i;
+            break;
+          }
+        }
+        if (kwEnd < 1) return null;
+        let keyword;
+        try {
+          keyword = String.fromCodePoint(...data.subarray(0, kwEnd));
+        } catch {
+          return null;
+        }
+        if (kwEnd + 2 >= data.length) return null;
+        const compressionFlag = data[kwEnd + 1];
+        const compressionMethod = data[kwEnd + 2];
+        let langEnd = -1;
+        for (let i = kwEnd + 3; i < data.length; i++) {
+          if (data[i] === 0) {
+            langEnd = i;
+            break;
+          }
+        }
+        if (langEnd === -1) return null;
+        let tkwEnd = -1;
+        for (let i = langEnd + 1; i < data.length; i++) {
+          if (data[i] === 0) {
+            tkwEnd = i;
+            break;
+          }
+        }
+        if (tkwEnd === -1) return null;
+        const textBytes = data.subarray(tkwEnd + 1);
+        return { keyword, compressionFlag, compressionMethod, textBytes };
+      }
+      __name(parseItxtChunk, "parseItxtChunk");
+      function extractSourceFromAruArchivePayload(payload) {
+        if (!payload || typeof payload !== "object") {
+          return { status: "missing", url: null, reason: "png_itxt_no_url" };
+        }
+        for (const key of ARU_PAYLOAD_URL_KEYS) {
+          const v = payload[key];
+          if (typeof v === "string" && v.trim().length > 0) {
+            const t = v.trim();
+            if (/^https?:\/\//.test(t) && !isPixivUserUrl(t)) {
+              return { status: "ok", url: t, reason: "png_itxt_source_found" };
+            }
+          }
+        }
+        const artworkId = (payload.artwork_id || "").trim();
+        if (/^\d{6,12}$/.test(artworkId)) {
+          return {
+            status: "ok",
+            url: `https://www.pixiv.net/artworks/${artworkId}`,
+            reason: "png_itxt_artwork_id_fallback"
+          };
+        }
+        return { status: "missing", url: null, reason: "png_itxt_no_url" };
+      }
+      __name(extractSourceFromAruArchivePayload, "extractSourceFromAruArchivePayload");
+      async function parseSourceFromFile(file, { allowLooseFilenameFallback = true } = {}) {
+        if (isPngFile(file)) {
+          const aruResult = await parseAruArchivePngItxt(file);
+          if (aruResult.status === "ok") {
+            return aruResult;
+          }
+          if (aruResult.status === "error") {
+            console.debug(
+              "[Aru Source Captioner] png itxt fallback to exifr:",
+              file.name,
+              aruResult.reason
+            );
+          }
+        }
+        {
+          const filenameUrl = parsePixivFilenameUrlStrict(file.name);
+          if (filenameUrl) {
+            console.info("[Aru Source Captioner] filename parsed (priority 2)", {
+              fileName: file.name,
+              url: filenameUrl
+            });
+            return { status: "ok", url: filenameUrl, reason: "filename_parsed" };
+          }
+        }
+        if (typeof exifr === "undefined" || !exifr || typeof exifr.parse !== "function") {
+          const filenameUrl = allowLooseFilenameFallback ? parsePixivFilenameUrl(file.name) : null;
+          if (filenameUrl) {
+            console.info("[Aru Source Captioner] filename fallback", {
+              fileName: file.name,
+              url: filenameUrl,
+              reason: "exifr_unavailable"
+            });
+            return { status: "ok", url: filenameUrl, reason: "filename_fallback" };
+          }
+          return { status: "error", url: null, reason: "exifr_unavailable" };
+        }
+        const isWebp = typeof file.type === "string" && file.type === "image/webp" || typeof file.name === "string" && /\.webp$/i.test(file.name);
+        let metadata;
+        try {
+          metadata = await exifr.parse(file, {
+            xmp: true,
+            exif: true,
+            iptc: true,
+            userComment: true
+          });
+        } catch (err) {
+          console.warn(
+            "[Aru Source Captioner] exifr.parse failed —",
+            `name=${file.name} type=${file.type || "unknown"} size=${file.size}B isWebp=${isWebp}`,
+            err.message || err
+          );
+          const filenameUrl = allowLooseFilenameFallback ? parsePixivFilenameUrl(file.name) : null;
+          if (filenameUrl) {
+            console.info("[Aru Source Captioner] filename fallback", {
+              fileName: file.name,
+              url: filenameUrl,
+              reason: "exifr_parse_failed"
+            });
+            return { status: "ok", url: filenameUrl, reason: "filename_fallback" };
+          }
+          if (isWebp) {
+            return { status: "missing", url: null, reason: "webp_no_exif" };
+          }
+          return { status: "error", url: null, reason: "metadata_parse_failed" };
+        }
+        if (!metadata || typeof metadata !== "object") {
+          const filenameUrl = allowLooseFilenameFallback ? parsePixivFilenameUrl(file.name) : null;
+          if (filenameUrl) {
+            console.info("[Aru Source Captioner] filename fallback", {
+              fileName: file.name,
+              url: filenameUrl,
+              reason: "no_metadata"
+            });
+            return { status: "ok", url: filenameUrl, reason: "filename_fallback" };
+          }
+          return { status: "missing", url: null, reason: "no_metadata" };
+        }
+        const candidates = extractSourceUrl(metadata);
+        if (candidates.length === 0) {
+          const filenameUrl = allowLooseFilenameFallback ? parsePixivFilenameUrl(file.name) : null;
+          if (filenameUrl) {
+            console.info("[Aru Source Captioner] filename fallback", {
+              fileName: file.name,
+              url: filenameUrl,
+              reason: "no_url_candidates"
+            });
+            return { status: "ok", url: filenameUrl, reason: "filename_fallback" };
+          }
+          return { status: "missing", url: null, reason: "no_url_candidates" };
+        }
+        return { status: "ok", url: candidates[0], reason: "ok" };
+      }
+      __name(parseSourceFromFile, "parseSourceFromFile");
+      function isPixivUserUrl(s) {
+        if (typeof s !== "string") return false;
+        try {
+          const u = new URL(s);
+          return (u.hostname === "www.pixiv.net" || u.hostname === "pixiv.net") && /^\/users\/\d+/.test(u.pathname);
+        } catch {
+          return false;
+        }
+      }
+      __name(isPixivUserUrl, "isPixivUserUrl");
+      function parsePixivFilenameUrl(filename) {
+        if (typeof filename !== "string") return null;
+        let clean;
+        try {
+          clean = decodeURIComponent(filename);
+        } catch {
+          clean = filename;
+        }
+        const base = clean.split(/[\\/]/).pop() || "";
+        const m = base.match(
+          /^(?:pixiv[_\-\s]?|illust[_\-\s]?)?(\d{6,12})(?:_p\d+)?(?:_[a-z0-9]+)*\.(?:jpg|jpeg|png|webp|gif)$/i
         );
-        resolve({ ...DEFAULT_OPTIONS });
+        if (m) return `https://www.pixiv.net/artworks/${m[1]}`;
+        return null;
       }
-    });
-  }
-
-  // ---------------- 파일 입력 감지 ----------------
-
-  function publishUploadStatus(snapshot) {
-    const value = JSON.stringify(snapshot);
-    if (document.documentElement.dataset.aruUploadDiagnostic !== value) {
-      document.documentElement.dataset.aruUploadDiagnostic = value;
-    }
-  }
-
-  function attachFileInputListeners(config) {
-    document.addEventListener("change", async (ev) => {
-      const target = ev.target;
-      if (!(target instanceof HTMLInputElement) || target.type !== "file" || !target.files?.length) return;
-      if (handledFileEvents.has(ev)) return;
-      handledFileEvents.add(ev);
-      const images = Array.from(target.files).filter(file => file?.type?.startsWith("image/"));
-      if (!images.length) return;
-      await handleSelectedImageFiles(images, target);
-    }, true);
-  }
-
-  async function handleSelectedImageFiles(files, input) {
-    if (uploadAttribution) await uploadAttribution.select(files, input);
-    else publishUploadStatus({state:"editor-unavailable",selected:files.length});
-  }
-
-  // ---------------- PNG AruArchive iTXt 직접 파서 (D2) ----------------
-  //
-  // Aru Archive 데스크톱 앱은 PNG에 비표준 iTXt chunk(keyword="AruArchive")로
-  // JSON 메타데이터를 저장한다. exifr는 표준 XMP/EXIF만 인식하므로, AruArchive iTXt
-  // 안의 artwork_url / source_url / artworkUrl을 별도 파서로 직접 추출한다.
-  //
-  // 지원 범위:
-  //   - PNG signature 8 bytes 검증
-  //   - chunk length(big-endian uint32) / type(ASCII 4) / data / crc 순회
-  //   - iTXt chunk 중 keyword="AruArchive"
-  //   - compression_flag === 0 (uncompressed)만 우선 지원
-  //
-  // 미지원:
-  //   - compression_flag === 1 (zlib-compressed iTXt) — Phase 3 후보
-  //   - .aru.json sidecar — 별도 첨부 시에만 가능, 본 파서 범위 외
-  //
-  // 실패는 missing / error 반환만 — throw 절대 안 함, 항상 exifr fallback에 양보.
-
-  const PNG_SIGNATURE = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A];
-  const ARU_ITXT_KEYWORD = "AruArchive";
-  const ARU_PAYLOAD_URL_KEYS = ["artwork_url", "source_url", "artworkUrl"];
-
-  function isPngFile(file) {
-    if (!file) return false;
-    if (typeof file.type === "string" && file.type === "image/png") return true;
-    if (typeof file.name === "string" && /\.png$/i.test(file.name)) return true;
-    return false;
-  }
-
-  function hasPngSignature(buffer) {
-    if (!buffer || buffer.byteLength < 8) return false;
-    const sig = new Uint8Array(buffer, 0, 8);
-    for (let i = 0; i < PNG_SIGNATURE.length; i++) {
-      if (sig[i] !== PNG_SIGNATURE[i]) return false;
-    }
-    return true;
-  }
-
-  function decodeAruPayloadFromItxtText(textBytes) {
-    let jsonText;
-    try {
-      jsonText = new TextDecoder("utf-8", { fatal: false }).decode(textBytes);
-    } catch {
-      return { status: "error", url: null, reason: "png_itxt_invalid_chunk" };
-    }
-
-    let payload;
-    try {
-      payload = JSON.parse(jsonText);
-    } catch {
-      return { status: "error", url: null, reason: "png_itxt_json_parse_failed" };
-    }
-
-    return extractSourceFromAruArchivePayload(payload);
-  }
-
-  async function parseAruArchivePngItxt(file) {
-    let buffer;
-    try {
-      buffer = await file.arrayBuffer();
-    } catch {
-      return { status: "error", url: null, reason: "arraybuffer_failed" };
-    }
-
-    if (!hasPngSignature(buffer)) {
-      return { status: "missing", url: null, reason: "png_itxt_invalid_signature" };
-    }
-
-    for (const chunkBytes of parsePngItxtChunks(buffer)) {
-      const itxt = parseItxtChunk(chunkBytes);
-      if (!itxt) continue;
-      if (itxt.keyword !== ARU_ITXT_KEYWORD) continue;
-
-      if (itxt.compressionFlag !== 0) {
-        return { status: "missing", url: null, reason: "png_itxt_compressed_unsupported" };
-      }
-
-      return decodeAruPayloadFromItxtText(itxt.textBytes);
-    }
-
-    return { status: "missing", url: null, reason: "png_itxt_missing" };
-  }
-
-  function* parsePngItxtChunks(buffer) {
-    const view = new DataView(buffer);
-    let offset = 8;  // skip PNG signature
-
-    // 각 chunk: length(4 BE) + type(4 ASCII) + data(length bytes) + crc(4) = 12 + length bytes
-    while (offset + 12 <= buffer.byteLength) {
-      const length = view.getUint32(offset, false);
-      if (length > 0x7FFFFFFF) return;  // sanity guard against malformed PNG
-
-      const dataStart = offset + 8;
-      const dataEnd = dataStart + length;
-      if (dataEnd + 4 > buffer.byteLength) return;  // truncated
-
-      const t0 = view.getUint8(offset + 4);
-      const t1 = view.getUint8(offset + 5);
-      const t2 = view.getUint8(offset + 6);
-      const t3 = view.getUint8(offset + 7);
-      const type = String.fromCodePoint(t0, t1, t2, t3);
-
-      if (type === "iTXt" && length > 0) {
-        yield new Uint8Array(buffer, dataStart, length);
-      }
-
-      if (type === "IEND") return;
-
-      offset = dataEnd + 4;  // skip CRC
-    }
-  }
-
-  function parseItxtChunk(data) {
-    if (!data || data.length < 6) return null;
-
-    // 1. keyword (1-79 bytes Latin-1, null-terminated)
-    let kwEnd = -1;
-    const maxKw = Math.min(data.length, 80);
-    for (let i = 0; i < maxKw; i++) {
-      if (data[i] === 0) { kwEnd = i; break; }
-    }
-    if (kwEnd < 1) return null;
-
-    let keyword;
-    try {
-      keyword = String.fromCodePoint(...data.subarray(0, kwEnd));
-    } catch {
-      return null;
-    }
-
-    // 2. compression_flag (1 byte) + compression_method (1 byte)
-    if (kwEnd + 2 >= data.length) return null;
-    const compressionFlag = data[kwEnd + 1];
-    const compressionMethod = data[kwEnd + 2];
-
-    // 3. language_tag (variable, null-terminated)
-    let langEnd = -1;
-    for (let i = kwEnd + 3; i < data.length; i++) {
-      if (data[i] === 0) { langEnd = i; break; }
-    }
-    if (langEnd === -1) return null;
-
-    // 4. translated_keyword (variable, null-terminated)
-    let tkwEnd = -1;
-    for (let i = langEnd + 1; i < data.length; i++) {
-      if (data[i] === 0) { tkwEnd = i; break; }
-    }
-    if (tkwEnd === -1) return null;
-
-    // 5. text (remainder)
-    const textBytes = data.subarray(tkwEnd + 1);
-
-    return { keyword, compressionFlag, compressionMethod, textBytes };
-  }
-
-  function extractSourceFromAruArchivePayload(payload) {
-    if (!payload || typeof payload !== "object") {
-      return { status: "missing", url: null, reason: "png_itxt_no_url" };
-    }
-
-    for (const key of ARU_PAYLOAD_URL_KEYS) {
-      const v = payload[key];
-      if (typeof v === "string" && v.trim().length > 0) {
-        const t = v.trim();
-        // /users/ URL은 작가 페이지 — 작품 출처로 사용하지 않는다.
-        if (/^https?:\/\//.test(t) && !isPixivUserUrl(t)) {
-          return { status: "ok", url: t, reason: "png_itxt_source_found" };
+      __name(parsePixivFilenameUrl, "parsePixivFilenameUrl");
+      function parsePixivFilenameUrlStrict(filename) {
+        if (typeof filename !== "string") return null;
+        let clean;
+        try {
+          clean = decodeURIComponent(filename);
+        } catch {
+          clean = filename;
         }
-      }
-    }
-
-    // artwork_id가 숫자 Pixiv ID면 작품 URL 생성.
-    const artworkId = (payload.artwork_id || "").trim();
-    if (/^\d{6,12}$/.test(artworkId)) {
-      return {
-        status: "ok",
-        url: `https://www.pixiv.net/artworks/${artworkId}`,
-        reason: "png_itxt_artwork_id_fallback",
-      };
-    }
-
-    return { status: "missing", url: null, reason: "png_itxt_no_url" };
-  }
-
-  // ---------------- 메타데이터 파싱 ----------------
-
-  async function parseSourceFromFile(file, { allowLooseFilenameFallback = true } = {}) {
-    // PNG 우선: Aru Archive 데스크톱 앱이 PNG에 비표준 iTXt(keyword="AruArchive")로
-    // JSON 메타데이터를 저장하는데, exifr는 이를 인식하지 못한다. PNG 파일이면
-    // 직접 파서를 먼저 시도하고, 성공 시 즉시 반환한다. 실패(missing/error)는
-    // silent fallback으로 기존 exifr 흐름을 그대로 탄다.
-    if (isPngFile(file)) {
-      const aruResult = await parseAruArchivePngItxt(file);
-      if (aruResult.status === "ok") {
-        return aruResult;
-      }
-      if (aruResult.status === "error") {
-        console.debug(
-          "[Aru Source Captioner] png itxt fallback to exifr:",
-          file.name, aruResult.reason
+        const base = clean.split(/[\\/]/).pop() || "";
+        const mPrefix = base.match(
+          /^(?:pixiv[_\-\s]?|illust[_\-\s]?)(\d{6,12})(?:_p\d+)?(?:_[a-z0-9]+)*\.(?:jpg|jpeg|png|webp|gif)$/i
         );
+        if (mPrefix) return `https://www.pixiv.net/artworks/${mPrefix[1]}`;
+        const mSuffix = base.match(
+          /^(\d{6,12})_p\d+(?:_[a-z0-9]+)*\.(?:jpg|jpeg|png|webp|gif)$/i
+        );
+        if (mSuffix) return `https://www.pixiv.net/artworks/${mSuffix[1]}`;
+        return null;
       }
-    }
-
-    // 우선순위 2: 명확한 Pixiv 마커(prefix 또는 _pN suffix) 파일명 — exifr보다 먼저 시도.
-    // Android Firefox가 파일을 임시명(1000039087.jpg 등)으로 리네임하면 바로 숫자만으로는
-    // 오탐이 발생하므로, strict 패턴만 여기서 허용한다.
-    // 바로 숫자+확장자 파일명은 exifr 이후 fallback에서 parsePixivFilenameUrl이 처리한다.
-    {
-      const filenameUrl = parsePixivFilenameUrlStrict(file.name);
-      if (filenameUrl) {
-        console.info("[Aru Source Captioner] filename parsed (priority 2)", {
-          fileName: file.name, url: filenameUrl,
-        });
-        return { status: "ok", url: filenameUrl, reason: "filename_parsed" };
-      }
-    }
-
-    if (typeof exifr === "undefined" || !exifr || typeof exifr.parse !== "function") {
-      const filenameUrl = allowLooseFilenameFallback ? parsePixivFilenameUrl(file.name) : null;
-      if (filenameUrl) {
-        console.info("[Aru Source Captioner] filename fallback", {
-          fileName: file.name, url: filenameUrl, reason: "exifr_unavailable",
-        });
-        return { status: "ok", url: filenameUrl, reason: "filename_fallback" };
-      }
-      return { status: "error", url: null, reason: "exifr_unavailable" };
-    }
-
-    // WebP 파일 감지: Pixiv _master1200.webp 등은 EXIF/XMP가 없어 exifr가 항상 throw한다.
-    // 파싱 실패를 hard error로 취급하면 caption 흐름 전체가 중단되므로 missing으로 처리한다.
-    const isWebp = (
-      (typeof file.type === "string" && file.type === "image/webp") ||
-      (typeof file.name === "string" && /\.webp$/i.test(file.name))
-    );
-
-    let metadata;
-    try {
-      metadata = await exifr.parse(file, {
-        xmp: true,
-        exif: true,
-        iptc: true,
-        userComment: true
-      });
-    } catch (err) {
-      console.warn(
-        "[Aru Source Captioner] exifr.parse failed —",
-        `name=${file.name} type=${file.type || "unknown"} size=${file.size}B isWebp=${isWebp}`,
-        err.message || err
-      );
-      const filenameUrl = allowLooseFilenameFallback ? parsePixivFilenameUrl(file.name) : null;
-      if (filenameUrl) {
-        console.info("[Aru Source Captioner] filename fallback", {
-          fileName: file.name, url: filenameUrl, reason: "exifr_parse_failed",
-        });
-        return { status: "ok", url: filenameUrl, reason: "filename_fallback" };
-      }
-      if (isWebp) {
-        return { status: "missing", url: null, reason: "webp_no_exif" };
-      }
-      return { status: "error", url: null, reason: "metadata_parse_failed" };
-    }
-
-    if (!metadata || typeof metadata !== "object") {
-      const filenameUrl = allowLooseFilenameFallback ? parsePixivFilenameUrl(file.name) : null;
-      if (filenameUrl) {
-        console.info("[Aru Source Captioner] filename fallback", {
-          fileName: file.name, url: filenameUrl, reason: "no_metadata",
-        });
-        return { status: "ok", url: filenameUrl, reason: "filename_fallback" };
-      }
-      return { status: "missing", url: null, reason: "no_metadata" };
-    }
-
-    const candidates = extractSourceUrl(metadata);
-    if (candidates.length === 0) {
-      const filenameUrl = allowLooseFilenameFallback ? parsePixivFilenameUrl(file.name) : null;
-      if (filenameUrl) {
-        console.info("[Aru Source Captioner] filename fallback", {
-          fileName: file.name, url: filenameUrl, reason: "no_url_candidates",
-        });
-        return { status: "ok", url: filenameUrl, reason: "filename_fallback" };
-      }
-      return { status: "missing", url: null, reason: "no_url_candidates" };
-    }
-
-    return { status: "ok", url: candidates[0], reason: "ok" };
-  }
-
-  // Pixiv 작가 페이지 URL 여부 판정.
-  // /users/{id} 경로는 작품 출처로 쓸 수 없다 — 작가 페이지일 뿐이다.
-  function isPixivUserUrl(s) {
-    if (typeof s !== "string") return false;
-    try {
-      const u = new URL(s);
-      return (u.hostname === "www.pixiv.net" || u.hostname === "pixiv.net") &&
-             /^\/users\/\d+/.test(u.pathname);
-    } catch {
-      return false;
-    }
-  }
-
-  // Pixiv 파일명에서 artwork URL을 생성한다.
-  // 지원 패턴:
-  //   112278708_p0_master1200.jpg  → https://www.pixiv.net/artworks/112278708
-  //   112278708_p0.jpg             → https://www.pixiv.net/artworks/112278708
-  //   112278708.jpg                → https://www.pixiv.net/artworks/112278708
-  //   pixiv_112278708_p0_master1200.jpg  → (prefix 포함)
-  //   illust_112278708_p0_master1200.png → (prefix 포함)
-  //   C:\Downloads\112278708_p0_master1200.jpg → (Windows 경로 포함)
-  function parsePixivFilenameUrl(filename) {
-    if (typeof filename !== "string") return null;
-    let clean;
-    try { clean = decodeURIComponent(filename); } catch { clean = filename; }
-    // Windows/Unix 경로에서 basename만 추출
-    const base = clean.split(/[\\/]/).pop() || "";
-    // 통합 Pixiv 파일명 패턴:
-    //   prefix? + id(6-12자리) + _p{n}? + _suffix* + .ext
-    const m = base.match(
-      /^(?:pixiv[_\-\s]?|illust[_\-\s]?)?(\d{6,12})(?:_p\d+)?(?:_[a-z0-9]+)*\.(?:jpg|jpeg|png|webp|gif)$/i
-    );
-    if (m) return `https://www.pixiv.net/artworks/${m[1]}`;
-    return null;
-  }
-
-  // 명확한 Pixiv 마커가 있는 패턴만 매칭한다.
-  // Android Firefox가 파일을 임시명(예: 1000039087.jpg)으로 리네임하면 parsePixivFilenameUrl은
-  // 바로 숫자 파일명을 오탐한다. Strict 버전은 pixiv_/illust_ prefix 또는 _pN suffix 중
-  // 하나가 있어야 하므로 Android 임시명은 통과하지 않는다.
-  // 바로 숫자 파일명(1000039087.jpg)은 exifr 이후 fallback으로 parsePixivFilenameUrl이 처리한다.
-  function parsePixivFilenameUrlStrict(filename) {
-    if (typeof filename !== "string") return null;
-    let clean;
-    try { clean = decodeURIComponent(filename); } catch { clean = filename; }
-    const base = clean.split(/[\\/]/).pop() || "";
-    // prefix 경로: pixiv_/illust_ prefix — 바로 숫자 + 확장자 단독은 제외
-    const mPrefix = base.match(
-      /^(?:pixiv[_\-\s]?|illust[_\-\s]?)(\d{6,12})(?:_p\d+)?(?:_[a-z0-9]+)*\.(?:jpg|jpeg|png|webp|gif)$/i
-    );
-    if (mPrefix) return `https://www.pixiv.net/artworks/${mPrefix[1]}`;
-    // suffix 경로: 명시적 _pN page suffix 포함 (prefix 없는 표준 Pixiv 파일명)
-    const mSuffix = base.match(
-      /^(\d{6,12})_p\d+(?:_[a-z0-9]+)*\.(?:jpg|jpeg|png|webp|gif)$/i
-    );
-    if (mSuffix) return `https://www.pixiv.net/artworks/${mSuffix[1]}`;
-    return null;
-  }
-
-  function extractSourceUrl(metadata) {
-    if (!metadata || typeof metadata !== "object") return [];
-    const candidates = [];
-
-    // 우선순위 1·2·3: AruArchive JSON (artwork_url / source_url / artwork_id)
-    collectFromPossibleAruJson(metadata, candidates);
-
-    // 우선순위 4: XMP dc:Source — URL 형식이고 /users/ 가 아닌 경우만 허용
-    for (const key of ["Source", "source"]) {
-      const v = metadata[key];
-      if (typeof v === "string") {
-        const t = v.trim();
-        if (/^https?:\/\//.test(t) && !isPixivUserUrl(t)) {
-          candidates.push(t);
-        }
-      }
-    }
-
-    // 우선순위 5: XMP dc:Identifier — URL 형식이거나 숫자 Pixiv ID면 허용.
-    // bare hash / 일반 문자열은 제외한다.
-    for (const key of ["Identifier", "identifier"]) {
-      const v = metadata[key];
-      if (typeof v === "string") {
-        const t = v.trim();
-        if (/^https?:\/\//.test(t) && !isPixivUserUrl(t)) {
-          candidates.push(t);
-        } else if (/^\d{6,12}$/.test(t)) {
-          // 숫자 Pixiv artwork_id를 Identifier로 기록한 경우 URL 생성
-          candidates.push(`https://www.pixiv.net/artworks/${t}`);
-        }
-        // else: hash / 기타 비URL 문자열 → 무시
-      } else if (Array.isArray(v)) {
-        for (const item of v) {
-          if (typeof item === "string") {
-            const t = item.trim();
+      __name(parsePixivFilenameUrlStrict, "parsePixivFilenameUrlStrict");
+      function extractSourceUrl(metadata) {
+        if (!metadata || typeof metadata !== "object") return [];
+        const candidates = [];
+        collectFromPossibleAruJson(metadata, candidates);
+        for (const key of ["Source", "source"]) {
+          const v = metadata[key];
+          if (typeof v === "string") {
+            const t = v.trim();
             if (/^https?:\/\//.test(t) && !isPixivUserUrl(t)) {
               candidates.push(t);
             }
           }
         }
+        for (const key of ["Identifier", "identifier"]) {
+          const v = metadata[key];
+          if (typeof v === "string") {
+            const t = v.trim();
+            if (/^https?:\/\//.test(t) && !isPixivUserUrl(t)) {
+              candidates.push(t);
+            } else if (/^\d{6,12}$/.test(t)) {
+              candidates.push(`https://www.pixiv.net/artworks/${t}`);
+            }
+          } else if (Array.isArray(v)) {
+            for (const item of v) {
+              if (typeof item === "string") {
+                const t = item.trim();
+                if (/^https?:\/\//.test(t) && !isPixivUserUrl(t)) {
+                  candidates.push(t);
+                }
+              }
+            }
+          }
+        }
+        collectUrlCandidates(metadata, candidates);
+        const rawAll = [];
+        walkStringFields(metadata, rawAll, 0);
+        for (const u of rawAll) {
+          if (!isPixivUserUrl(u)) {
+            candidates.push(u);
+          }
+        }
+        return uniqueOrdered(candidates);
       }
-    }
-
-    // 우선순위 6: 텍스트 필드를 raw URL로 직접 사용 (https?:// 시작만)
-    collectUrlCandidates(metadata, candidates);
-
-    // 우선순위 7: 모든 문자열 필드에서 https?:// 패턴 fallback.
-    // /users/ URL은 작가 페이지이므로 작품 출처에서 제외.
-    const rawAll = [];
-    walkStringFields(metadata, rawAll, 0);
-    for (const u of rawAll) {
-      if (!isPixivUserUrl(u)) {
-        candidates.push(u);
+      __name(extractSourceUrl, "extractSourceUrl");
+      function collectFromPossibleAruJson(metadata, candidates) {
+        for (const field of TEXT_FIELDS_FOR_JSON) {
+          const v = metadata[field];
+          if (typeof v !== "string") continue;
+          const obj = safeJsonParse(v);
+          if (!obj || typeof obj !== "object") continue;
+          for (const key of ["artwork_url", "source_url", "artworkUrl"]) {
+            const urlVal = (obj[key] || "").trim();
+            if (urlVal && /^https?:\/\//.test(urlVal) && !isPixivUserUrl(urlVal)) {
+              candidates.push(urlVal);
+            } else if (urlVal && isPixivUserUrl(urlVal)) {
+              console.debug(
+                "[Aru Source Captioner] source candidate skipped (artist url):",
+                { key, urlVal }
+              );
+            }
+          }
+          const artworkId = (obj.artwork_id || "").trim();
+          if (/^\d{6,12}$/.test(artworkId)) {
+            candidates.push(`https://www.pixiv.net/artworks/${artworkId}`);
+          }
+          const origFilename = obj.original_filename;
+          if (typeof origFilename === "string") {
+            const filenameUrl = parsePixivFilenameUrl(origFilename);
+            if (filenameUrl) candidates.push(filenameUrl);
+          }
+        }
       }
-    }
-
-    return uniqueOrdered(candidates);
-  }
-
-  function collectFromPossibleAruJson(metadata, candidates) {
-    for (const field of TEXT_FIELDS_FOR_JSON) {
-      const v = metadata[field];
-      if (typeof v !== "string") continue;
-      const obj = safeJsonParse(v);
-      if (!obj || typeof obj !== "object") continue;
-
-      // artwork_url / source_url / artworkUrl: URL 형식이고 /users/ 아닌 경우만
-      for (const key of ["artwork_url", "source_url", "artworkUrl"]) {
-        const urlVal = (obj[key] || "").trim();
-        if (urlVal && /^https?:\/\//.test(urlVal) && !isPixivUserUrl(urlVal)) {
-          candidates.push(urlVal);
-        } else if (urlVal && isPixivUserUrl(urlVal)) {
-          console.debug(
-            "[Aru Source Captioner] source candidate skipped (artist url):",
-            { key, urlVal }
+      __name(collectFromPossibleAruJson, "collectFromPossibleAruJson");
+      function collectUrlCandidates(metadata, candidates) {
+        for (const field of TEXT_FIELDS_FOR_JSON) {
+          const v = metadata[field];
+          if (typeof v !== "string") continue;
+          const trimmed = v.trim();
+          if (/^https?:\/\//.test(trimmed)) {
+            candidates.push(trimmed);
+          }
+        }
+      }
+      __name(collectUrlCandidates, "collectUrlCandidates");
+      function walkStringFields(value, candidates, depth) {
+        if (depth > WALK_MAX_DEPTH) return;
+        if (typeof value === "string") {
+          const matches = value.match(URL_PATTERN);
+          if (matches) {
+            for (const m of matches) {
+              candidates.push(m);
+            }
+          }
+          return;
+        }
+        if (Array.isArray(value)) {
+          for (const item of value) {
+            walkStringFields(item, candidates, depth + 1);
+          }
+          return;
+        }
+        if (value && typeof value === "object") {
+          for (const k of Object.keys(value)) {
+            walkStringFields(value[k], candidates, depth + 1);
+          }
+        }
+      }
+      __name(walkStringFields, "walkStringFields");
+      function safeJsonParse(text) {
+        if (typeof text !== "string") return null;
+        const trimmed = text.trim();
+        if (!trimmed.startsWith("{") && !trimmed.startsWith("[")) return null;
+        try {
+          return JSON.parse(trimmed);
+        } catch (err) {
+          console.warn("[Aru Source Captioner] JSON parse failed; fallback continues", {
+            parser: "aru_json",
+            error: String(err),
+            sample: String(text).slice(0, 160)
+          });
+          return null;
+        }
+      }
+      __name(safeJsonParse, "safeJsonParse");
+      function pushIfString(arr, v) {
+        if (typeof v === "string") {
+          const t = v.trim();
+          if (t.length > 0) arr.push(t);
+        }
+      }
+      __name(pushIfString, "pushIfString");
+      function pushIfStringOrArray(arr, v) {
+        if (typeof v === "string") {
+          pushIfString(arr, v);
+          return;
+        }
+        if (Array.isArray(v)) {
+          for (const item of v) {
+            if (typeof item === "string") pushIfString(arr, item);
+          }
+        }
+      }
+      __name(pushIfStringOrArray, "pushIfStringOrArray");
+      function uniqueOrdered(arr) {
+        const seen = /* @__PURE__ */ new Set();
+        const out = [];
+        for (const item of arr) {
+          if (!seen.has(item)) {
+            seen.add(item);
+            out.push(item);
+          }
+        }
+        return out;
+      }
+      __name(uniqueOrdered, "uniqueOrdered");
+      function sanitizeSourceUrl(rawUrl, config) {
+        if (typeof rawUrl !== "string") return null;
+        const trimmed = rawUrl.trim();
+        if (trimmed.length === 0) return null;
+        let parsed;
+        try {
+          parsed = new URL(trimmed);
+        } catch {
+          return null;
+        }
+        const protocol = parsed.protocol;
+        if (protocol === "https:") {
+        } else if (protocol === "http:") {
+          if (!config.allowHttp) return null;
+        } else {
+          return null;
+        }
+        if (config.strictAllowlist) {
+          if (!isAllowedByPolicy(parsed.hostname, config)) return null;
+        }
+        return parsed.toString();
+      }
+      __name(sanitizeSourceUrl, "sanitizeSourceUrl");
+      function isAllowedByPolicy(hostname, config) {
+        if (typeof hostname !== "string" || hostname.length === 0) return false;
+        if (!Array.isArray(config.allowedHosts)) return false;
+        const h = hostname.toLowerCase();
+        for (const allowed of config.allowedHosts) {
+          if (typeof allowed !== "string") continue;
+          const a = allowed.trim().toLowerCase();
+          if (a.length === 0) continue;
+          if (h === a) return true;
+          if (h.endsWith("." + a)) return true;
+        }
+        return false;
+      }
+      __name(isAllowedByPolicy, "isAllowedByPolicy");
+      function startEditorObserver(config) {
+        const Controller = attribution2?.Controller;
+        if (!Controller) return null;
+        uploadAttribution = new Controller({
+          document,
+          parse: /* @__PURE__ */ __name((file) => parseSourceFromFile(file, { allowLooseFilenameFallback: !isMobileAutoInsertEnvironment() }), "parse"),
+          sanitize: /* @__PURE__ */ __name((url) => sanitizeSourceUrl(url, config), "sanitize"),
+          caption: createSourceCaption,
+          anchor: findImageParagraph,
+          existing: hasExistingSourceCaption,
+          onStatus: publishUploadStatus
+        });
+        window.addEventListener("pagehide", () => uploadAttribution?.destroy(), { once: true });
+        return uploadAttribution;
+      }
+      __name(startEditorObserver, "startEditorObserver");
+      function findImageParagraph(img) {
+        return img.closest("p") || img;
+      }
+      __name(findImageParagraph, "findImageParagraph");
+      function hasExistingSourceCaption(img) {
+        const anchor = findImageParagraph(img);
+        const next = anchor.nextElementSibling;
+        if (!next) return false;
+        if (next instanceof HTMLElement && next.dataset?.aruSourceCaption === "1") {
+          return true;
+        }
+        const text = (next.textContent || "").trim();
+        if (text.startsWith("출처:")) {
+          const a = next.querySelector?.("a[href]");
+          if (a) return true;
+        }
+        return false;
+      }
+      __name(hasExistingSourceCaption, "hasExistingSourceCaption");
+      function createSourceCaption(url) {
+        const p = document.createElement("p");
+        p.className = "aru-source-caption";
+        p.style.textAlign = "center";
+        p.dataset.aruSourceCaption = "1";
+        p.appendChild(document.createTextNode("출처: "));
+        const a = document.createElement("a");
+        a.href = url;
+        a.target = "_blank";
+        a.rel = "noopener noreferrer";
+        a.textContent = url;
+        p.appendChild(a);
+        return p;
+      }
+      __name(createSourceCaption, "createSourceCaption");
+      const READ_PATH_PATTERN = /^\/community\/board\/[^/]+\/read\/[^/?]+/;
+      function isReadPage() {
+        try {
+          return READ_PATH_PATTERN.test(location.pathname);
+        } catch {
+          return false;
+        }
+      }
+      __name(isReadPage, "isReadPage");
+      const COMMENT_TEXTAREA_SELECTOR = [
+        // 일반 댓글
+        'textarea[name="comment_input"]',
+        'textarea[id="comment_input"]',
+        'textarea[class~="comment_input"]',
+        'textarea[name^="comment_input"]',
+        // comment_input_<id>
+        'textarea[id^="comment_input"]',
+        'textarea[class*="comment_input"]',
+        // class에 comment_input 부분 매칭
+        // 대댓글 (Ruliweb: name="reply_input", class="common_input reply_input")
+        'textarea[name="reply_input"]',
+        'textarea[name^="reply_input"]',
+        // reply_input_<id>
+        'textarea[class~="reply_input"]',
+        'textarea[class*="reply_input"]',
+        // 다른 변형 패턴 (보존)
+        'textarea[name^="re_comment_input"]',
+        'textarea[id^="re_comment_input"]',
+        'textarea[class*="re_comment"]'
+      ].join(", ");
+      const COMMENT_IMG_BUTTON_SELECTOR = ".common_img_button";
+      const COMMENT_FILE_INPUT_SELECTOR = "input.common_img_input, input[type='file']";
+      const COMMENT_BOUND_DATASET_KEY = "aruSourceCommentBound";
+      const COMMENT_FILE_BOUND_DATASET_KEY = "aruSourceFileBound";
+      const COMMENT_BUTTON_CLASS = "aru-source-caption-comment-button";
+      const COMMENT_SOURCE_PREFIX = "출처:";
+      const wrapperSourceMap = /* @__PURE__ */ new WeakMap();
+      let readPageConfig = null;
+      let cachedConfig = null;
+      function resolveCommentWrapperForTextarea(textarea) {
+        const outer = textarea.closest(".border_box.after_clear");
+        if (outer) return outer;
+        const borderBox = textarea.closest(".border_box");
+        if (borderBox) return borderBox;
+        const formish = textarea.closest("form, fieldset");
+        if (formish) return formish;
+        const innerWrapper = textarea.closest(".common_input_wrapper");
+        if (innerWrapper?.parentElement) return innerWrapper.parentElement;
+        return textarea.parentElement?.parentElement || textarea.parentElement || null;
+      }
+      __name(resolveCommentWrapperForTextarea, "resolveCommentWrapperForTextarea");
+      function classifyAndPushWrapper(wrapper, result2) {
+        const textarea = wrapper.querySelector(COMMENT_TEXTAREA_SELECTOR);
+        if (!(textarea instanceof HTMLTextAreaElement)) return;
+        const imgButton = wrapper.querySelector(COMMENT_IMG_BUTTON_SELECTOR);
+        result2.push(wrapper);
+        const textareaInfo = {
+          name: textarea.name,
+          id: textarea.id,
+          className: textarea.className
+        };
+        if (imgButton) {
+          console.log(
+            "[Aru Source Captioner] scan: wrapper OK (has textarea + .common_img_button)",
+            { wrapper, textarea: textareaInfo }
+          );
+        } else {
+          console.log(
+            "[Aru Source Captioner] scan: wrapper has textarea but no .common_img_button — will use textarea position",
+            { wrapper, textarea: textareaInfo }
           );
         }
       }
-
-      // artwork_id가 숫자 Pixiv ID → 작품 URL 생성
-      const artworkId = (obj.artwork_id || "").trim();
-      if (/^\d{6,12}$/.test(artworkId)) {
-        candidates.push(`https://www.pixiv.net/artworks/${artworkId}`);
+      __name(classifyAndPushWrapper, "classifyAndPushWrapper");
+      function findCommentInputWrappers() {
+        const textareas = document.querySelectorAll(COMMENT_TEXTAREA_SELECTOR);
+        console.log(
+          `[Aru Source Captioner] scan: found ${textareas.length} comment textarea candidates`
+        );
+        const wrappers = /* @__PURE__ */ new Set();
+        for (const textarea of textareas) {
+          if (!(textarea instanceof HTMLTextAreaElement)) continue;
+          const wrapper = resolveCommentWrapperForTextarea(textarea);
+          if (wrapper instanceof HTMLElement) {
+            wrappers.add(wrapper);
+          }
+        }
+        const result2 = [];
+        for (const wrapper of wrappers) {
+          classifyAndPushWrapper(wrapper, result2);
+        }
+        console.log(
+          `[Aru Source Captioner] scan: ${result2.length} comment wrappers identified`
+        );
+        return result2;
       }
-
-      // original_filename이 Pixiv 패턴이면 URL 생성
-      const origFilename = obj.original_filename;
-      if (typeof origFilename === "string") {
-        const filenameUrl = parsePixivFilenameUrl(origFilename);
-        if (filenameUrl) candidates.push(filenameUrl);
+      __name(findCommentInputWrappers, "findCommentInputWrappers");
+      function buildCommentSourceText(sourceUrl) {
+        return `${COMMENT_SOURCE_PREFIX} ${sourceUrl}
+`;
       }
-    }
-  }
-
-  function collectUrlCandidates(metadata, candidates) {
-    for (const field of TEXT_FIELDS_FOR_JSON) {
-      const v = metadata[field];
-      if (typeof v !== "string") continue;
-      const trimmed = v.trim();
-      if (/^https?:\/\//.test(trimmed)) {
-        candidates.push(trimmed);
+      __name(buildCommentSourceText, "buildCommentSourceText");
+      function logCommentInsertSkip(reason, detail) {
+        console.debug("[Aru Source Captioner] comment insert skipped:", reason, detail || "");
       }
-    }
-  }
-
-  function walkStringFields(value, candidates, depth) {
-    if (depth > WALK_MAX_DEPTH) return;
-    if (typeof value === "string") {
-      const matches = value.match(URL_PATTERN);
-      if (matches) {
-        for (const m of matches) {
-          candidates.push(m);
+      __name(logCommentInsertSkip, "logCommentInsertSkip");
+      function focusTextareaSafe(textarea) {
+        try {
+          textarea.focus();
+        } catch {
         }
       }
-      return;
-    }
-    if (Array.isArray(value)) {
-      for (const item of value) {
-        walkStringFields(item, candidates, depth + 1);
+      __name(focusTextareaSafe, "focusTextareaSafe");
+      function checkInsertSkipReason(textarea, existing, sourceLine, newValue) {
+        if (existing.includes(sourceLine)) {
+          focusTextareaSafe(textarea);
+          console.log("[Aru Source Captioner] insert: same source already present — focus only");
+          logCommentInsertSkip("duplicate_source_line");
+          return "duplicate";
+        }
+        if (/(^|\n)\s*출처\s*:\s*\S/.test(existing)) {
+          focusTextareaSafe(textarea);
+          console.log("[Aru Source Captioner] insert: different source already present — skipped");
+          logCommentInsertSkip("other_source_present");
+          return "different-source";
+        }
+        const maxLen = typeof textarea.maxLength === "number" ? textarea.maxLength : -1;
+        if (maxLen > 0 && newValue.length > maxLen) {
+          console.warn("[Aru Source Captioner] insert: maxLength exceeded — skipped", {
+            newLength: newValue.length,
+            maxLength: maxLen
+          });
+          logCommentInsertSkip("maxlength_exceeded", { maxLen, newLen: newValue.length });
+          return "too-long";
+        }
+        return null;
       }
-      return;
-    }
-    if (value && typeof value === "object") {
-      for (const k of Object.keys(value)) {
-        walkStringFields(value[k], candidates, depth + 1);
+      __name(checkInsertSkipReason, "checkInsertSkipReason");
+      function buildMergedTextareaValue(existing, sourceText) {
+        if (existing.trim().length === 0) return sourceText;
+        return existing.replace(/\s+$/u, "") + "\n\n" + sourceText;
       }
-    }
-  }
-
-  function safeJsonParse(text) {
-    if (typeof text !== "string") return null;
-    const trimmed = text.trim();
-    if (!trimmed.startsWith("{") && !trimmed.startsWith("[")) return null;
-    try {
-      return JSON.parse(trimmed);
-    } catch (err) {
-      // non-fatal — Python dict / trailing comma / single-quote JSON은 정상 실패.
-      // Firefox UTF-16LE 디코딩 오류도 이 경로를 탄다. filename fallback은 계속된다.
-      console.warn("[Aru Source Captioner] JSON parse failed; fallback continues", {
-        parser: "aru_json",
-        error: String(err),
-        sample: String(text).slice(0, 160),
-      });
-      return null;
-    }
-  }
-
-  function pushIfString(arr, v) {
-    if (typeof v === "string") {
-      const t = v.trim();
-      if (t.length > 0) arr.push(t);
-    }
-  }
-
-  function pushIfStringOrArray(arr, v) {
-    if (typeof v === "string") {
-      pushIfString(arr, v);
-      return;
-    }
-    if (Array.isArray(v)) {
-      for (const item of v) {
-        if (typeof item === "string") pushIfString(arr, item);
-      }
-    }
-  }
-
-  function uniqueOrdered(arr) {
-    const seen = new Set();
-    const out = [];
-    for (const item of arr) {
-      if (!seen.has(item)) {
-        seen.add(item);
-        out.push(item);
-      }
-    }
-    return out;
-  }
-
-  // ---------------- URL 보안 검증 ----------------
-
-  function sanitizeSourceUrl(rawUrl, config) {
-    if (typeof rawUrl !== "string") return null;
-    const trimmed = rawUrl.trim();
-    if (trimmed.length === 0) return null;
-
-    let parsed;
-    try {
-      parsed = new URL(trimmed);
-    } catch {
-      return null;
-    }
-
-    const protocol = parsed.protocol;
-    if (protocol === "https:") {
-      // 통과
-    } else if (protocol === "http:") {
-      if (!config.allowHttp) return null;
-    } else {
-      // javascript: / data: / vbscript: / file: / chrome: / chrome-extension: / about: 등 모두 차단
-      return null;
-    }
-
-    if (config.strictAllowlist) {
-      if (!isAllowedByPolicy(parsed.hostname, config)) return null;
-    }
-
-    return parsed.toString();
-  }
-
-  function isAllowedByPolicy(hostname, config) {
-    if (typeof hostname !== "string" || hostname.length === 0) return false;
-    if (!Array.isArray(config.allowedHosts)) return false;
-    const h = hostname.toLowerCase();
-    for (const allowed of config.allowedHosts) {
-      if (typeof allowed !== "string") continue;
-      const a = allowed.trim().toLowerCase();
-      if (a.length === 0) continue;
-      if (h === a) return true;
-      if (h.endsWith("." + a)) return true;
-    }
-    return false;
-  }
-
-  // ---------------- DOM 감시 ----------------
-
-  function startEditorObserver(config) {
-    const Controller = globalThis.AruSourceAttribution?.Controller;
-    if (!Controller) return null; // No unverified/FIFO fallback when the module is unavailable.
-    uploadAttribution = new Controller({
-      document,
-      parse: file => parseSourceFromFile(file, {allowLooseFilenameFallback: !isMobileAutoInsertEnvironment()}),
-      sanitize: url => sanitizeSourceUrl(url, config),
-      caption: createSourceCaption,
-      anchor: findImageParagraph,
-      existing: hasExistingSourceCaption,
-      onStatus: publishUploadStatus
-    });
-    window.addEventListener("pagehide", () => uploadAttribution?.destroy(), {once:true});
-    return uploadAttribution;
-  }
-
-  function findImageParagraph(img) {
-    return img.closest("p") || img;
-  }
-
-  function hasExistingSourceCaption(img) {
-    const anchor = findImageParagraph(img);
-    const next = anchor.nextElementSibling;
-    if (!next) return false;
-    if (next instanceof HTMLElement && next.dataset?.aruSourceCaption === "1") {
-      return true;
-    }
-    const text = (next.textContent || "").trim();
-    if (text.startsWith("출처:")) {
-      const a = next.querySelector?.("a[href]");
-      if (a) return true;
-    }
-    return false;
-  }
-
-  function createSourceCaption(url) {
-    const p = document.createElement("p");
-    p.className = "aru-source-caption";
-    p.style.textAlign = "center";
-    p.dataset.aruSourceCaption = "1";
-
-    p.appendChild(document.createTextNode("출처: "));
-
-    const a = document.createElement("a");
-    a.href = url;
-    a.target = "_blank";
-    a.rel = "noopener noreferrer";
-    a.textContent = url;
-
-    p.appendChild(a);
-    return p;
-  }
-
-  // ---------------- 페이지 종류 감지 ----------------
-  //
-  // 글쓰기 페이지(write)와 일반 게시글 조회 페이지(read)는 manifest matches가 모두
-  // 매칭되지만 동작이 다르다. URL pathname으로 명확히 분기한다.
-  //
-  //   write: /community/board/{boardId}/write 등
-  //   read:  /community/board/{boardId}/read/{postId}
-  //
-  // read 페이지에서는 write용 file input / editor observer를 띄우지 않고,
-  // 댓글 영역에 "출처 추가" 버튼만 주입한다.
-
-  const READ_PATH_PATTERN = /^\/community\/board\/[^/]+\/read\/[^/?]+/;
-
-  function isReadPage() {
-    try {
-      return READ_PATH_PATTERN.test(location.pathname);
-    } catch {
-      return false;
-    }
-  }
-
-  // 글쓰기 페이지는 별도 selector 검사 없이 isReadPage()의 음수로 정의한다.
-  // (manifest matches가 이미 루리웹 게시판으로 좁혀져 있다.)
-
-  // ---------------- 댓글 영역 출처 버튼 (read 페이지) ----------------
-  //
-  // 댓글 textarea(textarea[name="comment_input"])를 가진 .border_box.after_clear
-  // wrapper를 찾아 .common_img_button 바로 다음에 "출처 추가" 버튼을 주입한다.
-  //
-  // 정책:
-  //   - 출처 URL은 사용자가 댓글에 첨부한 이미지의 Aru Archive metadata에서 추출한
-  //     artwork_url(또는 source_url / Source / Identifier 등 write 페이지와 동일
-  //     우선순위)을 사용한다. 게시글의 location.href는 절대 fallback으로 쓰지 않는다
-  //     (search_type / #cmt 등 변동 fragment를 출처로 박는 사고 방지).
-  //   - 파일 첨부 시 file input의 change 이벤트를 addEventListener로만 hook해서
-  //     첫 번째 image의 metadata를 parseSourceFromFile + sanitizeSourceUrl로 검증한 뒤
-  //     wrapperSourceMap에 저장하고 textarea에 자동 삽입한다.
-  //     기존 onchange inline 핸들러(app.comment_img / app.comment_img_drop)는 가로채지 않는다.
-  //   - "출처 추가" 버튼은 저장된 source가 있으면 그 값으로 재삽입(중복 시 skip)을
-  //     시도하고, 없으면 alert으로 안내만 한다 (page URL fallback 금지).
-  //   - 삽입 텍스트 형식: "출처: {url}\n\n" — 마지막 빈 줄을 두어 사용자가 그 아래
-  //     댓글 본문을 바로 이어 작성할 수 있게 한다.
-  //   - 빈 textarea: 출처 텍스트만 삽입.
-  //   - 기존 내용 있음: existing.trimEnd() + "\n\n" + 출처 텍스트.
-  //   - 동일 출처가 이미 있으면 skip (중복 방지).
-  //   - 다른 출처 라인("출처: ..." 다른 URL)이 이미 있으면 skip (자동 덮어쓰기 금지).
-  //   - textarea.maxLength 초과 시 skip.
-  //   - 커서를 마지막 빈 줄에 위치시키고 input/change 이벤트 dispatch.
-  //   - 한 wrapper당 한 번만 주입 (data-aru-source-comment-bound guard).
-  //   - 한 file input당 한 번만 hook (data-aru-source-file-bound guard).
-  //   - 기존 onclick / onchange / onkeydown / .common_img_button 이벤트는 절대 손대지 않는다.
-
-  // 일반 댓글: textarea[name="comment_input"] / textarea#comment_input
-  // 대댓글(reply): name/id가 comment_input_<commentId> 또는 re_comment_input_*
-  // 형태로 들어오는 경우가 있어, prefix 매칭과 class 부분 매칭을 함께 사용한다.
-  // .common_img_button 위치 기준으로 button을 주입하므로 게시글 본문 textarea 등이
-  // 잘못 매칭되더라도 wrapper에 .common_img_button이 없으면 영향 적다.
-  const COMMENT_TEXTAREA_SELECTOR = [
-    // 일반 댓글
-    'textarea[name="comment_input"]',
-    'textarea[id="comment_input"]',
-    'textarea[class~="comment_input"]',
-    'textarea[name^="comment_input"]',     // comment_input_<id>
-    'textarea[id^="comment_input"]',
-    'textarea[class*="comment_input"]',    // class에 comment_input 부분 매칭
-    // 대댓글 (Ruliweb: name="reply_input", class="common_input reply_input")
-    'textarea[name="reply_input"]',
-    'textarea[name^="reply_input"]',       // reply_input_<id>
-    'textarea[class~="reply_input"]',
-    'textarea[class*="reply_input"]',
-    // 다른 변형 패턴 (보존)
-    'textarea[name^="re_comment_input"]',
-    'textarea[id^="re_comment_input"]',
-    'textarea[class*="re_comment"]',
-  ].join(", ");
-  const COMMENT_IMG_BUTTON_SELECTOR = ".common_img_button";
-  const COMMENT_FILE_INPUT_SELECTOR = "input.common_img_input, input[type='file']";
-  const COMMENT_BOUND_DATASET_KEY = "aruSourceCommentBound";
-  const COMMENT_FILE_BOUND_DATASET_KEY = "aruSourceFileBound";
-  const COMMENT_BUTTON_CLASS = "aru-source-caption-comment-button";
-  const COMMENT_SOURCE_PREFIX = "출처:";
-
-  // wrapper(HTMLElement) -> 가장 최근에 추출/검증 통과한 source URL(string).
-  // 파일 input이 다시 변경되면 갱신된다. Map이 아니라 WeakMap이라 wrapper가
-  // DOM에서 사라지면 자동으로 GC된다.
-  const wrapperSourceMap = new WeakMap();
-
-  // read 페이지에서 init() 이후 setup/observer/poll/click handler가 모두 같은
-  // config를 사용해야 한다. 매 호출마다 config를 다시 로드하지 않도록 모듈 스코프에
-  // 캐시한다 (DEFAULT_OPTIONS와 동일한 shape — sanitizeSourceUrl이 사용하는
-  // allowHttp / strictAllowlist / allowedHosts만 의미가 있다).
-  let readPageConfig = null;
-
-  // init()에서 로드한 config를 캐시한다.
-  // 글쓰기 페이지의 파일 change 이벤트는 attachFileInputListeners(config) 클로저 안에
-  // config를 가지지만, 모바일 직접 삽입 경로는 handleSelectedImageFiles 스코프에서
-  // config가 필요하다. 여기에 캐시해 두어 항상 유효한 config를 참조할 수 있게 한다.
-  let cachedConfig = null;
-
-  // textarea로부터 외곽 wrapper(.common_img_button을 sibling으로 가진 컨테이너)를
-  // 우선순위대로 단계별 closest()로 찾는다. closest()를 OR로 묶으면 .common_input_wrapper
-  // 같은 직계 부모에서 멈춰 .common_img_button(외곽 wrapper의 자식이며 inner wrapper의
-  // sibling)을 놓치는 문제가 있어 단계 분리가 필요하다.
-  function resolveCommentWrapperForTextarea(textarea) {
-    // 1순위: .border_box.after_clear (이미지 버튼을 포함하는 외곽 wrapper).
-    const outer = textarea.closest(".border_box.after_clear");
-    if (outer) return outer;
-
-    // 2순위: .border_box (after_clear 변형 — Ruliweb 일부 보드).
-    const borderBox = textarea.closest(".border_box");
-    if (borderBox) return borderBox;
-
-    // 3순위: form/fieldset (다른 댓글 form 구조).
-    const formish = textarea.closest("form, fieldset");
-    if (formish) return formish;
-
-    // 4순위: .common_input_wrapper의 부모 (image button이 sibling일 가능성).
-    const innerWrapper = textarea.closest(".common_input_wrapper");
-    if (innerWrapper?.parentElement) return innerWrapper.parentElement;
-
-    // 5순위: textarea 자체의 grandparent / parent.
-    return textarea.parentElement?.parentElement || textarea.parentElement || null;
-  }
-
-  // 단일 wrapper를 검증하고 진단 로그를 남긴 뒤 result에 추가한다.
-  // textarea의 name/id/className을 함께 로그로 찍어 일반 댓글 / 대댓글 wrapper를
-  // 사용자가 콘솔에서 구분할 수 있도록 한다 (selector 적합성 검증 용도).
-  function classifyAndPushWrapper(wrapper, result) {
-    const textarea = wrapper.querySelector(COMMENT_TEXTAREA_SELECTOR);
-    if (!(textarea instanceof HTMLTextAreaElement)) return;
-    const imgButton = wrapper.querySelector(COMMENT_IMG_BUTTON_SELECTOR);
-    result.push(wrapper);
-    const textareaInfo = {
-      name: textarea.name,
-      id: textarea.id,
-      className: textarea.className,
-    };
-    if (imgButton) {
-      console.log(
-        "[Aru Source Captioner] scan: wrapper OK (has textarea + .common_img_button)",
-        { wrapper, textarea: textareaInfo }
-      );
-    } else {
-      console.log(
-        "[Aru Source Captioner] scan: wrapper has textarea but no .common_img_button — will use textarea position",
-        { wrapper, textarea: textareaInfo }
-      );
-    }
-  }
-
-  function findCommentInputWrappers() {
-    const textareas = document.querySelectorAll(COMMENT_TEXTAREA_SELECTOR);
-    console.log(
-      `[Aru Source Captioner] scan: found ${textareas.length} comment textarea candidates`
-    );
-
-    const wrappers = new Set();
-    for (const textarea of textareas) {
-      if (!(textarea instanceof HTMLTextAreaElement)) continue;
-      const wrapper = resolveCommentWrapperForTextarea(textarea);
-      if (wrapper instanceof HTMLElement) {
-        wrappers.add(wrapper);
-      }
-    }
-
-    const result = [];
-    for (const wrapper of wrappers) {
-      classifyAndPushWrapper(wrapper, result);
-    }
-
-    console.log(
-      `[Aru Source Captioner] scan: ${result.length} comment wrappers identified`
-    );
-    return result;
-  }
-
-  function buildCommentSourceText(sourceUrl) {
-    // 출처 줄 뒤에 줄바꿈 1번만 추가 — 사용자가 빈 줄 없이 바로 다음 줄에 댓글 본문을 작성.
-    return `${COMMENT_SOURCE_PREFIX} ${sourceUrl}\n`;
-  }
-
-  function logCommentInsertSkip(reason, detail) {
-    // 사용자 페이지 콘솔 오염을 피하기 위해 console.debug만 사용한다.
-    console.debug("[Aru Source Captioner] comment insert skipped:", reason, detail || "");
-  }
-
-  function focusTextareaSafe(textarea) {
-    try { textarea.focus(); } catch { /* noop */ }
-  }
-
-  // 정상 케이스가 아닌 경우 (중복/다른 출처/길이 초과)를 검사하고
-  // 각각의 결과 문자열을 반환한다. null이면 정상 진행 가능.
-  function checkInsertSkipReason(textarea, existing, sourceLine, newValue) {
-    if (existing.includes(sourceLine)) {
-      focusTextareaSafe(textarea);
-      console.log("[Aru Source Captioner] insert: same source already present — focus only");
-      logCommentInsertSkip("duplicate_source_line");
-      return "duplicate";
-    }
-    if (/(^|\n)\s*출처\s*:\s*\S/.test(existing)) {
-      focusTextareaSafe(textarea);
-      console.log("[Aru Source Captioner] insert: different source already present — skipped");
-      logCommentInsertSkip("other_source_present");
-      return "different-source";
-    }
-    const maxLen = typeof textarea.maxLength === "number" ? textarea.maxLength : -1;
-    if (maxLen > 0 && newValue.length > maxLen) {
-      console.warn("[Aru Source Captioner] insert: maxLength exceeded — skipped", {
-        newLength: newValue.length,
-        maxLength: maxLen,
-      });
-      logCommentInsertSkip("maxlength_exceeded", { maxLen, newLen: newValue.length });
-      return "too-long";
-    }
-    return null;
-  }
-
-  function buildMergedTextareaValue(existing, sourceText) {
-    if (existing.trim().length === 0) return sourceText;
-    return existing.replace(/\s+$/u, "") + "\n\n" + sourceText;
-  }
-
-  function applyTextareaValue(textarea, newValue) {
-    textarea.value = newValue;
-
-    // 사이트가 textarea setter를 가로채는지(예: framework state 동기화) 검증한다.
-    console.log("[Aru Source Captioner] insert: value set", {
-      actualValue: typeof textarea.value === "string" ? textarea.value.slice(0, 50) : null,
-      valueMatches: textarea.value === newValue,
-      valueLength: typeof textarea.value === "string" ? textarea.value.length : -1,
-    });
-
-    const cursorPos = newValue.length;
-    try {
-      textarea.focus();
-      textarea.setSelectionRange(cursorPos, cursorPos);
-    } catch {
-      // 일부 브라우저/상태에서 setSelectionRange가 throw할 수 있다 — 무시.
-    }
-
-    try {
-      textarea.dispatchEvent(new Event("input", { bubbles: true }));
-      textarea.dispatchEvent(new Event("change", { bubbles: true }));
-    } catch (err) {
-      console.debug("[Aru Source Captioner] event dispatch failed:", err);
-    }
-  }
-
-  function insertSourceIntoCommentTextarea(textarea, sourceText) {
-    if (!(textarea instanceof HTMLTextAreaElement)) {
-      console.warn("[Aru Source Captioner] insert: not a textarea element");
-      return "not-textarea";
-    }
-
-    const existing = typeof textarea.value === "string" ? textarea.value : "";
-    const sourceLine = sourceText.split("\n")[0];  // "출처: {url}"
-
-    console.log("[Aru Source Captioner] insert: called", {
-      textareaExists: true,
-      inDOM: document.contains(textarea),
-      currentValue: existing.slice(0, 50),
-      maxLength: textarea.maxLength,
-    });
-
-    const newValue = buildMergedTextareaValue(existing, sourceText);
-    const skip = checkInsertSkipReason(textarea, existing, sourceLine, newValue);
-    if (skip) return skip;
-
-    applyTextareaValue(textarea, newValue);
-
-    console.log("[Aru Source Captioner] insert: completed successfully");
-    return "ok";
-  }
-
-  function handleCommentSourceButtonClick(textarea) {
-    console.log("[Aru Source Captioner] click: button clicked");
-
-    if (!(textarea instanceof HTMLTextAreaElement)) {
-      console.warn("[Aru Source Captioner] click: textarea reference is not a textarea");
-      return;
-    }
-
-    // textarea가 detached됐는지 (DOM에서 사라졌다가 다시 생기는 케이스) 검증한다.
-    if (!document.contains(textarea)) {
-      console.warn(
-        "[Aru Source Captioner] click: textarea is detached from DOM, re-scanning..."
-      );
-      try {
-        setupCommentSourceCaptioner();
-      } catch (err) {
-        console.debug("[Aru Source Captioner] click: re-scan failed:", err);
-      }
-      return;
-    }
-
-    // 정책: 출처는 첨부 이미지의 Aru Archive 메타데이터(artwork_url 등)에서만 가져온다.
-    // 게시글 page URL(location.href)은 fallback으로 사용하지 않는다.
-    // (search_type, #cmt 등 변동 fragment를 출처로 박는 사고 방지)
-    const wrapper = resolveCommentWrapperForTextarea(textarea);
-    const savedSource = wrapper ? wrapperSourceMap.get(wrapper) : null;
-
-    if (!savedSource) {
-      console.log(
-        "[Aru Source Captioner] click: no extracted source — image not attached or has no Aru metadata"
-      );
-      try {
-        alert(
-          "이미지에 출처 metadata가 없습니다.\nAru Archive로 처리한 이미지를 댓글에 첨부해 주세요."
-        );
-      } catch {
-        /* noop — 일부 브라우저/iframe 환경에서 alert이 차단될 수 있다 */
-      }
-      return;
-    }
-
-    console.log("[Aru Source Captioner] click: using stored source =", savedSource);
-    const sourceText = buildCommentSourceText(savedSource);
-    const result = insertSourceIntoCommentTextarea(textarea, sourceText);
-    console.log("[Aru Source Captioner] click: insertion result =", result);
-  }
-
-  function injectCommentSourceButton(wrapper) {
-    if (!(wrapper instanceof HTMLElement)) return false;
-
-    if (wrapper.dataset[COMMENT_BOUND_DATASET_KEY] === "1") {
-      console.log("[Aru Source Captioner] inject: skipped (already bound)", wrapper);
-      return false;
-    }
-
-    const textarea = wrapper.querySelector(COMMENT_TEXTAREA_SELECTOR);
-    if (!(textarea instanceof HTMLTextAreaElement)) {
-      console.log("[Aru Source Captioner] inject: skipped (no textarea)", wrapper);
-      return false;
-    }
-
-    // 이미 동일 wrapper에 주입된 적이 있으면 (DOM 재구성 등) 추가 주입 방지.
-    // 일반 댓글과 대댓글은 각각 독립된 wrapper를 가지므로 page-level dedupe는
-    // 하지 않는다 — 첫 wrapper에 button이 들어가면 대댓글 wrapper가 영원히
-    // skip되는 사고를 막기 위함이다. wrapper-level guard만 유지한다.
-    if (wrapper.querySelector("." + COMMENT_BUTTON_CLASS)) {
-      wrapper.dataset[COMMENT_BOUND_DATASET_KEY] = "1";
-      console.log(
-        "[Aru Source Captioner] inject: skipped (button already in this wrapper)",
-        wrapper
-      );
-      return false;
-    }
-
-    const imgButton = wrapper.querySelector(COMMENT_IMG_BUTTON_SELECTOR);
-
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = COMMENT_BUTTON_CLASS;
-    button.textContent = "출처 추가";
-    button.title = "현재 게시글 URL을 댓글에 출처로 추가합니다";
-    button.dataset.aruSourceCommentButton = "1";
-
-    button.addEventListener("click", (ev) => {
-      // 사이트의 form submit / 다른 핸들러 트리거를 막는다.
-      try { ev.preventDefault(); } catch { /* noop */ }
-      try { ev.stopPropagation(); } catch { /* noop */ }
-      handleCommentSourceButtonClick(textarea);
-    });
-
-    try {
-      // 1순위: .common_img_button 옆에 삽입.
-      // 2순위: textarea 직후에 삽입 (Ruliweb DOM 변형 대응).
-      if (imgButton instanceof HTMLElement) {
-        imgButton.after(button);
-      } else {
-        textarea.after(button);
-        console.log(
-          "[Aru Source Captioner] inject: used textarea fallback (no .common_img_button)",
-          { wrapper, textarea }
-        );
-      }
-    } catch (err) {
-      console.debug("[Aru Source Captioner] comment button insert failed:", err);
-      return false;
-    }
-
-    console.log("[Aru Source Captioner] inject: button added", { wrapper });
-    return true;
-  }
-
-  // 첨부된 이미지 file input에서 첫 번째 이미지의 Aru Archive metadata를 파싱하여
-  // 안전한 source URL로 정제한 뒤 wrapperSourceMap에 저장하고, textarea에 자동으로
-  // 출처 caption을 삽입한다. 글쓰기 페이지의 parseSourceFromFile + sanitizeSourceUrl
-  // 경로를 그대로 재사용한다 (재발명 금지).
-  //
-  // 주의:
-  //   - 기존 onchange inline 핸들러(app.comment_img / app.comment_img_drop 트리거)는
-  //     절대 가로채지 않는다 — addEventListener("change", ...)로만 추가한다.
-  //   - 같은 file input에 중복 hook을 막기 위해 dataset 가드를 사용한다.
-  //   - 파일 input이 동적으로 교체될 수 있어 wrapper 단위로 매번 다시 시도한다 —
-  //     dataset 가드가 같은 input에 두 번 붙는 것은 막아준다.
-  function hookCommentFileInput(wrapper, config) {
-    if (!(wrapper instanceof HTMLElement)) return false;
-
-    const fileInput = wrapper.querySelector(COMMENT_FILE_INPUT_SELECTOR);
-    if (!(fileInput instanceof HTMLInputElement)) {
-      console.log(
-        "[Aru Source Captioner] file: no file input in wrapper",
-        wrapper
-      );
-      return false;
-    }
-    if (fileInput.type !== "file") {
-      // common_img_input이 아닌 다른 input이 잡힌 경우 (예: 검색 input).
-      return false;
-    }
-    if (fileInput.dataset[COMMENT_FILE_BOUND_DATASET_KEY] === "1") {
-      return false;
-    }
-    fileInput.dataset[COMMENT_FILE_BOUND_DATASET_KEY] = "1";
-
-    fileInput.addEventListener("change", async (event) => {
-      const target = event.target;
-      const files = target instanceof HTMLInputElement ? target.files : null;
-      if (!files || files.length === 0) return;
-
-      // 첫 번째 image file만 source 추출 대상으로 사용한다.
-      let imageFile = null;
-      for (const f of files) {
-        if (f && typeof f.type === "string" && f.type.startsWith("image/")) {
-          imageFile = f;
-          break;
+      __name(buildMergedTextareaValue, "buildMergedTextareaValue");
+      function applyTextareaValue(textarea, newValue) {
+        textarea.value = newValue;
+        console.log("[Aru Source Captioner] insert: value set", {
+          actualValue: typeof textarea.value === "string" ? textarea.value.slice(0, 50) : null,
+          valueMatches: textarea.value === newValue,
+          valueLength: typeof textarea.value === "string" ? textarea.value.length : -1
+        });
+        const cursorPos = newValue.length;
+        try {
+          textarea.focus();
+          textarea.setSelectionRange(cursorPos, cursorPos);
+        } catch {
+        }
+        try {
+          textarea.dispatchEvent(new Event("input", { bubbles: true }));
+          textarea.dispatchEvent(new Event("change", { bubbles: true }));
+        } catch (err) {
+          console.debug("[Aru Source Captioner] event dispatch failed:", err);
         }
       }
-      if (!imageFile) {
-        console.log("[Aru Source Captioner] file: no image in selection");
-        return;
+      __name(applyTextareaValue, "applyTextareaValue");
+      function insertSourceIntoCommentTextarea(textarea, sourceText) {
+        if (!(textarea instanceof HTMLTextAreaElement)) {
+          console.warn("[Aru Source Captioner] insert: not a textarea element");
+          return "not-textarea";
+        }
+        const existing = typeof textarea.value === "string" ? textarea.value : "";
+        const sourceLine = sourceText.split("\n")[0];
+        console.log("[Aru Source Captioner] insert: called", {
+          textareaExists: true,
+          inDOM: document.contains(textarea),
+          currentValue: existing.slice(0, 50),
+          maxLength: textarea.maxLength
+        });
+        const newValue = buildMergedTextareaValue(existing, sourceText);
+        const skip = checkInsertSkipReason(textarea, existing, sourceLine, newValue);
+        if (skip) return skip;
+        applyTextareaValue(textarea, newValue);
+        console.log("[Aru Source Captioner] insert: completed successfully");
+        return "ok";
       }
-
-      console.log(
-        "[Aru Source Captioner] file: extracting metadata from",
-        imageFile.name
-      );
-
-      let sourceInfo;
-      try {
-        sourceInfo = await parseSourceFromFile(imageFile);
-      } catch (err) {
-        console.warn(
-          "[Aru Source Captioner] file: metadata extraction threw",
-          err
-        );
-        return;
+      __name(insertSourceIntoCommentTextarea, "insertSourceIntoCommentTextarea");
+      function handleCommentSourceButtonClick(textarea) {
+        console.log("[Aru Source Captioner] click: button clicked");
+        if (!(textarea instanceof HTMLTextAreaElement)) {
+          console.warn("[Aru Source Captioner] click: textarea reference is not a textarea");
+          return;
+        }
+        if (!document.contains(textarea)) {
+          console.warn(
+            "[Aru Source Captioner] click: textarea is detached from DOM, re-scanning..."
+          );
+          try {
+            setupCommentSourceCaptioner();
+          } catch (err) {
+            console.debug("[Aru Source Captioner] click: re-scan failed:", err);
+          }
+          return;
+        }
+        const wrapper = resolveCommentWrapperForTextarea(textarea);
+        const savedSource = wrapper ? wrapperSourceMap.get(wrapper) : null;
+        if (!savedSource) {
+          console.log(
+            "[Aru Source Captioner] click: no extracted source — image not attached or has no Aru metadata"
+          );
+          try {
+            alert(
+              "이미지에 출처 metadata가 없습니다.\nAru Archive로 처리한 이미지를 댓글에 첨부해 주세요."
+            );
+          } catch {
+          }
+          return;
+        }
+        console.log("[Aru Source Captioner] click: using stored source =", savedSource);
+        const sourceText = buildCommentSourceText(savedSource);
+        const result2 = insertSourceIntoCommentTextarea(textarea, sourceText);
+        console.log("[Aru Source Captioner] click: insertion result =", result2);
       }
-
-      if (sourceInfo?.status !== "ok" || !sourceInfo.url) {
+      __name(handleCommentSourceButtonClick, "handleCommentSourceButtonClick");
+      function injectCommentSourceButton(wrapper) {
+        if (!(wrapper instanceof HTMLElement)) return false;
+        if (wrapper.dataset[COMMENT_BOUND_DATASET_KEY] === "1") {
+          console.log("[Aru Source Captioner] inject: skipped (already bound)", wrapper);
+          return false;
+        }
+        const textarea = wrapper.querySelector(COMMENT_TEXTAREA_SELECTOR);
+        if (!(textarea instanceof HTMLTextAreaElement)) {
+          console.log("[Aru Source Captioner] inject: skipped (no textarea)", wrapper);
+          return false;
+        }
+        if (wrapper.querySelector("." + COMMENT_BUTTON_CLASS)) {
+          wrapper.dataset[COMMENT_BOUND_DATASET_KEY] = "1";
+          console.log(
+            "[Aru Source Captioner] inject: skipped (button already in this wrapper)",
+            wrapper
+          );
+          return false;
+        }
+        const imgButton = wrapper.querySelector(COMMENT_IMG_BUTTON_SELECTOR);
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = COMMENT_BUTTON_CLASS;
+        button.textContent = "출처 추가";
+        button.title = "현재 게시글 URL을 댓글에 출처로 추가합니다";
+        button.dataset.aruSourceCommentButton = "1";
+        button.addEventListener("click", (ev) => {
+          try {
+            ev.preventDefault();
+          } catch {
+          }
+          try {
+            ev.stopPropagation();
+          } catch {
+          }
+          handleCommentSourceButtonClick(textarea);
+        });
+        try {
+          if (imgButton instanceof HTMLElement) {
+            imgButton.after(button);
+          } else {
+            textarea.after(button);
+            console.log(
+              "[Aru Source Captioner] inject: used textarea fallback (no .common_img_button)",
+              { wrapper, textarea }
+            );
+          }
+        } catch (err) {
+          console.debug("[Aru Source Captioner] comment button insert failed:", err);
+          return false;
+        }
+        console.log("[Aru Source Captioner] inject: button added", { wrapper });
+        return true;
+      }
+      __name(injectCommentSourceButton, "injectCommentSourceButton");
+      function hookCommentFileInput(wrapper, config) {
+        if (!(wrapper instanceof HTMLElement)) return false;
+        const fileInput = wrapper.querySelector(COMMENT_FILE_INPUT_SELECTOR);
+        if (!(fileInput instanceof HTMLInputElement)) {
+          console.log(
+            "[Aru Source Captioner] file: no file input in wrapper",
+            wrapper
+          );
+          return false;
+        }
+        if (fileInput.type !== "file") {
+          return false;
+        }
+        if (fileInput.dataset[COMMENT_FILE_BOUND_DATASET_KEY] === "1") {
+          return false;
+        }
+        fileInput.dataset[COMMENT_FILE_BOUND_DATASET_KEY] = "1";
+        fileInput.addEventListener("change", async (event) => {
+          const target = event.target;
+          const files = target instanceof HTMLInputElement ? target.files : null;
+          if (!files || files.length === 0) return;
+          let imageFile = null;
+          for (const f of files) {
+            if (f && typeof f.type === "string" && f.type.startsWith("image/")) {
+              imageFile = f;
+              break;
+            }
+          }
+          if (!imageFile) {
+            console.log("[Aru Source Captioner] file: no image in selection");
+            return;
+          }
+          console.log(
+            "[Aru Source Captioner] file: extracting metadata from",
+            imageFile.name
+          );
+          let sourceInfo;
+          try {
+            sourceInfo = await parseSourceFromFile(imageFile);
+          } catch (err) {
+            console.warn(
+              "[Aru Source Captioner] file: metadata extraction threw",
+              err
+            );
+            return;
+          }
+          if (sourceInfo?.status !== "ok" || !sourceInfo.url) {
+            console.log(
+              "[Aru Source Captioner] file: no Aru source metadata found in image",
+              { reason: sourceInfo?.reason }
+            );
+            return;
+          }
+          const safeUrl = sanitizeSourceUrl(sourceInfo.url, config);
+          if (!safeUrl) {
+            console.log(
+              "[Aru Source Captioner] file: extracted source rejected by sanitizer",
+              { rawUrl: sourceInfo.url }
+            );
+            return;
+          }
+          console.log(
+            "[Aru Source Captioner] file: extracted source =",
+            safeUrl
+          );
+          wrapperSourceMap.set(wrapper, safeUrl);
+          const textarea = wrapper.querySelector(COMMENT_TEXTAREA_SELECTOR);
+          if (textarea instanceof HTMLTextAreaElement) {
+            const sourceText = buildCommentSourceText(safeUrl);
+            const result2 = insertSourceIntoCommentTextarea(textarea, sourceText);
+            console.log(
+              "[Aru Source Captioner] file: auto insertion result =",
+              result2
+            );
+          } else {
+            console.log(
+              "[Aru Source Captioner] file: source stored, but no textarea found for auto insert",
+              wrapper
+            );
+          }
+        });
         console.log(
-          "[Aru Source Captioner] file: no Aru source metadata found in image",
-          { reason: sourceInfo?.reason }
+          "[Aru Source Captioner] file: hooked file input change",
+          { wrapper, fileInput }
         );
-        return;
+        return true;
       }
-
-      const safeUrl = sanitizeSourceUrl(sourceInfo.url, config);
-      if (!safeUrl) {
+      __name(hookCommentFileInput, "hookCommentFileInput");
+      function setupCommentSourceCaptioner(config) {
+        if (!isReadPage()) return;
+        const effectiveConfig = config || readPageConfig;
+        const wrappers = findCommentInputWrappers();
+        let hookedFileInputs = 0;
+        for (const wrapper of wrappers) {
+          if (effectiveConfig && hookCommentFileInput(wrapper, effectiveConfig)) {
+            hookedFileInputs++;
+          }
+        }
+        if (wrappers.length === 0) {
+          console.log(
+            "[Aru Source Captioner] setup: no comment wrapper found yet (may load later)"
+          );
+        } else if (hookedFileInputs > 0) {
+          console.log(
+            `[Aru Source Captioner] setup: hooked ${hookedFileInputs} new file inputs (auto-insert mode)`
+          );
+        }
+      }
+      __name(setupCommentSourceCaptioner, "setupCommentSourceCaptioner");
+      let commentObserver = null;
+      let commentObserverScheduled = false;
+      function scheduleCommentSetup() {
+        if (commentObserverScheduled) return;
+        commentObserverScheduled = true;
+        Promise.resolve().then(() => {
+          commentObserverScheduled = false;
+          try {
+            setupCommentSourceCaptioner();
+          } catch (err) {
+            console.debug("[Aru Source Captioner] comment setup failed:", err);
+          }
+        });
+      }
+      __name(scheduleCommentSetup, "scheduleCommentSetup");
+      function startCommentObserver() {
+        if (!isReadPage()) return null;
+        if (commentObserver) return commentObserver;
+        commentObserver = new MutationObserver((mutations) => {
+          for (const mut of mutations) {
+            if (mut.type !== "childList") continue;
+            if (mut.addedNodes && mut.addedNodes.length > 0) {
+              scheduleCommentSetup();
+              return;
+            }
+          }
+        });
+        if (document.body) {
+          commentObserver.observe(document.body, { childList: true, subtree: true });
+        }
+        let attempts = 0;
+        const maxAttempts = 30;
+        const pollIntervalId = setInterval(() => {
+          attempts++;
+          try {
+            setupCommentSourceCaptioner();
+          } catch (err) {
+            console.debug("[Aru Source Captioner] poll setup failed:", err);
+          }
+          if (attempts >= maxAttempts) {
+            clearInterval(pollIntervalId);
+            console.log(
+              "[Aru Source Captioner] poll: stopping after 15s (MutationObserver continues)"
+            );
+          }
+        }, 500);
         console.log(
-          "[Aru Source Captioner] file: extracted source rejected by sanitizer",
-          { rawUrl: sourceInfo.url }
+          "[Aru Source Captioner] observer: started (polling 15s + MutationObserver)"
         );
-        return;
+        return commentObserver;
       }
-
-      console.log(
-        "[Aru Source Captioner] file: extracted source =",
-        safeUrl
-      );
-      wrapperSourceMap.set(wrapper, safeUrl);
-
-      const textarea = wrapper.querySelector(COMMENT_TEXTAREA_SELECTOR);
-      if (textarea instanceof HTMLTextAreaElement) {
-        const sourceText = buildCommentSourceText(safeUrl);
-        const result = insertSourceIntoCommentTextarea(textarea, sourceText);
-        console.log(
-          "[Aru Source Captioner] file: auto insertion result =",
-          result
+      __name(startCommentObserver, "startCommentObserver");
+      const RULIWEB_AI_BLIND_SELECTOR = "#board_read.ai_blind";
+      const RULIWEB_BOARD_MAIN_VIEW_PRIMARY = "#board_read.ai_blind .board_main_view";
+      const RULIWEB_BOARD_MAIN_VIEW_FALLBACK = "#board_read .board_main_view";
+      const RULIWEB_UNSAFE_CLICK_SELECTOR = "a, button, input, textarea, select, iframe";
+      const RULIWEB_REVEAL_RETRY_DELAYS_MS = [300, 800, 1500];
+      const RULIWEB_REVEAL_OBSERVER_TIMEOUT_MS = 5e3;
+      function isRuliwebReadPage() {
+        return isReadPage();
+      }
+      __name(isRuliwebReadPage, "isRuliwebReadPage");
+      function hasRuliwebAiBlind() {
+        return !!document.querySelector(RULIWEB_AI_BLIND_SELECTOR);
+      }
+      __name(hasRuliwebAiBlind, "hasRuliwebAiBlind");
+      function _findBoardMainView() {
+        return document.querySelector(RULIWEB_BOARD_MAIN_VIEW_PRIMARY) || document.querySelector(RULIWEB_BOARD_MAIN_VIEW_FALLBACK);
+      }
+      __name(_findBoardMainView, "_findBoardMainView");
+      function getPseudoElementContent(el, pseudo) {
+        try {
+          const raw = window.getComputedStyle(el, pseudo).getPropertyValue("content");
+          if (!raw || raw === "none" || raw === "normal" || raw === '""') return "";
+          return raw.replace(/^["']|["']$/g, "").replace(/\\A/g, " ").replace(/\s+/g, " ").trim();
+        } catch {
+          return "";
+        }
+      }
+      __name(getPseudoElementContent, "getPseudoElementContent");
+      function getRuliwebRevealOverlayText() {
+        const candidates = [
+          document.querySelector("#board_read.ai_blind .board_main_view"),
+          document.querySelector("#board_read .board_main_view"),
+          document.querySelector(".board_main_view")
+        ].filter(Boolean);
+        const parts = [];
+        for (const el of candidates) {
+          const text = (el.innerText || el.textContent || "").replace(/\s+/g, " ").trim();
+          if (text) parts.push(text);
+          const before = getPseudoElementContent(el, "::before");
+          if (before) parts.push(before);
+          const after = getPseudoElementContent(el, "::after");
+          if (after) parts.push(after);
+        }
+        return parts.join(" ").replace(/\s+/g, " ").trim();
+      }
+      __name(getRuliwebRevealOverlayText, "getRuliwebRevealOverlayText");
+      function normalizeRuliwebOverlayText(value) {
+        return String(value || "").replace(/\s+/g, " ").trim().toLowerCase();
+      }
+      __name(normalizeRuliwebOverlayText, "normalizeRuliwebOverlayText");
+      function normalizeKeyword(value) {
+        return String(value || "").replace(/\s+/g, " ").trim().toLowerCase();
+      }
+      __name(normalizeKeyword, "normalizeKeyword");
+      function normalizeKeywordList(keywords) {
+        if (!Array.isArray(keywords)) {
+          return typeof keywords === "string" && keywords.trim() ? [normalizeKeyword(keywords)] : [];
+        }
+        return keywords.map(normalizeKeyword).filter(Boolean);
+      }
+      __name(normalizeKeywordList, "normalizeKeywordList");
+      function hasKeyword(text, keywords) {
+        const normalizedText = normalizeRuliwebOverlayText(text);
+        return normalizeKeywordList(keywords).some(
+          (keyword) => keyword && normalizedText.includes(keyword)
         );
-      } else {
-        console.log(
-          "[Aru Source Captioner] file: source stored, but no textarea found for auto insert",
-          wrapper
-        );
       }
-    });
-
-    console.log(
-      "[Aru Source Captioner] file: hooked file input change",
-      { wrapper, fileInput }
-    );
-    return true;
-  }
-
-  function setupCommentSourceCaptioner(config) {
-    if (!isReadPage()) return;
-    // config 인자가 없으면 init()에서 캐시한 readPageConfig를 사용한다.
-    const effectiveConfig = config || readPageConfig;
-    const wrappers = findCommentInputWrappers();
-    // 자동 삽입 모드: 파일 선택 이벤트에서 바로 출처 캡션을 삽입한다.
-    // "출처 추가" 버튼 주입은 기본 비활성화 — injectCommentSourceButton은
-    // 정의만 유지하고 호출하지 않는다.
-    let hookedFileInputs = 0;
-    for (const wrapper of wrappers) {
-      if (effectiveConfig && hookCommentFileInput(wrapper, effectiveConfig)) {
-        hookedFileInputs++;
+      __name(hasKeyword, "hasKeyword");
+      function shouldOpenRuliwebOverlayByKeywords(overlayText, config) {
+        const allowKeywords = config && config.ruliwebAiRevealAllowKeywords || DEFAULT_OPTIONS.ruliwebAiRevealAllowKeywords;
+        const blockKeywords = config && config.ruliwebAiRevealBlockKeywords || DEFAULT_OPTIONS.ruliwebAiRevealBlockKeywords;
+        const blocked = hasKeyword(overlayText, blockKeywords);
+        const allowed = hasKeyword(overlayText, allowKeywords);
+        return { shouldOpen: allowed && !blocked, allowed, blocked };
       }
-    }
-    if (wrappers.length === 0) {
-      console.log(
-        "[Aru Source Captioner] setup: no comment wrapper found yet (may load later)"
-      );
-    } else if (hookedFileInputs > 0) {
-      console.log(
-        `[Aru Source Captioner] setup: hooked ${hookedFileInputs} new file inputs (auto-insert mode)`
-      );
-    }
-  }
-
-  let commentObserver = null;
-  let commentObserverScheduled = false;
-
-  function scheduleCommentSetup() {
-    if (commentObserverScheduled) return;
-    commentObserverScheduled = true;
-    // microtask로 모아서 단일 실행 — MutationObserver 폭주 방지.
-    Promise.resolve().then(() => {
-      commentObserverScheduled = false;
-      try {
-        setupCommentSourceCaptioner();
-      } catch (err) {
-        console.debug("[Aru Source Captioner] comment setup failed:", err);
+      __name(shouldOpenRuliwebOverlayByKeywords, "shouldOpenRuliwebOverlayByKeywords");
+      function _dispatchPointerMouseSequence(el, x, y) {
+        const hasPointerEvent = typeof PointerEvent === "function";
+        const mkMouse = /* @__PURE__ */ __name((type) => new MouseEvent(type, {
+          bubbles: true,
+          cancelable: true,
+          view: window,
+          clientX: x,
+          clientY: y
+        }), "mkMouse");
+        const mkPointer = /* @__PURE__ */ __name((type) => new PointerEvent(type, {
+          bubbles: true,
+          cancelable: true,
+          view: window,
+          clientX: x,
+          clientY: y,
+          pointerId: 1,
+          pointerType: "mouse",
+          isPrimary: true
+        }), "mkPointer");
+        if (hasPointerEvent) el.dispatchEvent(mkPointer("pointerdown"));
+        el.dispatchEvent(mkMouse("mousedown"));
+        if (hasPointerEvent) el.dispatchEvent(mkPointer("pointerup"));
+        el.dispatchEvent(mkMouse("mouseup"));
+        el.dispatchEvent(mkMouse("click"));
       }
-    });
-  }
-
-  function startCommentObserver() {
-    if (!isReadPage()) return null;
-    if (commentObserver) return commentObserver;
-
-    commentObserver = new MutationObserver((mutations) => {
-      // 우리가 주입한 버튼 / dataset 변경은 무한 루프 위험이 있으니
-      // 단순히 추가 노드 발생 여부만 확인하고 idempotent setup을 schedule한다.
-      // dataset.aruSourceCommentBound guard가 중복 주입을 막는다.
-      for (const mut of mutations) {
-        if (mut.type !== "childList") continue;
-        if (mut.addedNodes && mut.addedNodes.length > 0) {
-          scheduleCommentSetup();
+      __name(_dispatchPointerMouseSequence, "_dispatchPointerMouseSequence");
+      function _tryRuliwebOverlayClickOnce(config) {
+        const boardMainView = _findBoardMainView();
+        if (!boardMainView) {
+          console.debug("[Aru][reveal] .board_main_view not found");
+          return false;
+        }
+        const overlayText = getRuliwebRevealOverlayText();
+        const { shouldOpen, allowed, blocked } = shouldOpenRuliwebOverlayByKeywords(overlayText, config);
+        const allowKeywords = config && config.ruliwebAiRevealAllowKeywords || DEFAULT_OPTIONS.ruliwebAiRevealAllowKeywords;
+        const blockKeywords = config && config.ruliwebAiRevealBlockKeywords || DEFAULT_OPTIONS.ruliwebAiRevealBlockKeywords;
+        console.info("[Aru][reveal] overlay keyword decision", {
+          overlayText: overlayText.slice(0, 200),
+          allowKeywords,
+          blockKeywords,
+          allowed,
+          blocked,
+          shouldOpen
+        });
+        if (!shouldOpen) {
+          if (blocked) {
+            console.info("[Aru][reveal] skip overlay: blocked keyword matched");
+          } else {
+            console.info("[Aru][reveal] skip overlay: no allow keyword matched");
+          }
+          return false;
+        }
+        const rect = boardMainView.getBoundingClientRect();
+        const cx = Math.round(rect.left + rect.width / 2);
+        const cy = Math.round(rect.top + Math.min(rect.height * 0.45, 260));
+        const pointEl = document.elementFromPoint(cx, cy);
+        if (!pointEl) {
+          console.debug("[Aru][reveal] elementFromPoint returned null", { cx, cy });
+          return false;
+        }
+        const unsafe = pointEl.closest(RULIWEB_UNSAFE_CLICK_SELECTOR);
+        if (unsafe) {
+          console.warn("[Aru][reveal] click aborted — unsafe element at overlay center", {
+            pointTag: pointEl.tagName,
+            unsafeTag: unsafe.tagName,
+            unsafeHref: unsafe.href || "(none)"
+          });
+          return false;
+        }
+        console.log("[Aru][reveal] overlay click target", {
+          x: cx,
+          y: cy,
+          tag: pointEl.tagName,
+          id: pointEl.id || "(none)",
+          className: (pointEl.className || "").toString().slice(0, 60),
+          href: pointEl.href || "(none)"
+        });
+        const hrefBefore = location.href;
+        _dispatchPointerMouseSequence(pointEl, cx, cy);
+        setTimeout(() => {
+          if (location.href !== hrefBefore) {
+            console.error("[Aru][reveal] URL changed after overlay click", {
+              beforeUrl: hrefBefore,
+              afterUrl: location.href
+            });
+          }
+          const hasAiBlind = hasRuliwebAiBlind();
+          const imgCount = document.querySelectorAll(".view_content img").length;
+          const viewContent = document.querySelector(".view_content");
+          const textLength = viewContent ? (viewContent.textContent || "").length : 0;
+          console.log("[Aru][reveal] after overlay click", {
+            hasAiBlind,
+            imgCount,
+            textLength
+          });
+        }, 300);
+        return true;
+      }
+      __name(_tryRuliwebOverlayClickOnce, "_tryRuliwebOverlayClickOnce");
+      function _setupRuliwebClickWithRetry(config) {
+        let done = false;
+        function attempt() {
+          if (done) return;
+          if (_tryRuliwebOverlayClickOnce(config)) {
+            done = true;
+          }
+        }
+        __name(attempt, "attempt");
+        attempt();
+        if (done) return;
+        RULIWEB_REVEAL_RETRY_DELAYS_MS.forEach((delay) => {
+          setTimeout(attempt, delay);
+        });
+        const obs = new MutationObserver(() => {
+          if (done) {
+            obs.disconnect();
+            return;
+          }
+          attempt();
+          if (done) obs.disconnect();
+        });
+        obs.observe(document.body || document.documentElement, { childList: true, subtree: true });
+        setTimeout(() => {
+          done = true;
+          obs.disconnect();
+        }, RULIWEB_REVEAL_OBSERVER_TIMEOUT_MS);
+      }
+      __name(_setupRuliwebClickWithRetry, "_setupRuliwebClickWithRetry");
+      function restoreRuliwebMetaDescription() {
+        const meta = document.querySelector('meta[name="description"]');
+        if (!meta) {
+          console.debug("[Aru][reveal] text_fallback: no meta description found");
+          return false;
+        }
+        const text = (meta.content || "").trim();
+        if (!text) {
+          console.debug("[Aru][reveal] text_fallback: meta description is empty");
+          return false;
+        }
+        const viewContent = document.querySelector(".view_content");
+        if (!viewContent) {
+          console.debug("[Aru][reveal] text_fallback: .view_content not found");
+          return false;
+        }
+        const p = document.createElement("p");
+        p.textContent = text;
+        p.dataset.aruMetaFallback = "1";
+        viewContent.prepend(p);
+        console.info("[Aru][reveal] text_fallback: meta description prepended (images not restored)");
+        return true;
+      }
+      __name(restoreRuliwebMetaDescription, "restoreRuliwebMetaDescription");
+      function setupRuliwebAiReveal(config) {
+        const mode = config.ruliwebAiRevealMode ?? "off";
+        console.log("[Aru][reveal] setup", {
+          mode,
+          href: location.href,
+          isRead: isRuliwebReadPage(),
+          hasBoardRead: !!document.querySelector("#board_read"),
+          hasAiBlind: hasRuliwebAiBlind(),
+          hasBoardMainView: !!_findBoardMainView()
+        });
+        if (mode === "off") return;
+        if (!isRuliwebReadPage()) return;
+        if (mode === "click_overlay") {
+          _setupRuliwebClickWithRetry(config);
+          return;
+        }
+        if (mode === "text_fallback") {
+          restoreRuliwebMetaDescription();
           return;
         }
       }
-    });
-
-    if (document.body) {
-      commentObserver.observe(document.body, { childList: true, subtree: true });
-    }
-
-    // Polling fallback: MutationObserver만으로는 일부 동적 로딩 케이스에서
-    // 댓글 영역을 놓칠 수 있다. 15초 동안 500ms 간격으로 한 번 더 scan을 돌려
-    // 네트워크 지연/AJAX 로딩으로 늦게 도착하는 댓글 wrapper를 잡는다.
-    // 첫 button 발견 시 polling을 중단하면 일반 댓글에 button이 들어간 직후 폴링이
-    // 멈춰 늦게 expand되는 대댓글 wrapper를 놓치게 되므로, 시간 기준(15s)으로만
-    // 종료한다. 이후 변화는 MutationObserver가 계속 감지하여 채워준다.
-    let attempts = 0;
-    const maxAttempts = 30;  // 30 * 500ms = 15s
-    const pollIntervalId = setInterval(() => {
-      attempts++;
-      try {
-        setupCommentSourceCaptioner();
-      } catch (err) {
-        console.debug("[Aru Source Captioner] poll setup failed:", err);
-      }
-      if (attempts >= maxAttempts) {
-        clearInterval(pollIntervalId);
-        console.log(
-          "[Aru Source Captioner] poll: stopping after 15s (MutationObserver continues)"
+      __name(setupRuliwebAiReveal, "setupRuliwebAiReveal");
+      async function init() {
+        console.info("[Aru Source Captioner] content loaded", {
+          href: location.href,
+          userAgent: navigator.userAgent,
+          exifrAvailable: typeof exifr !== "undefined"
+        });
+        const config = await loadConfig();
+        cachedConfig = config;
+        if (!config.enabled) {
+          console.info("[Aru Source Captioner] disabled — skipping content script");
+          return;
+        }
+        if (isReadPage()) {
+          readPageConfig = config;
+          setupCommentSourceCaptioner(config);
+          startCommentObserver();
+          setupRuliwebAiReveal(config);
+          console.info(
+            "[Aru Source Captioner] read page active — comment source button enabled",
+            { strictAllowlist: config.strictAllowlist, allowHttp: config.allowHttp }
+          );
+          return;
+        }
+        if (typeof exifr === "undefined") {
+          console.warn("[Aru Source Captioner] exifr not loaded — running in filename-only fallback mode");
+        }
+        attachFileInputListeners(config);
+        startEditorObserver(config);
+        console.info(
+          "[Aru Source Captioner] auto-insert mode active — file selection triggers caption insertion",
+          {
+            strictAllowlist: config.strictAllowlist,
+            allowHttp: config.allowHttp,
+            mobile: isMobileAutoInsertEnvironment()
+          }
         );
       }
-    }, 500);
-
-    console.log(
-      "[Aru Source Captioner] observer: started (polling 15s + MutationObserver)"
-    );
-    return commentObserver;
-  }
-
-  // ---------------- 루리웹 AI 제한 게시글 열기 ----------------
-  //
-  // options.ruliwebAiRevealMode:
-  //   "off"          (기본) — 아무것도 하지 않음.
-  //   "click_overlay"— #board_read .board_main_view 중앙을 elementFromPoint로
-  //                    안전하게 클릭. a/button/input 등 내부면 중단.
-  //                    pointerdown→mousedown→pointerup→mouseup→click 순으로 dispatch.
-  //                    실패 시 300ms/800ms/1500ms 재시도 + MutationObserver.
-  //   "text_fallback"— meta description 텍스트만 복원. 이미지 복원 불가.
-  //
-  // 동작 원칙:
-  //   - isReadPage()가 false인 페이지에서는 절대 실행하지 않는다.
-  //   - document 전체 후보 탐색 클릭 금지.
-  //   - a, button, input, textarea, select, iframe 클릭 금지.
-  //   - .click() 단독 사용 금지.
-  //   - 클릭 전후 location.href 비교해 URL 이동 발생 시 오류 로그.
-
-  const RULIWEB_AI_BLIND_SELECTOR = "#board_read.ai_blind";
-  const RULIWEB_BOARD_MAIN_VIEW_PRIMARY = "#board_read.ai_blind .board_main_view";
-  const RULIWEB_BOARD_MAIN_VIEW_FALLBACK = "#board_read .board_main_view";
-  const RULIWEB_UNSAFE_CLICK_SELECTOR = "a, button, input, textarea, select, iframe";
-  const RULIWEB_REVEAL_RETRY_DELAYS_MS = [300, 800, 1500];
-  const RULIWEB_REVEAL_OBSERVER_TIMEOUT_MS = 5000;
-
-  function isRuliwebReadPage() {
-    return isReadPage();
-  }
-
-  function hasRuliwebAiBlind() {
-    return !!document.querySelector(RULIWEB_AI_BLIND_SELECTOR);
-  }
-
-  function _findBoardMainView() {
-    return (
-      document.querySelector(RULIWEB_BOARD_MAIN_VIEW_PRIMARY) ||
-      document.querySelector(RULIWEB_BOARD_MAIN_VIEW_FALLBACK)
-    );
-  }
-
-  // CSS pseudo-element(::before 또는 ::after)의 content를 computed style에서 읽는다.
-  function getPseudoElementContent(el, pseudo) {
-    try {
-      const raw = window.getComputedStyle(el, pseudo).getPropertyValue("content");
-      if (!raw || raw === "none" || raw === "normal" || raw === '""') return "";
-      return raw
-        .replace(/^["']|["']$/g, "")
-        .replace(/\\A/g, " ")
-        .replace(/\s+/g, " ")
-        .trim();
-    } catch {
-      return "";
-    }
-  }
-
-  // board_main_view 후보 요소들의 텍스트 + ::before + ::after를 합쳐 반환.
-  function getRuliwebRevealOverlayText() {
-    const candidates = [
-      document.querySelector("#board_read.ai_blind .board_main_view"),
-      document.querySelector("#board_read .board_main_view"),
-      document.querySelector(".board_main_view"),
-    ].filter(Boolean);
-    const parts = [];
-    for (const el of candidates) {
-      const text = (el.innerText || el.textContent || "").replace(/\s+/g, " ").trim();
-      if (text) parts.push(text);
-      const before = getPseudoElementContent(el, "::before");
-      if (before) parts.push(before);
-      const after = getPseudoElementContent(el, "::after");
-      if (after) parts.push(after);
-    }
-    return parts.join(" ").replace(/\s+/g, " ").trim();
-  }
-
-  // overlay 텍스트를 정규화 (소문자 + 공백 정규화).
-  function normalizeRuliwebOverlayText(value) {
-    return String(value || "").replace(/\s+/g, " ").trim().toLowerCase();
-  }
-
-  // 키워드를 정규화 (소문자 + 공백 정규화).
-  function normalizeKeyword(value) {
-    return String(value || "").replace(/\s+/g, " ").trim().toLowerCase();
-  }
-
-  // 키워드 배열을 정규화. 문자열이면 단일 키워드 배열로 변환.
-  function normalizeKeywordList(keywords) {
-    if (!Array.isArray(keywords)) {
-      return typeof keywords === "string" && keywords.trim()
-        ? [normalizeKeyword(keywords)] : [];
-    }
-    return keywords.map(normalizeKeyword).filter(Boolean);
-  }
-
-  // text에 keywords 중 하나라도 포함되면 true.
-  function hasKeyword(text, keywords) {
-    const normalizedText = normalizeRuliwebOverlayText(text);
-    return normalizeKeywordList(keywords).some(
-      (keyword) => keyword && normalizedText.includes(keyword)
-    );
-  }
-
-  // block 우선 allowlist 판정: allow 매칭 && block 미매칭 시에만 열기.
-  function shouldOpenRuliwebOverlayByKeywords(overlayText, config) {
-    const allowKeywords = (config && config.ruliwebAiRevealAllowKeywords) ||
-      DEFAULT_OPTIONS.ruliwebAiRevealAllowKeywords;
-    const blockKeywords = (config && config.ruliwebAiRevealBlockKeywords) ||
-      DEFAULT_OPTIONS.ruliwebAiRevealBlockKeywords;
-    const blocked = hasKeyword(overlayText, blockKeywords);
-    const allowed = hasKeyword(overlayText, allowKeywords);
-    return { shouldOpen: allowed && !blocked, allowed, blocked };
-  }
-
-  function _dispatchPointerMouseSequence(el, x, y) {
-    const hasPointerEvent = typeof PointerEvent === "function";
-    const mkMouse = (type) => new MouseEvent(type, {
-      bubbles: true, cancelable: true, view: window, clientX: x, clientY: y,
-    });
-    const mkPointer = (type) => new PointerEvent(type, {
-      bubbles: true, cancelable: true, view: window, clientX: x, clientY: y,
-      pointerId: 1, pointerType: "mouse", isPrimary: true,
-    });
-    if (hasPointerEvent) el.dispatchEvent(mkPointer("pointerdown"));
-    el.dispatchEvent(mkMouse("mousedown"));
-    if (hasPointerEvent) el.dispatchEvent(mkPointer("pointerup"));
-    el.dispatchEvent(mkMouse("mouseup"));
-    el.dispatchEvent(mkMouse("click"));
-  }
-
-  function _tryRuliwebOverlayClickOnce(config) {
-    const boardMainView = _findBoardMainView();
-    if (!boardMainView) {
-      console.debug("[Aru][reveal] .board_main_view not found");
-      return false;
-    }
-    // overlay 키워드 판정 — block 우선 allowlist 방식.
-    const overlayText = getRuliwebRevealOverlayText();
-    const { shouldOpen, allowed, blocked } = shouldOpenRuliwebOverlayByKeywords(overlayText, config);
-    const allowKeywords = (config && config.ruliwebAiRevealAllowKeywords) || DEFAULT_OPTIONS.ruliwebAiRevealAllowKeywords;
-    const blockKeywords = (config && config.ruliwebAiRevealBlockKeywords) || DEFAULT_OPTIONS.ruliwebAiRevealBlockKeywords;
-    console.info("[Aru][reveal] overlay keyword decision", {
-      overlayText: overlayText.slice(0, 200),
-      allowKeywords, blockKeywords, allowed, blocked, shouldOpen,
-    });
-    if (!shouldOpen) {
-      if (blocked) {
-        console.info("[Aru][reveal] skip overlay: blocked keyword matched");
-      } else {
-        console.info("[Aru][reveal] skip overlay: no allow keyword matched");
-      }
-      return false;
-    }
-    const rect = boardMainView.getBoundingClientRect();
-    const cx = Math.round(rect.left + rect.width / 2);
-    const cy = Math.round(rect.top + Math.min(rect.height * 0.45, 260));
-    const pointEl = document.elementFromPoint(cx, cy);
-    if (!pointEl) {
-      console.debug("[Aru][reveal] elementFromPoint returned null", { cx, cy });
-      return false;
-    }
-    const unsafe = pointEl.closest(RULIWEB_UNSAFE_CLICK_SELECTOR);
-    if (unsafe) {
-      console.warn("[Aru][reveal] click aborted — unsafe element at overlay center", {
-        pointTag: pointEl.tagName, unsafeTag: unsafe.tagName, unsafeHref: unsafe.href || "(none)",
+      __name(init, "init");
+      init().catch((err) => {
+        console.warn("[Aru Source Captioner] init failed:", err);
       });
-      return false;
-    }
-    console.log("[Aru][reveal] overlay click target", {
-      x: cx, y: cy,
-      tag: pointEl.tagName,
-      id: pointEl.id || "(none)",
-      className: (pointEl.className || "").toString().slice(0, 60),
-      href: pointEl.href || "(none)",
-    });
-    const hrefBefore = location.href;
-    _dispatchPointerMouseSequence(pointEl, cx, cy);
-    setTimeout(() => {
-      if (location.href !== hrefBefore) {
-        console.error("[Aru][reveal] URL changed after overlay click", {
-          beforeUrl: hrefBefore, afterUrl: location.href,
-        });
-      }
-      const hasAiBlind = hasRuliwebAiBlind();
-      const imgCount = document.querySelectorAll(".view_content img").length;
-      const viewContent = document.querySelector(".view_content");
-      const textLength = viewContent ? (viewContent.textContent || "").length : 0;
-      console.log("[Aru][reveal] after overlay click", {
-        hasAiBlind, imgCount, textLength,
-      });
-    }, 300);
-    return true;
+    }, "bootstrap");
+    runBootstrap1();
+    return {};
   }
+  __name(installFirefoxContent, "installFirefoxContent");
 
-  function _setupRuliwebClickWithRetry(config) {
-    let done = false;
-    function attempt() {
-      if (done) return;
-      if (_tryRuliwebOverlayClickOnce(config)) { done = true; }
-    }
-    attempt();
-    if (done) return;
-    RULIWEB_REVEAL_RETRY_DELAYS_MS.forEach((delay) => {
-      setTimeout(attempt, delay);
-    });
-    const obs = new MutationObserver(() => {
-      if (done) { obs.disconnect(); return; }
-      attempt();
-      if (done) obs.disconnect();
-    });
-    obs.observe(document.body || document.documentElement, { childList: true, subtree: true });
-    setTimeout(() => { done = true; obs.disconnect(); }, RULIWEB_REVEAL_OBSERVER_TIMEOUT_MS);
-  }
-
-  function restoreRuliwebMetaDescription() {
-    // 텍스트 전용 복원 — 이미지는 복원되지 않는다.
-    const meta = document.querySelector('meta[name="description"]');
-    if (!meta) { console.debug("[Aru][reveal] text_fallback: no meta description found"); return false; }
-    const text = (meta.content || "").trim();
-    if (!text) { console.debug("[Aru][reveal] text_fallback: meta description is empty"); return false; }
-    const viewContent = document.querySelector(".view_content");
-    if (!viewContent) { console.debug("[Aru][reveal] text_fallback: .view_content not found"); return false; }
-    const p = document.createElement("p");
-    p.textContent = text;
-    p.dataset.aruMetaFallback = "1";
-    viewContent.prepend(p);
-    console.info("[Aru][reveal] text_fallback: meta description prepended (images not restored)");
-    return true;
-  }
-
-  function setupRuliwebAiReveal(config) {
-    const mode = config.ruliwebAiRevealMode ?? "off";
-    console.log("[Aru][reveal] setup", {
-      mode,
-      href: location.href,
-      isRead: isRuliwebReadPage(),
-      hasBoardRead: !!document.querySelector("#board_read"),
-      hasAiBlind: hasRuliwebAiBlind(),
-      hasBoardMainView: !!_findBoardMainView(),
-    });
-    if (mode === "off") return;
-    if (!isRuliwebReadPage()) return;
-    if (mode === "click_overlay") { _setupRuliwebClickWithRetry(config); return; }
-    if (mode === "text_fallback") { restoreRuliwebMetaDescription(); return; }
-  }
-
-  // ---------------- 부트스트랩 ----------------
-
-  async function init() {
-    // Firefox Browser Console(Ctrl+Shift+J)에서 이 로그가 보이면 content script가 실행된 것이다.
-    // Chrome/Whale: F12 Console에서 확인. 보이지 않으면 manifest의 content_scripts.matches 확인.
-    console.info("[Aru Source Captioner] content loaded", {
-      href: location.href,
-      userAgent: navigator.userAgent,
-      exifrAvailable: typeof exifr !== "undefined",
-    });
-
-    const config = await loadConfig();
-    cachedConfig = config;
-
-    if (!config.enabled) {
-      console.info("[Aru Source Captioner] disabled — skipping content script");
-      return;
-    }
-
-    // 페이지 종류별로 분기:
-    //   - read 페이지: 댓글 영역 "출처 추가" 버튼만 주입. 글쓰기용 editor / file input 로직은 띄우지 않는다.
-    //   - write 페이지(=non-read): 기존 글쓰기 캡션 자동 삽입 동작 그대로 유지.
-    if (isReadPage()) {
-      // file input change hook이 metadata 추출 후 sanitizeSourceUrl(rawUrl, config)을
-      // 호출하므로 read 페이지에서도 config를 반드시 캐시한다.
-      readPageConfig = config;
-      setupCommentSourceCaptioner(config);
-      startCommentObserver();
-      setupRuliwebAiReveal(config);
-      console.info(
-        "[Aru Source Captioner] read page active — comment source button enabled",
-        { strictAllowlist: config.strictAllowlist, allowHttp: config.allowHttp }
-      );
-      return;
-    }
-
-    // exifr가 없어도 filename fallback은 동작한다 — attachFileInputListeners는 반드시 호출.
-    // early return으로 listener를 건너뛰면 filename-only 모드도 작동하지 않는다.
-    if (typeof exifr === "undefined") {
-      console.warn("[Aru Source Captioner] exifr not loaded — running in filename-only fallback mode");
-    }
-
-    attachFileInputListeners(config);
-    startEditorObserver(config);
-
-    console.info(
-      "[Aru Source Captioner] auto-insert mode active — file selection triggers caption insertion",
-      {
-        strictAllowlist: config.strictAllowlist,
-        allowHttp: config.allowHttp,
-        mobile: isMobileAutoInsertEnvironment(),
-      }
-    );
-  }
-
-  // TODO(phase2C): chrome.storage.onChanged 리스너로 옵션 변경을 즉시 반영한다.
-  //   현 Phase 2B에서는 옵션 변경 후 페이지 새로고침이 필요하다.
-
-  init().catch((err) => {
-    console.warn("[Aru Source Captioner] init failed:", err);
-  });
+  // docs/source/compat/platform-firefox-content.mjs
+  var attribution = globalThis.AruSourceAttribution = globalThis.AruSourceAttribution || {};
+  var result = installFirefoxContent({ environment: globalThis, dependencies: { attribution: { "Controller": /* @__PURE__ */ __name(() => attribution["Controller"], "Controller") } } });
 })();

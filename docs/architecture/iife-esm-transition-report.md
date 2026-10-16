@@ -1,5 +1,7 @@
 # IIFE 단계적 제거 · ESM 전환 결과
 
+이 문서는 기준 커밋 `2f755c3`의 Phase 1 기록이다. 잔여 원본 제거·전체 ESM 그래프·최신 검증은 [완료 보고서](iife-esm-completion-report.md)와 [최신 검증 근거](esm-completion-validation.json)를 따른다.
+
 기준일: 2026-10-16, Asia/Seoul. 구현·로컬 검증 범위이며 WXT 개인 포크 통합·원격 Push·PR·Merge·배포는 수행하지 않았다.
 
 ## 1. 형상과 협업 보호
