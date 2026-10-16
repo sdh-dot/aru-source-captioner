@@ -1,0 +1,1204 @@
+{
+  "definitions": {
+    "iife": "함수 표현식/화살표의 즉시 호출 및 .call/.apply 호출",
+    "source": "이 Git 작업 트리의 추적·미추적 JS/CJS/MJS, ignored 제외",
+    "generated": "ESM 호환 출력 8개, *.bundle.js 및 build.mjs의 upload/composer 복사본; 제3자 lib 별도",
+    "legacyGlobals": "compat entry와 명시적 installLegacyTagApis만 namespace에 등록; ESM 내부는 주입 또는 import"
+  },
+  "categories": {
+    "기타 도구·원본": {
+      "files": 10,
+      "iifes": 3
+    },
+    "작성기 연동": {
+      "files": 7,
+      "iifes": 3
+    },
+    "UI 초기화": {
+      "files": 18,
+      "iifes": 17
+    },
+    "순수 데이터 처리 로직": {
+      "files": 11,
+      "iifes": 3
+    },
+    "검색 및 인덱싱": {
+      "files": 5,
+      "iifes": 6
+    },
+    "브라우저 API 연동": {
+      "files": 6,
+      "iifes": 10
+    },
+    "루리웹 DOM 처리": {
+      "files": 3,
+      "iifes": 0
+    },
+    "생성 번들·복사본": {
+      "files": 30,
+      "iifes": 106
+    },
+    "Background Script": {
+      "files": 3,
+      "iifes": 1
+    },
+    "검증 코드": {
+      "files": 46,
+      "iifes": 5
+    },
+    "Content Script": {
+      "files": 2,
+      "iifes": 2
+    },
+    "제3자 라이브러리": {
+      "files": 2,
+      "iifes": 30
+    }
+  },
+  "convertedModules": [
+    "docs/source/icon-metadata/metadata-editor-bridge.mjs",
+    "docs/source/ruliweb-icons/browser-adapter.mjs",
+    "docs/source/ruliweb-icons/composer-adapter.mjs",
+    "docs/source/ruliweb-icons/core.mjs",
+    "docs/source/ruliweb-icons/metadata-core.mjs",
+    "docs/source/ruliweb-icons/metadata.mjs",
+    "docs/source/ruliweb-icons/site-adapter.mjs",
+    "shared/icon-metadata/legacy-adapter.mjs",
+    "shared/icon-metadata/tag-codec.mjs",
+    "shared/icon-metadata/tag-edit-model.mjs"
+  ],
+  "failures": [],
+  "inventory": [
+    {
+      "file": "docs/MOBILE-TAGS-READONLY.js",
+      "category": "기타 도구·원본",
+      "iifeLines": [
+        2
+      ],
+      "imports": []
+    },
+    {
+      "file": "docs/READONLY-UPLOAD-DIAGNOSTIC.js",
+      "category": "기타 도구·원본",
+      "iifeLines": [
+        1
+      ],
+      "imports": []
+    },
+    {
+      "file": "docs/demo/upload-surfaces.js",
+      "category": "기타 도구·원본",
+      "iifeLines": [
+        2
+      ],
+      "imports": []
+    },
+    {
+      "file": "docs/source/bundle-generator/bridge.js",
+      "category": "작성기 연동",
+      "iifeLines": [
+        2
+      ],
+      "imports": []
+    },
+    {
+      "file": "docs/source/bundle-generator/client.js",
+      "category": "작성기 연동",
+      "iifeLines": [
+        1
+      ],
+      "imports": []
+    },
+    {
+      "file": "docs/source/bundle-generator/controller.js",
+      "category": "UI 초기화",
+      "iifeLines": [
+        1
+      ],
+      "imports": []
+    },
+    {
+      "file": "docs/source/bundle-generator/core.js",
+      "category": "순수 데이터 처리 로직",
+      "iifeLines": [
+        2,
+        98
+      ],
+      "imports": []
+    },
+    {
+      "file": "docs/source/bundle-generator/search-ui.js",
+      "category": "UI 초기화",
+      "iifeLines": [
+        1
+      ],
+      "imports": []
+    },
+    {
+      "file": "docs/source/bundle-generator/search.js",
+      "category": "검색 및 인덱싱",
+      "iifeLines": [
+        2,
+        65
+      ],
+      "imports": []
+    },
+    {
+      "file": "docs/source/bundle-generator/ui.js",
+      "category": "UI 초기화",
+      "iifeLines": [
+        1
+      ],
+      "imports": []
+    },
+    {
+      "file": "docs/source/compat/attribute-tags.mjs",
+      "category": "순수 데이터 처리 로직",
+      "iifeLines": [],
+      "imports": []
+    },
+    {
+      "file": "docs/source/compat/browser-adapter.mjs",
+      "category": "브라우저 API 연동",
+      "iifeLines": [],
+      "imports": []
+    },
+    {
+      "file": "docs/source/compat/composer-adapter.mjs",
+      "category": "작성기 연동",
+      "iifeLines": [],
+      "imports": []
+    },
+    {
+      "file": "docs/source/compat/core.mjs",
+      "category": "순수 데이터 처리 로직",
+      "iifeLines": [],
+      "imports": []
+    },
+    {
+      "file": "docs/source/compat/metadata-editor-bridge.mjs",
+      "category": "작성기 연동",
+      "iifeLines": [],
+      "imports": []
+    },
+    {
+      "file": "docs/source/compat/metadata-writer.mjs",
+      "category": "순수 데이터 처리 로직",
+      "iifeLines": [],
+      "imports": []
+    },
+    {
+      "file": "docs/source/compat/metadata.mjs",
+      "category": "순수 데이터 처리 로직",
+      "iifeLines": [],
+      "imports": []
+    },
+    {
+      "file": "docs/source/compat/site-adapter.mjs",
+      "category": "루리웹 DOM 처리",
+      "iifeLines": [],
+      "imports": []
+    },
+    {
+      "file": "docs/source/icon-metadata/core.js",
+      "category": "생성 번들·복사본",
+      "iifeLines": [
+        2
+      ],
+      "imports": []
+    },
+    {
+      "file": "docs/source/icon-metadata/editor-bridge.js",
+      "category": "생성 번들·복사본",
+      "iifeLines": [
+        2
+      ],
+      "imports": []
+    },
+    {
+      "file": "docs/source/icon-metadata/interface.js",
+      "category": "UI 초기화",
+      "iifeLines": [
+        2,
+        44,
+        177
+      ],
+      "imports": []
+    },
+    {
+      "file": "docs/source/icon-metadata/metadata-editor-bridge.mjs",
+      "category": "작성기 연동",
+      "iifeLines": [],
+      "imports": [
+        "shared/icon-metadata/tag-codec.mjs",
+        "shared/icon-metadata/tag-edit-model.mjs"
+      ]
+    },
+    {
+      "file": "docs/source/ruliweb-icons/attribute-tags.js",
+      "category": "생성 번들·복사본",
+      "iifeLines": [
+        2
+      ],
+      "imports": []
+    },
+    {
+      "file": "docs/source/ruliweb-icons/background.js",
+      "category": "Background Script",
+      "iifeLines": [
+        2
+      ],
+      "imports": []
+    },
+    {
+      "file": "docs/source/ruliweb-icons/browser-adapter.js",
+      "category": "생성 번들·복사본",
+      "iifeLines": [
+        2
+      ],
+      "imports": []
+    },
+    {
+      "file": "docs/source/ruliweb-icons/browser-adapter.mjs",
+      "category": "브라우저 API 연동",
+      "iifeLines": [],
+      "imports": []
+    },
+    {
+      "file": "docs/source/ruliweb-icons/catalog.js",
+      "category": "검색 및 인덱싱",
+      "iifeLines": [
+        2
+      ],
+      "imports": []
+    },
+    {
+      "file": "docs/source/ruliweb-icons/composer-adapter.js",
+      "category": "생성 번들·복사본",
+      "iifeLines": [
+        2
+      ],
+      "imports": []
+    },
+    {
+      "file": "docs/source/ruliweb-icons/composer-adapter.mjs",
+      "category": "작성기 연동",
+      "iifeLines": [],
+      "imports": [
+        "docs/source/ruliweb-icons/site-adapter.mjs"
+      ]
+    },
+    {
+      "file": "docs/source/ruliweb-icons/composer-bridge.js",
+      "category": "작성기 연동",
+      "iifeLines": [
+        2
+      ],
+      "imports": []
+    },
+    {
+      "file": "docs/source/ruliweb-icons/core.js",
+      "category": "생성 번들·복사본",
+      "iifeLines": [
+        2
+      ],
+      "imports": []
+    },
+    {
+      "file": "docs/source/ruliweb-icons/core.mjs",
+      "category": "순수 데이터 처리 로직",
+      "iifeLines": [],
+      "imports": []
+    },
+    {
+      "file": "docs/source/ruliweb-icons/design-system.js",
+      "category": "UI 초기화",
+      "iifeLines": [
+        2
+      ],
+      "imports": []
+    },
+    {
+      "file": "docs/source/ruliweb-icons/feature.js",
+      "category": "UI 초기화",
+      "iifeLines": [
+        2
+      ],
+      "imports": []
+    },
+    {
+      "file": "docs/source/ruliweb-icons/library-reader.js",
+      "category": "검색 및 인덱싱",
+      "iifeLines": [
+        2
+      ],
+      "imports": []
+    },
+    {
+      "file": "docs/source/ruliweb-icons/library-search.js",
+      "category": "검색 및 인덱싱",
+      "iifeLines": [
+        2
+      ],
+      "imports": []
+    },
+    {
+      "file": "docs/source/ruliweb-icons/metadata-core.mjs",
+      "category": "순수 데이터 처리 로직",
+      "iifeLines": [],
+      "imports": []
+    },
+    {
+      "file": "docs/source/ruliweb-icons/metadata.js",
+      "category": "생성 번들·복사본",
+      "iifeLines": [
+        2
+      ],
+      "imports": []
+    },
+    {
+      "file": "docs/source/ruliweb-icons/metadata.mjs",
+      "category": "루리웹 DOM 처리",
+      "iifeLines": [],
+      "imports": [
+        "docs/source/ruliweb-icons/metadata-core.mjs"
+      ]
+    },
+    {
+      "file": "docs/source/ruliweb-icons/picker.js",
+      "category": "UI 초기화",
+      "iifeLines": [
+        2
+      ],
+      "imports": []
+    },
+    {
+      "file": "docs/source/ruliweb-icons/registry.js",
+      "category": "검색 및 인덱싱",
+      "iifeLines": [
+        2
+      ],
+      "imports": []
+    },
+    {
+      "file": "docs/source/ruliweb-icons/site-adapter.js",
+      "category": "생성 번들·복사본",
+      "iifeLines": [
+        2
+      ],
+      "imports": []
+    },
+    {
+      "file": "docs/source/ruliweb-icons/site-adapter.mjs",
+      "category": "루리웹 DOM 처리",
+      "iifeLines": [],
+      "imports": [
+        "shared/icon-metadata/tag-codec.mjs",
+        "docs/source/ruliweb-icons/metadata.mjs"
+      ]
+    },
+    {
+      "file": "docs/source/ruliweb-icons/ui-preferences.js",
+      "category": "UI 초기화",
+      "iifeLines": [
+        2
+      ],
+      "imports": []
+    },
+    {
+      "file": "docs/source/upload-attribution/core.js",
+      "category": "순수 데이터 처리 로직",
+      "iifeLines": [
+        2
+      ],
+      "imports": []
+    },
+    {
+      "file": "docs/source/upload-attribution/ui.js",
+      "category": "UI 초기화",
+      "iifeLines": [
+        2
+      ],
+      "imports": []
+    },
+    {
+      "file": "docs/tests/bundle-generator/diagnostic.test.cjs",
+      "category": "검증 코드",
+      "iifeLines": [],
+      "imports": []
+    },
+    {
+      "file": "docs/tests/bundle-generator/editor.test.cjs",
+      "category": "검증 코드",
+      "iifeLines": [],
+      "imports": []
+    },
+    {
+      "file": "docs/tests/bundle-generator/harness.cjs",
+      "category": "검증 코드",
+      "iifeLines": [],
+      "imports": []
+    },
+    {
+      "file": "docs/tests/bundle-generator/model.test.cjs",
+      "category": "검증 코드",
+      "iifeLines": [],
+      "imports": []
+    },
+    {
+      "file": "docs/tests/bundle-generator/source.test.cjs",
+      "category": "검증 코드",
+      "iifeLines": [],
+      "imports": []
+    },
+    {
+      "file": "docs/tests/bundle-generator/ui.test.cjs",
+      "category": "검증 코드",
+      "iifeLines": [],
+      "imports": []
+    },
+    {
+      "file": "docs/tests/design-polish-rc1/polish.test.cjs",
+      "category": "검증 코드",
+      "iifeLines": [],
+      "imports": []
+    },
+    {
+      "file": "docs/tests/design-polish-rc1/surfaces.js",
+      "category": "검증 코드",
+      "iifeLines": [
+        1
+      ],
+      "imports": []
+    },
+    {
+      "file": "docs/tests/generator-r2/apply.test.cjs",
+      "category": "검증 코드",
+      "iifeLines": [],
+      "imports": []
+    },
+    {
+      "file": "docs/tests/generator-r2/harness.cjs",
+      "category": "검증 코드",
+      "iifeLines": [],
+      "imports": []
+    },
+    {
+      "file": "docs/tests/generator-r2/search-ui.test.cjs",
+      "category": "검증 코드",
+      "iifeLines": [],
+      "imports": []
+    },
+    {
+      "file": "docs/tests/generator-r2/search.test.cjs",
+      "category": "검증 코드",
+      "iifeLines": [],
+      "imports": []
+    },
+    {
+      "file": "docs/tests/generator-r2/tag-regression.test.cjs",
+      "category": "검증 코드",
+      "iifeLines": [],
+      "imports": []
+    },
+    {
+      "file": "docs/tests/icon-assets/assets.test.cjs",
+      "category": "검증 코드",
+      "iifeLines": [],
+      "imports": []
+    },
+    {
+      "file": "docs/tests/icon-assets/surfaces.js",
+      "category": "검증 코드",
+      "iifeLines": [
+        1
+      ],
+      "imports": []
+    },
+    {
+      "file": "docs/tests/metadata-reader/cache-bundle.test.cjs",
+      "category": "검증 코드",
+      "iifeLines": [],
+      "imports": []
+    },
+    {
+      "file": "docs/tests/metadata-reader/harness.cjs",
+      "category": "검증 코드",
+      "iifeLines": [],
+      "imports": []
+    },
+    {
+      "file": "docs/tests/metadata-reader/integration.test.cjs",
+      "category": "검증 코드",
+      "iifeLines": [],
+      "imports": []
+    },
+    {
+      "file": "docs/tests/metadata-reader/performance.test.cjs",
+      "category": "검증 코드",
+      "iifeLines": [],
+      "imports": []
+    },
+    {
+      "file": "docs/tests/metadata-reader/preservation.test.cjs",
+      "category": "검증 코드",
+      "iifeLines": [],
+      "imports": []
+    },
+    {
+      "file": "docs/tests/metadata-reader/reader.test.cjs",
+      "category": "검증 코드",
+      "iifeLines": [],
+      "imports": []
+    },
+    {
+      "file": "docs/tests/modal-headers/headers.test.cjs",
+      "category": "검증 코드",
+      "iifeLines": [],
+      "imports": []
+    },
+    {
+      "file": "docs/tests/modal-headers/surfaces.js",
+      "category": "검증 코드",
+      "iifeLines": [
+        1
+      ],
+      "imports": []
+    },
+    {
+      "file": "docs/tests/phase2b3-r2/ui.test.cjs",
+      "category": "검증 코드",
+      "iifeLines": [],
+      "imports": []
+    },
+    {
+      "file": "docs/tests/phase2b3-r3/ui.test.cjs",
+      "category": "검증 코드",
+      "iifeLines": [],
+      "imports": []
+    },
+    {
+      "file": "docs/tests/phase2b3-r4/flow.test.cjs",
+      "category": "검증 코드",
+      "iifeLines": [],
+      "imports": []
+    },
+    {
+      "file": "docs/tests/phase2b3/engine.test.cjs",
+      "category": "검증 코드",
+      "iifeLines": [],
+      "imports": []
+    },
+    {
+      "file": "docs/tests/phase2b3/harness.cjs",
+      "category": "검증 코드",
+      "iifeLines": [],
+      "imports": []
+    },
+    {
+      "file": "docs/tests/phase2b3/media-design.test.cjs",
+      "category": "검증 코드",
+      "iifeLines": [],
+      "imports": []
+    },
+    {
+      "file": "docs/tests/phase2b3/reader.test.cjs",
+      "category": "검증 코드",
+      "iifeLines": [],
+      "imports": []
+    },
+    {
+      "file": "docs/tests/picker-r3/picker.test.cjs",
+      "category": "검증 코드",
+      "iifeLines": [],
+      "imports": []
+    },
+    {
+      "file": "docs/tests/tag-display/accuracy-ui.test.cjs",
+      "category": "검증 코드",
+      "iifeLines": [],
+      "imports": []
+    },
+    {
+      "file": "docs/tests/tag-display/cache.test.cjs",
+      "category": "검증 코드",
+      "iifeLines": [],
+      "imports": []
+    },
+    {
+      "file": "docs/tests/tag-display/diagnostic.test.cjs",
+      "category": "검증 코드",
+      "iifeLines": [],
+      "imports": []
+    },
+    {
+      "file": "docs/tests/tag-display/harness.cjs",
+      "category": "검증 코드",
+      "iifeLines": [],
+      "imports": []
+    },
+    {
+      "file": "docs/tests/tag-display/native-integration.test.cjs",
+      "category": "검증 코드",
+      "iifeLines": [],
+      "imports": []
+    },
+    {
+      "file": "docs/tools/build-generator.mjs",
+      "category": "UI 초기화",
+      "iifeLines": [],
+      "imports": []
+    },
+    {
+      "file": "firefox/background.js",
+      "category": "Background Script",
+      "iifeLines": [],
+      "imports": []
+    },
+    {
+      "file": "firefox/content.js",
+      "category": "Content Script",
+      "iifeLines": [
+        20
+      ],
+      "imports": []
+    },
+    {
+      "file": "firefox/features/body-download/background.bundle.js",
+      "category": "생성 번들·복사본",
+      "iifeLines": [
+        3,
+        156,
+        173
+      ],
+      "imports": []
+    },
+    {
+      "file": "firefox/features/body-download/browser-api.js",
+      "category": "브라우저 API 연동",
+      "iifeLines": [
+        1
+      ],
+      "imports": []
+    },
+    {
+      "file": "firefox/features/body-download/content.bundle.js",
+      "category": "생성 번들·복사본",
+      "iifeLines": [
+        3,
+        156,
+        263,
+        280,
+        286
+      ],
+      "imports": []
+    },
+    {
+      "file": "firefox/features/body-download/core.js",
+      "category": "UI 초기화",
+      "iifeLines": [
+        2
+      ],
+      "imports": []
+    },
+    {
+      "file": "firefox/features/body-download/engine.js",
+      "category": "UI 초기화",
+      "iifeLines": [
+        1
+      ],
+      "imports": []
+    },
+    {
+      "file": "firefox/features/body-download/ui.js",
+      "category": "UI 초기화",
+      "iifeLines": [
+        1
+      ],
+      "imports": []
+    },
+    {
+      "file": "firefox/features/bundle-generator/bridge.bundle.js",
+      "category": "생성 번들·복사본",
+      "iifeLines": [
+        4,
+        410,
+        506,
+        528
+      ],
+      "imports": []
+    },
+    {
+      "file": "firefox/features/bundle-generator/content.bundle.js",
+      "category": "생성 번들·복사본",
+      "iifeLines": [
+        4,
+        256,
+        663,
+        817,
+        902,
+        2058,
+        2154,
+        2175,
+        2197,
+        2260,
+        2281,
+        2335,
+        2398
+      ],
+      "imports": []
+    },
+    {
+      "file": "firefox/features/icon-metadata/bridge.bundle.js",
+      "category": "생성 번들·복사본",
+      "iifeLines": [
+        2
+      ],
+      "imports": []
+    },
+    {
+      "file": "firefox/features/icon-metadata/content.bundle.js",
+      "category": "생성 번들·복사본",
+      "iifeLines": [
+        3,
+        180,
+        431,
+        473,
+        606
+      ],
+      "imports": []
+    },
+    {
+      "file": "firefox/features/ruliweb-icons/background.bundle.js",
+      "category": "생성 번들·복사본",
+      "iifeLines": [
+        3
+      ],
+      "imports": []
+    },
+    {
+      "file": "firefox/features/ruliweb-icons/composer-bridge.js",
+      "category": "생성 번들·복사본",
+      "iifeLines": [
+        2
+      ],
+      "imports": []
+    },
+    {
+      "file": "firefox/features/ruliweb-icons/content.bundle.js",
+      "category": "생성 번들·복사본",
+      "iifeLines": [
+        3,
+        157,
+        564,
+        649,
+        794,
+        1951,
+        1956,
+        2128,
+        2380,
+        2470,
+        2506,
+        2538,
+        3583,
+        4932
+      ],
+      "imports": []
+    },
+    {
+      "file": "firefox/features/upload-attribution/core.js",
+      "category": "생성 번들·복사본",
+      "iifeLines": [
+        2
+      ],
+      "imports": []
+    },
+    {
+      "file": "firefox/features/upload-attribution/ui.js",
+      "category": "생성 번들·복사본",
+      "iifeLines": [
+        2
+      ],
+      "imports": []
+    },
+    {
+      "file": "firefox/lib/exifr.full.umd.js",
+      "category": "제3자 라이브러리",
+      "iifeLines": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "imports": []
+    },
+    {
+      "file": "firefox/options.js",
+      "category": "브라우저 API 연동",
+      "iifeLines": [
+        9,
+        131
+      ],
+      "imports": []
+    },
+    {
+      "file": "shared/icon-metadata/legacy-adapter.mjs",
+      "category": "순수 데이터 처리 로직",
+      "iifeLines": [],
+      "imports": [
+        "shared/icon-metadata/tag-codec.mjs",
+        "shared/icon-metadata/tag-edit-model.mjs"
+      ]
+    },
+    {
+      "file": "shared/icon-metadata/tag-codec.mjs",
+      "category": "순수 데이터 처리 로직",
+      "iifeLines": [],
+      "imports": []
+    },
+    {
+      "file": "shared/icon-metadata/tag-edit-model.mjs",
+      "category": "순수 데이터 처리 로직",
+      "iifeLines": [],
+      "imports": [
+        "shared/icon-metadata/tag-codec.mjs"
+      ]
+    },
+    {
+      "file": "tests/esm/build.test.mjs",
+      "category": "검증 코드",
+      "iifeLines": [],
+      "imports": []
+    },
+    {
+      "file": "tests/esm/fixtures/editor-check.js",
+      "category": "검증 코드",
+      "iifeLines": [
+        1
+      ],
+      "imports": []
+    },
+    {
+      "file": "tests/esm/modules.test.mjs",
+      "category": "검증 코드",
+      "iifeLines": [],
+      "imports": []
+    },
+    {
+      "file": "tests/esm/tag-contract.test.mjs",
+      "category": "검증 코드",
+      "iifeLines": [],
+      "imports": []
+    },
+    {
+      "file": "tests/filename.test.cjs",
+      "category": "검증 코드",
+      "iifeLines": [],
+      "imports": []
+    },
+    {
+      "file": "tests/loading-reader.test.cjs",
+      "category": "검증 코드",
+      "iifeLines": [],
+      "imports": []
+    },
+    {
+      "file": "tests/mobile-tags.test.cjs",
+      "category": "검증 코드",
+      "iifeLines": [
+        15
+      ],
+      "imports": []
+    },
+    {
+      "file": "tests/mobile-ui.test.cjs",
+      "category": "검증 코드",
+      "iifeLines": [],
+      "imports": []
+    },
+    {
+      "file": "tests/publication.test.cjs",
+      "category": "검증 코드",
+      "iifeLines": [],
+      "imports": []
+    },
+    {
+      "file": "tests/upload-attribution.test.cjs",
+      "category": "검증 코드",
+      "iifeLines": [],
+      "imports": []
+    },
+    {
+      "file": "tools/audit-esm.mjs",
+      "category": "기타 도구·원본",
+      "iifeLines": [],
+      "imports": []
+    },
+    {
+      "file": "tools/benchmark-mobile.mjs",
+      "category": "기타 도구·원본",
+      "iifeLines": [],
+      "imports": []
+    },
+    {
+      "file": "tools/build-esm.mjs",
+      "category": "UI 초기화",
+      "iifeLines": [],
+      "imports": []
+    },
+    {
+      "file": "tools/build.mjs",
+      "category": "UI 초기화",
+      "iifeLines": [],
+      "imports": []
+    },
+    {
+      "file": "tools/create-placeholders.mjs",
+      "category": "기타 도구·원본",
+      "iifeLines": [],
+      "imports": []
+    },
+    {
+      "file": "tools/package.mjs",
+      "category": "기타 도구·원본",
+      "iifeLines": [],
+      "imports": []
+    },
+    {
+      "file": "tools/test-historical.mjs",
+      "category": "기타 도구·원본",
+      "iifeLines": [],
+      "imports": []
+    },
+    {
+      "file": "tools/test.mjs",
+      "category": "기타 도구·원본",
+      "iifeLines": [],
+      "imports": []
+    },
+    {
+      "file": "tools/verify.mjs",
+      "category": "기타 도구·원본",
+      "iifeLines": [],
+      "imports": []
+    },
+    {
+      "file": "whale/background.js",
+      "category": "Background Script",
+      "iifeLines": [],
+      "imports": []
+    },
+    {
+      "file": "whale/content.js",
+      "category": "Content Script",
+      "iifeLines": [
+        20
+      ],
+      "imports": []
+    },
+    {
+      "file": "whale/features/body-download/background.bundle.js",
+      "category": "생성 번들·복사본",
+      "iifeLines": [
+        3,
+        156,
+        173
+      ],
+      "imports": []
+    },
+    {
+      "file": "whale/features/body-download/browser-api.js",
+      "category": "브라우저 API 연동",
+      "iifeLines": [
+        1
+      ],
+      "imports": []
+    },
+    {
+      "file": "whale/features/body-download/content.bundle.js",
+      "category": "생성 번들·복사본",
+      "iifeLines": [
+        3,
+        156,
+        263,
+        280,
+        286
+      ],
+      "imports": []
+    },
+    {
+      "file": "whale/features/body-download/core.js",
+      "category": "UI 초기화",
+      "iifeLines": [
+        2
+      ],
+      "imports": []
+    },
+    {
+      "file": "whale/features/body-download/engine.js",
+      "category": "UI 초기화",
+      "iifeLines": [
+        1
+      ],
+      "imports": []
+    },
+    {
+      "file": "whale/features/body-download/ui.js",
+      "category": "UI 초기화",
+      "iifeLines": [
+        1
+      ],
+      "imports": []
+    },
+    {
+      "file": "whale/features/bundle-generator/bridge.bundle.js",
+      "category": "생성 번들·복사본",
+      "iifeLines": [
+        4,
+        410,
+        506,
+        528
+      ],
+      "imports": []
+    },
+    {
+      "file": "whale/features/bundle-generator/content.bundle.js",
+      "category": "생성 번들·복사본",
+      "iifeLines": [
+        4,
+        256,
+        663,
+        817,
+        902,
+        2058,
+        2154,
+        2175,
+        2197,
+        2260,
+        2281,
+        2335,
+        2398
+      ],
+      "imports": []
+    },
+    {
+      "file": "whale/features/icon-metadata/bridge.bundle.js",
+      "category": "생성 번들·복사본",
+      "iifeLines": [
+        2
+      ],
+      "imports": []
+    },
+    {
+      "file": "whale/features/icon-metadata/content.bundle.js",
+      "category": "생성 번들·복사본",
+      "iifeLines": [
+        3,
+        180,
+        431,
+        473,
+        606
+      ],
+      "imports": []
+    },
+    {
+      "file": "whale/features/ruliweb-icons/background.bundle.js",
+      "category": "생성 번들·복사본",
+      "iifeLines": [
+        3
+      ],
+      "imports": []
+    },
+    {
+      "file": "whale/features/ruliweb-icons/composer-bridge.js",
+      "category": "생성 번들·복사본",
+      "iifeLines": [
+        2
+      ],
+      "imports": []
+    },
+    {
+      "file": "whale/features/ruliweb-icons/content.bundle.js",
+      "category": "생성 번들·복사본",
+      "iifeLines": [
+        3,
+        157,
+        564,
+        649,
+        794,
+        1951,
+        1956,
+        2128,
+        2380,
+        2470,
+        2506,
+        2538,
+        3583,
+        4932
+      ],
+      "imports": []
+    },
+    {
+      "file": "whale/features/upload-attribution/core.js",
+      "category": "생성 번들·복사본",
+      "iifeLines": [
+        2
+      ],
+      "imports": []
+    },
+    {
+      "file": "whale/features/upload-attribution/ui.js",
+      "category": "생성 번들·복사본",
+      "iifeLines": [
+        2
+      ],
+      "imports": []
+    },
+    {
+      "file": "whale/lib/exifr.full.umd.js",
+      "category": "제3자 라이브러리",
+      "iifeLines": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "imports": []
+    },
+    {
+      "file": "whale/options.js",
+      "category": "브라우저 API 연동",
+      "iifeLines": [
+        9,
+        143,
+        154,
+        159,
+        164,
+        169
+      ],
+      "imports": []
+    }
+  ]
+}

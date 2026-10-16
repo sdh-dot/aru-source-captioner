@@ -19,4 +19,6 @@ exifr의 원래 저작권 고지와 Pretendard의 고지·Reserved Font Names를
 
 jsdom 26.1.0, jQuery 3.7.1, addons-linter 10.14.0은 npm에서 버전을 고정해 설치합니다. `node_modules`는 Git 및 확장 배포에 포함하지 않습니다. 각 패키지와 전이 의존성의 라이선스 파일은 설치본에 유지되며, 재배포가 필요하면 해당 고지를 검토해야 합니다. package-lock.json의 URL·무결성 값으로 설치 입력을 고정합니다.
 
+ESM 호환 스크립트 생성에는 esbuild 0.28.2(MIT, Copyright © 2020 Evan Wallace), 구문·의존성 조사에는 Acorn 8.19.0(MIT, Copyright © 2012–2022 various contributors)을 사용합니다. 두 도구와 플랫폼별 esbuild 실행 파일은 개발 의존성이며 확장에 포함하지 않습니다. 설치본의 `esbuild/LICENSE.md`, `acorn/LICENSE` 및 `acorn/AUTHORS`를 유지합니다. 출처는 [esbuild](https://github.com/evanw/esbuild), [Acorn](https://github.com/acornjs/acorn)입니다.
+
 ArU Archive Native Host와 ExifTool 등 데스크톱 실행 파일은 이 저장소의 배포 대상이 아닙니다. 해당 구성 요소의 라이선스나 사용 허락을 이 저장소의 MIT로 확장하지 않습니다.

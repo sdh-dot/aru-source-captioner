@@ -1,0 +1,22 @@
+{
+  "normalize": [
+    { "input": [" 아루 ", "기쁨, 행복", "아루", "", "A", "a", "Ａ", "줄\n바꿈"], "expected": ["아루", "기쁨, 행복", "A", "a", "Ａ", "줄 바꿈"] },
+    { "input": ["\t인사\r\n", "특수 !@#", "인사", "😀", "쉼표,포함"], "expected": ["인사", "특수 !@#", "😀", "쉼표,포함"] },
+    { "input": [], "expected": [] }
+  ],
+  "decode": [
+    { "input": null, "expected": [] },
+    { "input": "", "expected": [] },
+    { "input": " 아루, 미소 ,아루,,A,a,Ａ", "expected": ["아루", "미소", "A", "a", "Ａ"] },
+    { "input": "aru-tags:v1:%5B%22%EC%95%84%EB%A3%A8%22%2C%22%EA%B8%B0%EC%81%A8%2C%20%ED%96%89%EB%B3%B5%22%5D", "expected": ["아루", "기쁨, 행복"] },
+    { "input": "aru-tags:v1:[\"아루\", \"아루\"]", "expected": ["아루"] }
+  ],
+  "decodeErrors": [
+    { "input": "aru-tags:v2:[]", "code": "TAGS_VERSION" },
+    { "input": "aru-tags:v1:%broken", "code": "TAGS_INVALID" },
+    { "input": "aru-tags:v1:%E0%A4", "code": "TAGS_INVALID" },
+    { "input": "aru-tags:v1:{}", "code": "TAGS_INVALID" },
+    { "input": "aru-tags:v1:[1]", "code": "TAGS_INVALID" },
+    { "input": "aru-tags:v1:", "code": "TAGS_INVALID" }
+  ]
+}
