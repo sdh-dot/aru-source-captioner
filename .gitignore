@@ -25,3 +25,9 @@ browser-profiles/
 cache/
 tmp/
 temp/
+
+# WXT 및 로컬 브라우저 실행 출력
+/.output/
+/.wxt/
+/web-ext.config.ts
+/.chrome/

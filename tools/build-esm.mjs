@@ -24,6 +24,8 @@ export async function compileCompatibility({ check = false } = {}) {
   for (const [name, destination] of Object.entries(destinations)) {
     const diagnostic = ['docs/MOBILE-TAGS-READONLY.js', 'docs/READONLY-UPLOAD-DIAGNOSTIC.js'].includes(destination);
     const result = await build({
+      // WXT 타입 검사 설정이 기존 classic 출력의 strict 경계를 바꾸지 않게 한다.
+      tsconfigRaw: { compilerOptions: { alwaysStrict: false } },
       absWorkingDir: root,
       entryPoints: [entrySources.get(destination) ?? 'docs/source/compat/' + name + '.mjs'],
       bundle: true,
@@ -61,7 +63,7 @@ export async function compileRuntime({ check = false } = {}) {
   const entries = JSON.parse(fs.readFileSync(path.join(root, 'tools/esm-runtime-entries.json'), 'utf8'));
   const changed = [];
   for (const entry of entries) {
-    const result = await build({ absWorkingDir: root, entryPoints: [entry.entry], bundle: true, format: 'iife', platform: 'browser', target: 'es2022', charset: 'utf8', keepNames: true, write: false, legalComments: 'none', banner: { js: '// 자동 생성: tools/build-esm.mjs. ESM runtime/compat 원본만 수정한다.' } });
+    const result = await build({ tsconfigRaw: { compilerOptions: { alwaysStrict: false } }, absWorkingDir: root, entryPoints: [entry.entry], bundle: true, format: 'iife', platform: 'browser', target: 'es2022', charset: 'utf8', keepNames: true, write: false, legalComments: 'none', banner: { js: '// 자동 생성: tools/build-esm.mjs. ESM runtime/compat 원본만 수정한다.' } });
     const text = result.outputFiles[0].text, file = path.join(root, entry.file);
     if (fs.existsSync(file) && fs.readFileSync(file, 'utf8') === text) continue;
     changed.push(entry.file); if (!check) fs.writeFileSync(file, text);

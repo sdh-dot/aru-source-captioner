@@ -27,6 +27,7 @@ function createIconBase(environment) {
   icons.SiteAdapter = createSiteAdapter({ environment, metadata: icons.Metadata });
   return icons;
 }
+/** @param {{ environment?: typeof globalThis, metrics?: ReturnType<typeof import("../performance/metrics.mjs").createPerformanceMetrics> | null }} options */
 function createIconReader({ environment = globalThis, metrics = null } = {}) {
   const icons = createIconBase(environment);
   let part;

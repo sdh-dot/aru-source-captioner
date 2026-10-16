@@ -1,6 +1,7 @@
 // 업로드 출처 매칭 결과를 작성기 수명에 맞춰 연결하며 기존 이벤트 계약을 보존한다.
 import { createModuleScope, selectModuleExports } from '../runtime/module-scope.mjs';
 
+/** @param {{ environment?: typeof globalThis, dependencies?: object, metrics?: ReturnType<typeof import("../performance/metrics.mjs").createPerformanceMetrics> | null }} options */
 export function createAttributionUi({ environment = globalThis, dependencies = {}, metrics = null } = {}) {
   const { document, location, chrome, MutationObserver } = environment;
 

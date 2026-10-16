@@ -9,6 +9,7 @@ import zipfile
 parser = argparse.ArgumentParser()
 parser.add_argument('--harness', type=Path, required=True)
 parser.add_argument('--browser', choices=['firefox', 'chromium', 'whale'], required=True)
+parser.add_argument('--build-kind', choices=['legacy', 'wxt'], default='legacy')
 args = parser.parse_args()
 if hasattr(sys.stdout, 'reconfigure'):
     sys.stdout.reconfigure(encoding='utf-8')
@@ -18,7 +19,7 @@ sys.path.insert(0, str(harness))
 import common
 
 common.prepare_cache()
-results = root / 'docs/results/esm-e2e'
+results = root / ('docs/results/wxt-e2e' if args.build_kind == 'wxt' else 'docs/results/esm-e2e')
 results.mkdir(parents=True, exist_ok=True)
 common.ROOT = results
 common.ARTIFACTS = results / '.artifacts'
@@ -28,7 +29,7 @@ base_report = common.Report
 class CandidateReport(base_report):
     def save(self):
         self.metadata.update({
-            'baseline': 'isolated ESM worktree build; not the historical distribution or signed AMO package',
+            'baseline': args.build_kind + ' isolated worktree build; not the historical distribution or signed AMO package',
             'extensionCodeModified': True,
             'runtimePatching': False,
             'sourceRoot': str(root),
@@ -42,8 +43,14 @@ class CandidateReport(base_report):
 
 common.Report = CandidateReport
 
+def candidate_folder(browser):
+    if args.build_kind == 'legacy':
+        return root / browser
+    target = 'firefox' if browser == 'firefox' else ('whale' if args.browser == 'whale' else 'chrome')
+    return root / '.output' / (target + '-mv3')
+
 def package(browser):
-    folder = root / browser
+    folder = candidate_folder(browser)
     output = results / (browser + '-candidate.zip')
     with zipfile.ZipFile(output, 'w', zipfile.ZIP_DEFLATED) as archive:
         for file in sorted(folder.rglob('*')):
@@ -54,7 +61,7 @@ def package(browser):
 common.FIREFOX_ZIP = package('firefox')
 common.CHROMIUM_ZIP = package('whale')
 common.firefox_package = lambda: common.FIREFOX_ZIP
-common.chromium_package = lambda: root / 'whale'
+common.chromium_package = lambda: candidate_folder('whale')
 
 # 실제 Manifest로 주입된 MAIN/ISOLATED 코드를 fixture 작성기에서 검증한다.
 import fixtures.site as site
