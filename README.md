@@ -1,5 +1,11 @@
 # Aru Source Captioner
 
+> **개발 브랜치 안내**
+> - 안정 기준: [`main`](https://github.com/sdh-dot/aru-source-captioner/tree/main) — 현재 공개 기준 형상
+> - 최신 통합 개발본: [`integration/aru-unified`](https://github.com/sdh-dot/aru-source-captioner/tree/integration/aru-unified) — ESM 전환·태그 수정·Hybrid 최적화 통합
+> - 검토 중인 통합 PR: [Draft PR #4](https://github.com/sdh-dot/aru-source-captioner/pull/4) — **아직 `main`에 병합되지 않았습니다.**
+> - WXT 구조 개편: 외부 개발자 작업과 통합 검증 대기. 신규 작업자는 목적에 맞는 기준 브랜치를 확인해 주세요.
+
 루리웹 작성기에 첨부한 이미지의 **픽시브 파일명과 메타데이터를 읽어 출처를 기재**하는 브라우저 확장 프로그램입니다. EXIF·XMP·IPTC·PNG iTXt의 출처 정보와 픽시브 파일명 패턴을 사용하며, 확인할 수 있는 출처가 없으면 캡션을 추가하지 않습니다.
 
 이번 개발 브랜치는 모바일 로딩 UX 개선을 포함하며 Manifest 버전은 **Firefox 1.0.4 / Whale·Chromium 0.1.3**입니다. 사용자가 공개 재배포 권한을 확인한 기존 캐릭터 에셋을 두 브라우저에 동일하게 적용했습니다. 그래픽에는 소스 코드의 MIT를 적용하지 않습니다. 원본 아이콘팩 파일은 포함하지 않습니다. 이 저장소는 루리웹·픽시브의 공식 제품이 아닙니다. 실제 기기 검증 상태는 [업로드 수정 결과](docs/UPLOAD-ATTRIBUTION-RESULTS.md)를 확인하세요.
