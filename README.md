@@ -1,14 +1,14 @@
 # Aru Source Captioner
 
-> **개발 브랜치 안내**
-> - 안정 기준: [`main`](https://github.com/sdh-dot/aru-source-captioner/tree/main) — 현재 공개 기준 형상
-> - 최신 통합 개발본: [`integration/aru-unified`](https://github.com/sdh-dot/aru-source-captioner/tree/integration/aru-unified) — ESM 전환·태그 수정·Hybrid 최적화 통합
-> - 검토 중인 통합 PR: [Draft PR #4](https://github.com/sdh-dot/aru-source-captioner/pull/4) — **아직 `main`에 병합되지 않았습니다.**
-> - WXT 구조 개편: 외부 개발자 작업과 통합 검증 대기. 신규 작업자는 목적에 맞는 기준 브랜치를 확인해 주세요.
+> **개발 브랜치 안내 (2026-10-17)**
+> - 공개 기준: [`main`](https://github.com/sdh-dot/aru-source-captioner/tree/main) — 기존 공개 형상, 최신 WXT 통합본은 아직 미병합
+> - **최신 통합 개발본:** [`integration/aru-wxt`](https://github.com/sdh-dot/aru-source-captioner/tree/integration/aru-wxt) — PR #4의 기능과 PR #5의 WXT 설계를 통합한 TypeScript 원본
+> - **검토 PR:** [Draft PR #6](https://github.com/sdh-dot/aru-source-captioner/pull/6) — 병합·배포 전 검증 진행 중
+> - [PR #4](https://github.com/sdh-dot/aru-source-captioner/pull/4)는 이전 ESM·Hybrid 통합 기준, [PR #5](https://github.com/sdh-dot/aru-source-captioner/pull/5)는 WXT 구조 제안입니다. 기존 PR을 자동 병합·종료하지 않았습니다.
 
 루리웹 작성기에 첨부한 이미지의 **픽시브 파일명과 메타데이터를 읽어 출처를 기재**하는 브라우저 확장 프로그램입니다. EXIF·XMP·IPTC·PNG iTXt의 출처 정보와 픽시브 파일명 패턴을 사용하며, 확인할 수 있는 출처가 없으면 캡션을 추가하지 않습니다.
 
-이번 개발 브랜치는 모바일 로딩 UX 개선을 포함하며 Manifest 버전은 **Firefox 1.0.4 / Whale·Chromium 0.1.3**입니다. 사용자가 공개 재배포 권한을 확인한 기존 캐릭터 에셋을 두 브라우저에 동일하게 적용했습니다. 그래픽에는 소스 코드의 MIT를 적용하지 않습니다. 원본 아이콘팩 파일은 포함하지 않습니다. 이 저장소는 루리웹·픽시브의 공식 제품이 아닙니다. 실제 기기 검증 상태는 [업로드 수정 결과](docs/UPLOAD-ATTRIBUTION-RESULTS.md)를 확인하세요.
+현재 통합 개발본은 WXT 기반 TypeScript 원본과 모바일 로딩 UX 개선을 포함하며 Manifest 버전은 **Firefox 1.0.4 / Whale·Chromium 0.1.3**입니다. 사용자가 공개 재배포 권한을 확인한 기존 캐릭터 에셋을 두 브라우저에 동일하게 적용했습니다. 그래픽에는 소스 코드의 MIT를 적용하지 않습니다. 원본 아이콘팩 파일은 포함하지 않습니다. 이 저장소는 루리웹·픽시브의 공식 제품이 아닙니다. 실제 기기 검증 상태는 [업로드 수정 결과](docs/UPLOAD-ATTRIBUTION-RESULTS.md)를 확인하세요.
 
 ## 주요 기능
 
@@ -25,9 +25,10 @@
 
 | 브라우저 | 로드 폴더 | 범위 |
 |---|---|---|
-| Chrome · Edge · Whale | `whale/` | Chromium MV3, PC 우선 |
-| Firefox | `firefox/` | Manifest 최소 버전 140 |
-| Android Firefox | `firefox/` | Manifest 최소 버전 142, 모바일 정식 검증 미완료 |
+| Chrome · Edge | `.output/chrome-mv3/` | WXT Chromium MV3 개발 빌드 |
+| Whale | `.output/whale-mv3/` | WXT Whale 개발 빌드 |
+| Firefox | `.output/firefox-mv3/manifest.json` | WXT Firefox MV3 임시 로드 |
+| Android Firefox | 별도 실기기 설치 절차 필요 | PC 빌드만으로 설치·호환성을 검증했다고 보지 않음 |
 
 공개 후보는 로컬 빌드·정적 검사·테스트 DOM으로 검증합니다. 실제 확장 설치 및 루리웹 연동은 [수동 검증 절차](docs/MANUAL-TESTING.md)를 확인하세요. 스토어 게시 URL과 심사 완료 상태는 아직 이 문서에 등록하지 않았습니다.
 
@@ -39,24 +40,27 @@ Node.js 24와 npm, Git이 필요합니다. 설치에 API 키나 로그인 쿠키
 git clone https://github.com/sdh-dot/aru-source-captioner.git
 cd aru-source-captioner
 npm ci --ignore-scripts
+npm run prepare:wxt
 npm run build
+npm run typecheck
+npm run verify:wxt
 npm run verify
 npm test
 ```
 
-로컬 공개 소스 폴더에서도 동일한 npm 명령을 사용할 수 있습니다.
+위 명령은 **PR #6 통합 브랜치**를 체크아웃한 상태에서 실행합니다. `main`의 기존 빌드 명령과 구분하세요. `.output/`은 생성물이며 직접 수정하지 않습니다.
 
 ### Chrome · Edge · Whale
 
 1. 각각 `chrome://extensions`, `edge://extensions`, `whale://extensions`를 엽니다.
-2. 개발자 모드를 켜고 **압축해제된 확장 프로그램 로드**로 `whale/`를 선택합니다.
+2. 개발자 모드를 켜고 **압축해제된 확장 프로그램 로드**로 Chrome·Edge는 `.output/chrome-mv3/`, Whale은 `.output/whale-mv3/`를 선택합니다.
 3. 사용 중인 스토어 확장과 동시에 활성화하면 중복 동작할 수 있으므로 별도 테스트 프로필을 권장합니다. 기존 프로필·설정은 초기화하지 마세요.
 
 ### Firefox
 
-`about:debugging#/runtime/this-firefox` → **임시 부가 기능 로드** → `firefox/manifest.json`을 선택합니다. 임시 설치는 브라우저 종료 시 해제됩니다. 일반 Firefox에서 ZIP만으로 영구 설치되는 것은 아니며 서명된 배포가 별도로 필요합니다.
+`about:debugging#/runtime/this-firefox` → **임시 부가 기능 로드** → `.output/firefox-mv3/manifest.json`을 선택합니다. 임시 설치는 브라우저 종료 시 해제됩니다. 일반 Firefox에서 ZIP만으로 영구 설치되는 것은 아니며 서명된 배포가 별도로 필요합니다.
 
-[재현 가능한 빌드와 Mozilla 제출 절차](docs/BUILD.md)에서 빌드 입력·검증·패키징 범위를 설명합니다.
+[기존 classic 빌드 및 Mozilla 제출 기록](docs/BUILD.md)과 [WXT 통합 보고서](docs/architecture/wxt-unification-report.md)를 구분해 참고하세요. PR #6의 서명·스토어 업데이트는 아직 검증되지 않았습니다.
 
 ## 사용 방법
 
@@ -82,7 +86,7 @@ Native Host가 필요한 다운로드 후 메타데이터 기록은 별도의 Ar
 | `nativeMessaging` | 설치된 Aru Archive Native Host에 다운로드 메타데이터 기록 요청 |
 | 루리웹 호스트 | 지원되는 읽기·작성·수정 화면 및 i1/i2/i3 미디어 조회 |
 
-픽시브 사이트에 로그인하거나 비공개 정보를 요청하지 않습니다. 파일명에서 작품 URL을 만들고 원본 파일의 메타데이터를 로컬에서 읽습니다. 전체 권한 범위는 각 `manifest.json`이 기준입니다.
+픽시브 사이트에 로그인하거나 비공개 정보를 요청하지 않습니다. 파일명에서 작품 URL을 만들고 원본 파일의 메타데이터를 로컬에서 읽습니다. 전체 권한 범위는 WXT가 브라우저별로 생성한 `.output/*-mv3/manifest.json`이 기준입니다.
 
 ## 제한과 검증 상태
 
@@ -104,6 +108,8 @@ Native Host가 필요한 다운로드 후 메타데이터 기록은 별도의 Ar
 
 ## WXT·TypeScript 통합 개발
 
-현재 로컬 통합 원본은 `src/**/*.ts`, 실행 진입점은 `entrypoints/`다. `docs/source/**/*.mjs`와 Firefox·Whale classic JS는 호환 빌드 출력이므로 직접 편집하지 않는다. `npm ci --ignore-scripts` 후 `npm run prepare:wxt`, `npm run build`, `npm run typecheck`로 확인한다. `npm run dev`는 Chromium, `npm run dev:firefox`는 Firefox 개발 실행이다.
+현재 최신 통합 개발 원본은 `src/**/*.ts`, 실행 진입점은 `entrypoints/`다. `docs/source/**/*.mjs`와 Firefox·Whale classic JS는 호환 빌드 출력이므로 직접 편집하지 않는다. `npm ci --ignore-scripts` 후 `npm run prepare:wxt`, `npm run build`, `npm run typecheck`, `npm run verify:wxt`로 확인한다. `npm run dev`는 Chromium, `npm run dev:firefox`는 Firefox 개발 실행이다.
 
-[WXT 통합 보고서](docs/architecture/wxt-unification-report.md), [공개 API와 연결 안내](docs/architecture/esm-wxt-integration.md), [소스 구조](src/README.md)를 확인한다. 정리 기준은 [저장소 정리 보고서](docs/maintenance/repository-cleanup-report.md), [소스 품질 검토](docs/maintenance/source-quality-review.md), [단계별 계획](docs/maintenance/refactoring-plan.md)에 보존했다.
+[WXT 통합 보고서](docs/architecture/wxt-unification-report.md), [공개 API와 연결 안내](docs/architecture/esm-wxt-integration.md), [소스 구조](src/README.md)를 확인한다. **검증 범위:** 타입·회귀·세 브라우저 빌드 및 합성 E2E는 통과했으나, 로그인 작성기·Android 실기기·Native Host·기존 스토어 설치 업그레이드는 미검증입니다. 사용자 통합 테스트는 별도 체크리스트로 기록해야 합니다.
+
+정리 기준은 [저장소 정리 보고서](docs/maintenance/repository-cleanup-report.md), [소스 품질 검토](docs/maintenance/source-quality-review.md), [단계별 계획](docs/maintenance/refactoring-plan.md)에 보존했다.
