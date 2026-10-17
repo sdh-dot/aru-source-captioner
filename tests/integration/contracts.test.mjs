@@ -25,7 +25,7 @@ function environment(){
   return {dom,w};
 }
 
-test('이식한 Hybrid 알고리즘의 AST는 명시한 namespace 주입과 PR1 부분 상태 수정 외에 같다',()=>{
+test('이식한 Hybrid 알고리즘의 AST는 namespace·PR1 부분 상태·이미지편집 탭 장식 제외 외에 같다',()=>{
   const ports=[['ruliweb-icons/library-search','initializeIconsLibrarySearch'],['ruliweb-icons/library-reader','initializeIconsLibraryReader'],['upload-attribution/core','initializeAttributionCore'],['upload-attribution/ui','initializeAttributionUi']];
   for(const [name,initializer]of ports){
     const frozen=sources[name+'.js'];assert.equal(crypto.createHash('sha256').update(frozen.source).digest('hex'),frozen.sha256);
@@ -33,6 +33,7 @@ test('이식한 Hybrid 알고리즘의 AST는 명시한 namespace 주입과 PR1 
     let expected=frozen.source.slice(call.callee.body.start+1,call.callee.body.end-1).replaceAll('g.AruIcons','icons').replaceAll('g.AruSourceAttribution','attribution').replaceAll('g.AruUploadUI','uploadUI').replaceAll('g.AruPerformance','metrics');
     if(name.endsWith('library-reader'))expected=expected.replace('stale:cached.stale===true||',"stale:cached.stale===true||(pack.kind==='NORMAL'&&pack.bodyCounts?.tagErrors>0)||").replace('return {pack};',"return {pack,stale:pack.kind==='NORMAL'&&pack.bodyCounts?.tagErrors>0};");
     if(name.endsWith('library-search'))expected=expected.replace('{acquiredAt:Date.now(),stale:false}','{acquiredAt:Date.now(),stale:loaded.stale===true}').replace("this.progress.status=this.progress.failed?'partial':'complete'","this.progress.status=this.progress.failed||refs.some(([id])=>this.packs.get(id)?.stale)?'partial':'complete'");
+    if(name==='upload-attribution/ui')expected=expected.replace('if (this.records.has(control) || !D) return;', 'if (this.records.has(control) || !D || control.closest("#editor_tab_bar")) return;');
     const actual=fs.readFileSync(new URL('../../docs/source/'+name+'.mjs',import.meta.url),'utf8');let body;
     walk(parse(actual,{ecmaVersion:'latest',sourceType:'module'}),node=>{if(node.type==='VariableDeclarator'&&node.id.name===initializer)body=node.init.body;});
     assert.equal(canonical(actual.slice(body.start+1,body.end-1)),canonical(expected),name);
