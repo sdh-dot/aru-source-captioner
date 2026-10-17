@@ -1,4 +1,5 @@
 import { parsePixivFilenameUrl } from "../../source-caption/pixiv-filename.ts";
+import type { ParsedSourceResult } from "../../upload-attribution/models.ts";
 import type { DefaultValues } from "../../runtime/contracts.ts";
 import {
   hasPngSignature,
@@ -212,7 +213,10 @@ export function installFirefoxContent({
 
     // ---------------- 파일 입력 감지 ----------------
 
-    function publishUploadStatus(snapshot: { state: string; selected: any }) {
+    function publishUploadStatus(snapshot: {
+      state: string;
+      selected: number;
+    }) {
       const value = JSON.stringify(snapshot);
       if (document.documentElement.dataset.aruUploadDiagnostic !== value) {
         document.documentElement.dataset.aruUploadDiagnostic = value;
@@ -276,7 +280,9 @@ export function installFirefoxContent({
       return false;
     }
 
-    function decodeAruPayloadFromItxtText(textBytes: any) {
+    function decodeAruPayloadFromItxtText(
+      textBytes: Uint8Array,
+    ): ParsedSourceResult {
       let jsonText;
       try {
         jsonText = new TextDecoder("utf-8", { fatal: false }).decode(textBytes);
@@ -298,7 +304,9 @@ export function installFirefoxContent({
       return extractSourceFromAruArchivePayload(payload);
     }
 
-    async function parseAruArchivePngItxt(file: File) {
+    async function parseAruArchivePngItxt(
+      file: File,
+    ): Promise<ParsedSourceResult> {
       let buffer;
       try {
         buffer = await file.arrayBuffer();
@@ -340,7 +348,7 @@ export function installFirefoxContent({
     function extractSourceFromAruArchivePayload(payload: {
       [x: string]: any;
       artwork_id: any;
-    }) {
+    }): ParsedSourceResult {
       if (!payload || typeof payload !== "object") {
         return { status: "missing", url: null, reason: "png_itxt_no_url" };
       }
@@ -374,7 +382,7 @@ export function installFirefoxContent({
     async function parseSourceFromFile(
       file: File,
       { allowLooseFilenameFallback = true } = {},
-    ) {
+    ): Promise<ParsedSourceResult> {
       // PNG 우선: Aru Archive 데스크톱 앱이 PNG에 비표준 iTXt(keyword="AruArchive")로
       // JSON 메타데이터를 저장하는데, exifr는 이를 인식하지 못한다. PNG 파일이면
       // 직접 파서를 먼저 시도하고, 성공 시 즉시 반환한다. 실패(missing/error)는
@@ -817,11 +825,11 @@ export function installFirefoxContent({
       return uploadAttribution;
     }
 
-    function findImageParagraph(img: { closest: (arg0: string) => any }) {
-      return img.closest("p") || img;
+    function findImageParagraph(img: HTMLImageElement) {
+      return img.closest<HTMLParagraphElement>("p") || img;
     }
 
-    function hasExistingSourceCaption(img: any) {
+    function hasExistingSourceCaption(img: HTMLImageElement) {
       const anchor = findImageParagraph(img);
       const next = anchor.nextElementSibling;
       if (!next) {
