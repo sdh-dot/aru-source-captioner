@@ -867,7 +867,7 @@ export function createIconsPicker({ environment = defaultEnvironment, dependenci
                         video.load();
                     }
                     catch (_) {
-                        /* Detached media can be ignored. */
+                        /* 분리된 미디어의 정리 실패로 나머지 목록 해제를 중단하지 않는다. */
                     }
                 });
             }
@@ -2208,7 +2208,7 @@ export function createIconsPicker({ environment = defaultEnvironment, dependenci
                     }
                 }
                 catch (_) {
-                    /* New UI failures must not stop the existing captioner. */
+                    /* 보조 UI 콜백 오류가 기존 출처 처리까지 중단하지 않게 격리한다. */
                 }
             }
             function destroy() {

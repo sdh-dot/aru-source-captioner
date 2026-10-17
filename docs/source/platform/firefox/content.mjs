@@ -17,15 +17,8 @@ export function installFirefoxContent({ environment = defaultEnvironment, depend
         ? (...args) => environment.clearInterval(...args)
         : undefined;
     let attribution = createModuleScope(dependencies.attribution, ["Controller"], []);
-    //
-    // Phase 2B: 실 구현.
-    // - 사용자가 input[type=file]에서 이미지를 선택하면 exifr로 EXIF/XMP/IPTC/UserComment를 파싱.
-    // - 메타데이터에서 우선순위 6단계로 출처 URL을 추출.
-    // - 루리웹 글쓰기 에디터가 <p><img alt="..."> 형태로 이미지를 삽입하면 MutationObserver가 감지.
-    // - 업로드 순서와 무관한 정확 파일명/속성 검증. 중복·불명확한 대응은 자동 기재하지 않는다.
-    // - 안전한 URL이면 부모 <p> 바로 다음에 출처 캡션 <p>를 DOM API로 삽입.
-    //
-    // 저장 태그·출처 정책은 각 검증 함수와 브라우저 설정에서 유지한다.
+    // 파일 선택의 출처와 작성기 이미지의 대응 근거가 확인된 경우에만 캡션을 삽입한다.
+    // 브라우저별 판독 우선순위와 기존 설정·저장 태그 정책은 각 판독 경계에서 유지한다.
     //
     // 절대 규칙:
     //   - innerHTML / outerHTML / insertAdjacentHTML 사용 금지.
@@ -71,7 +64,7 @@ export function installFirefoxContent({ environment = defaultEnvironment, depend
                 return false;
             }
         }
-        // ---------------- 옵션 로드 (Phase 2A 재사용) ----------------
+        // 저장소 가용성이나 callback 오류 때문에 기존 기본값의 초기화까지 중단하지 않는다.
         // chrome.storage.sync 가용성 검증 — 모든 체인을 명시적 &&로 검증한다.
         // optional chaining(`?.`)만으로는 일부 환경(특히 content script가 격리된
         // realm에서 chrome 객체가 frozen / partial인 경우)에서 placement에 따라
@@ -323,8 +316,7 @@ export function installFirefoxContent({ environment = defaultEnvironment, depend
                 }
                 return { status: "error", url: null, reason: "exifr_unavailable" };
             }
-            // WebP 파일 감지: Pixiv _master1200.webp 등은 EXIF/XMP가 없어 exifr가 항상 throw한다.
-            // 파싱 실패를 hard error로 취급하면 caption 흐름 전체가 중단되므로 missing으로 처리한다.
+            // WebP의 메타데이터 파싱 실패는 출처 없음으로 처리해 다른 이미지의 캡션 흐름을 유지한다.
             const isWebp = (typeof file.type === "string" && file.type === "image/webp") ||
                 (typeof file.name === "string" && /\.webp$/i.test(file.name));
             let metadata;
@@ -1480,8 +1472,8 @@ export function installFirefoxContent({ environment = defaultEnvironment, depend
                 mobile: isMobileAutoInsertEnvironment(),
             });
         }
-        // TODO(phase2C): chrome.storage.onChanged 리스너로 옵션 변경을 즉시 반영한다.
-        //   현 Phase 2B에서는 옵션 변경 후 페이지 새로고침이 필요하다.
+        // 옵션은 초기화 때 조회하므로 변경 후 페이지 새로고침이 필요하다.
+        // 즉시 반영을 추가할 때는 Controller의 설정 참조와 리스너 수명을 함께 갱신해야 한다.
         init().catch((err) => {
             console.warn("[Aru Source Captioner] init failed:", err);
         });
