@@ -126,7 +126,12 @@ export function createAttributionUi({
         return false;
       }
       decorate(control: HTMLElement) {
-        if (this.records.has(control) || !D) {
+        // 이미지편집 탭은 float 자식을 감싼 인라인 label이므로 업로드 장식을 덧씌우지 않는다.
+        if (
+          this.records.has(control) ||
+          !D ||
+          control.closest("#editor_tab_bar")
+        ) {
           return;
         }
         const previous = control.getAttribute("aria-label");

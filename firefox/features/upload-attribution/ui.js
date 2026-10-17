@@ -226,7 +226,7 @@
           return false;
         }
         decorate(control) {
-          if (this.records.has(control) || !D) {
+          if (this.records.has(control) || !D || control.closest("#editor_tab_bar")) {
             return;
           }
           const previous = control.getAttribute("aria-label");
