@@ -1,6 +1,8 @@
 // 사이트와 기존 공개 API의 동적 경계다. 내부 데이터 모델은 별도 타입으로 좁힌다.
 export type DynamicApi = Record<string, any>;
-export type ResolverMap = Record<string, () => any>;
+export type ResolverMap<Contract extends object = DynamicApi> = {
+  [Key in keyof Contract]: () => Contract[Key];
+};
 type GlobalConstructors = Pick<
   typeof globalThis,
   | "URL"
@@ -27,9 +29,11 @@ export interface RuntimeEnvironment extends Window, GlobalConstructors {
   browser?: DynamicApi;
   chrome: DynamicApi;
 }
-export interface FactoryOptions {
+export interface FactoryOptions<
+  Dependencies extends object = Record<string, ResolverMap>,
+> {
   environment?: RuntimeEnvironment;
-  dependencies?: Record<string, ResolverMap>;
+  dependencies?: Dependencies;
   metrics?: {
     start(name: string): (() => void) | undefined;
     count(name: string): void;

@@ -1,4 +1,8 @@
-import type { DynamicApi } from "../runtime/contracts.ts";
+import type {
+  DynamicApi,
+  FactoryOptions,
+  ResolverMap,
+} from "../runtime/contracts.ts";
 import type {
   Icon,
   IconSource,
@@ -7,6 +11,26 @@ import type {
   LoadedPack,
   LibraryProgress,
 } from "./models.ts";
+// 값은 설치 시점에 늦게 조회한다. 먼저 연결 이름을 제한하고 외부 API의 런타임 검사는 유지한다.
+export type PickerDependencyApi = Record<
+  | "isMouseDoubleClick"
+  | "iconTagLabels"
+  | "Metadata"
+  | "createPicker"
+  | "SearchIndex"
+  | "FoldState"
+  | "DesignSystem"
+  | "CatalogView"
+  | "UiPreferences"
+  | "MediaBudget"
+  | "ComposerAdapter"
+  | "libraryFixedTags",
+  unknown
+>;
+export type PickerFactoryOptions = FactoryOptions<{
+  icons?: Partial<ResolverMap<PickerDependencyApi>>;
+}>;
+
 export interface PickerActionResult {
   ok?: boolean;
   [key: string]: unknown;

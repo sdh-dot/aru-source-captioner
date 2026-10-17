@@ -14,11 +14,12 @@ import type {
   PickerPack,
   PickerGroupContext,
   PreviewState,
+  PickerDependencyApi,
+  PickerFactoryOptions,
 } from "./picker-model.ts";
 import {
   defaultEnvironment,
   type RuntimeEnvironment,
-  type FactoryOptions,
 } from "../runtime/contracts.ts";
 // 가상 목록과 미디어 수명을 관리하며 검색 결과·선택 대상·삽입 URL의 대응을 보존한다.
 import {
@@ -29,7 +30,7 @@ import {
 export function createIconsPicker({
   environment = defaultEnvironment,
   dependencies = {},
-}: FactoryOptions = {}) {
+}: PickerFactoryOptions = {}) {
   const { document, AbortController, URL, performance } = environment;
   const setTimeout =
     typeof environment.setTimeout === "function"
@@ -67,7 +68,7 @@ export function createIconsPicker({
       "MediaBudget",
       "ComposerAdapter",
       "libraryFixedTags",
-    ],
+    ] satisfies readonly (keyof PickerDependencyApi)[],
     ["isMouseDoubleClick", "iconTagLabels", "createPicker"],
   );
 

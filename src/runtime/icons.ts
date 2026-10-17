@@ -28,6 +28,8 @@ import { createBrowserAdapter } from "../ruliweb-icons/browser-adapter.ts";
 import { createSiteAdapter } from "../ruliweb-icons/site-adapter.ts";
 import { createComposerAdapter } from "../ruliweb-icons/composer-adapter.ts";
 import type { RuntimeEnvironment } from "./contracts.ts";
+import type { ResolverMap } from "./contracts.ts";
+import type { PickerDependencyApi } from "../ruliweb-icons/picker-model.ts";
 function createIconBase(environment?: RuntimeEnvironment | undefined) {
   const icons: DynamicApi = {
     ...search,
@@ -132,7 +134,7 @@ function createIconReader({
         MediaBudget: () => icons["MediaBudget"],
         ComposerAdapter: () => icons["ComposerAdapter"],
         libraryFixedTags: () => icons["libraryFixedTags"],
-      },
+      } satisfies ResolverMap<PickerDependencyApi>,
     },
   });
   Object.assign(icons, part.icons);
