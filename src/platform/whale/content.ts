@@ -1,3 +1,4 @@
+import { parsePixivFilenameUrl } from "../../source-caption/pixiv-filename.ts";
 import type { DefaultValues } from "../../runtime/contracts.ts";
 import {
   hasPngSignature,
@@ -510,24 +511,6 @@ export function installWhaleContent({
       } catch {
         return false;
       }
-    }
-
-    // Pixiv 표준 파일명에서 작품 URL을 생성한다.
-    // 파일명 예: 88908024_p0_master1200.jpg → https://www.pixiv.net/artworks/88908024
-    // 6자리~12자리 숫자 + _p\d+ 패턴만 허용해 일반 파일명 오탐을 방지한다.
-    function parsePixivFilenameUrl(filename: string) {
-      if (typeof filename !== "string") {
-        return null;
-      }
-      const m = filename.match(/^(\d{6,12})_p\d+(?:_|\.|$)/);
-      if (m) {
-        return `https://www.pixiv.net/artworks/${m[1]}`;
-      }
-      const m2 = filename.match(/^(\d{6,12})\.(jpg|jpeg|png|webp)$/i);
-      if (m2) {
-        return `https://www.pixiv.net/artworks/${m2[1]}`;
-      }
-      return null;
     }
 
     function extractSourceUrl(metadata: { [x: string]: any }) {

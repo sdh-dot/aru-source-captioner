@@ -1,4 +1,5 @@
 // 자동 생성: src/platform/whale/content.ts. tools/compile-typescript.mjs로 갱신한다.
+import { parsePixivFilenameUrl } from "../../source-caption/pixiv-filename.mjs";
 import { hasPngSignature, parsePngItxtChunks, parseItxtChunk, } from "../../source-caption/png-chunks.mjs";
 import { defaultEnvironment, } from "../../runtime/contracts.mjs";
 // 브라우저별 기존 초기화·저장 키·사용자 설정과 이벤트 계약을 유지한다.
@@ -397,23 +398,6 @@ export function installWhaleContent({ environment = defaultEnvironment, dependen
             catch {
                 return false;
             }
-        }
-        // Pixiv 표준 파일명에서 작품 URL을 생성한다.
-        // 파일명 예: 88908024_p0_master1200.jpg → https://www.pixiv.net/artworks/88908024
-        // 6자리~12자리 숫자 + _p\d+ 패턴만 허용해 일반 파일명 오탐을 방지한다.
-        function parsePixivFilenameUrl(filename) {
-            if (typeof filename !== "string") {
-                return null;
-            }
-            const m = filename.match(/^(\d{6,12})_p\d+(?:_|\.|$)/);
-            if (m) {
-                return `https://www.pixiv.net/artworks/${m[1]}`;
-            }
-            const m2 = filename.match(/^(\d{6,12})\.(jpg|jpeg|png|webp)$/i);
-            if (m2) {
-                return `https://www.pixiv.net/artworks/${m2[1]}`;
-            }
-            return null;
         }
         function extractSourceUrl(metadata) {
             if (!metadata || typeof metadata !== "object") {

@@ -1,3 +1,4 @@
+import { parsePixivFilenameUrl } from "../../source-caption/pixiv-filename.ts";
 import type { DefaultValues } from "../../runtime/contracts.ts";
 import {
   hasPngSignature,
@@ -392,12 +393,9 @@ export function installFirefoxContent({
         }
       }
 
-      // 우선순위 2: 명확한 Pixiv 마커(prefix 또는 _pN suffix) 파일명 — exifr보다 먼저 시도.
-      // Android Firefox가 파일을 임시명(1000039087.jpg 등)으로 리네임하면 바로 숫자만으로는
-      // 오탐이 발생하므로, strict 패턴만 여기서 허용한다.
-      // 바로 숫자+확장자 파일명은 exifr 이후 fallback에서 parsePixivFilenameUrl이 처리한다.
+      // Android의 숫자 임시 파일명을 작품 ID로 오인하지 않도록 Pixiv 표식이 있는 이름만 우선 판독한다.
       {
-        const filenameUrl = parsePixivFilenameUrlStrict(file.name);
+        const filenameUrl = parsePixivFilenameUrl(file.name);
         if (filenameUrl) {
           console.info("[Aru Source Captioner] filename parsed (priority 2)", {
             fileName: file.name,
@@ -438,7 +436,10 @@ export function installFirefoxContent({
 
       let metadata;
       try {
+        // Firefox의 FileReader 결과는 다른 realm의 ArrayBuffer일 수 있어 exifr의 청크 instanceof 검사와 충돌한다.
+        // 전체 읽기는 공식 BlobReader 경로를 유지하면서 해당 청크 복사 단계를 거치지 않는다.
         metadata = await exifr.parse(file, {
+          chunked: false,
           xmp: true,
           exif: true,
           iptc: true,
@@ -528,70 +529,6 @@ export function installFirefoxContent({
       } catch {
         return false;
       }
-    }
-
-    // Pixiv 파일명에서 artwork URL을 생성한다.
-    // 지원 패턴:
-    // 파일명 예: 112278708_p0_master1200.jpg  → https://www.pixiv.net/artworks/112278708
-    // 파일명 예: 112278708_p0.jpg             → https://www.pixiv.net/artworks/112278708
-    // 파일명 예: 112278708.jpg                → https://www.pixiv.net/artworks/112278708
-    //   pixiv_112278708_p0_master1200.jpg  → (prefix 포함)
-    //   illust_112278708_p0_master1200.png → (prefix 포함)
-    //   C:\Downloads\112278708_p0_master1200.jpg → (Windows 경로 포함)
-    function parsePixivFilenameUrl(filename: string) {
-      if (typeof filename !== "string") {
-        return null;
-      }
-      let clean;
-      try {
-        clean = decodeURIComponent(filename);
-      } catch {
-        clean = filename;
-      }
-      // Windows/Unix 경로에서 basename만 추출
-      const base = clean.split(/[\\/]/).pop() || "";
-      // 통합 Pixiv 파일명 패턴:
-      //   prefix? + id(6-12자리) + _p{n}? + _suffix* + .ext
-      const m = base.match(
-        /^(?:pixiv[_\-\s]?|illust[_\-\s]?)?(\d{6,12})(?:_p\d+)?(?:_[a-z0-9]+)*\.(?:jpg|jpeg|png|webp|gif)$/i,
-      );
-      if (m) {
-        return `https://www.pixiv.net/artworks/${m[1]}`;
-      }
-      return null;
-    }
-
-    // 명확한 Pixiv 마커가 있는 패턴만 매칭한다.
-    // Android Firefox가 파일을 임시명(예: 1000039087.jpg)으로 리네임하면 parsePixivFilenameUrl은
-    // 바로 숫자 파일명을 오탐한다. Strict 버전은 pixiv_/illust_ prefix 또는 _pN suffix 중
-    // 하나가 있어야 하므로 Android 임시명은 통과하지 않는다.
-    // 바로 숫자 파일명(1000039087.jpg)은 exifr 이후 fallback으로 parsePixivFilenameUrl이 처리한다.
-    function parsePixivFilenameUrlStrict(filename: string) {
-      if (typeof filename !== "string") {
-        return null;
-      }
-      let clean;
-      try {
-        clean = decodeURIComponent(filename);
-      } catch {
-        clean = filename;
-      }
-      const base = clean.split(/[\\/]/).pop() || "";
-      // prefix 경로: pixiv_/illust_ prefix — 바로 숫자 + 확장자 단독은 제외
-      const mPrefix = base.match(
-        /^(?:pixiv[_\-\s]?|illust[_\-\s]?)(\d{6,12})(?:_p\d+)?(?:_[a-z0-9]+)*\.(?:jpg|jpeg|png|webp|gif)$/i,
-      );
-      if (mPrefix) {
-        return `https://www.pixiv.net/artworks/${mPrefix[1]}`;
-      }
-      // suffix 경로: 명시적 _pN page suffix 포함 (prefix 없는 표준 Pixiv 파일명)
-      const mSuffix = base.match(
-        /^(\d{6,12})_p\d+(?:_[a-z0-9]+)*\.(?:jpg|jpeg|png|webp|gif)$/i,
-      );
-      if (mSuffix) {
-        return `https://www.pixiv.net/artworks/${mSuffix[1]}`;
-      }
-      return null;
     }
 
     function extractSourceUrl(metadata: { [x: string]: any }) {

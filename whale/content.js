@@ -3,6 +3,26 @@
   var __defProp = Object.defineProperty;
   var __name = (target, value) => __defProp(target, "name", { value, configurable: true });
 
+  // docs/source/source-caption/pixiv-filename.mjs
+  function parsePixivFilenameUrl(filename) {
+    if (typeof filename !== "string") {
+      return null;
+    }
+    let decoded;
+    try {
+      decoded = decodeURIComponent(filename);
+    } catch {
+      decoded = filename;
+    }
+    const basename = decoded.split(/[\\/]/).pop() || "";
+    const match = basename.match(/^(pixiv[_\- ]?|illust[_\- ]?)?(\d{6,12})(_p\d+)?(?:_[a-z0-9]+)*(?: ?\([1-9]\d*\))?\.(?:jpg|jpeg|png|webp|gif)$/i);
+    if (!match || !match[1] && !match[3]) {
+      return null;
+    }
+    return `https://www.pixiv.net/artworks/${match[2]}`;
+  }
+  __name(parsePixivFilenameUrl, "parsePixivFilenameUrl");
+
   // docs/source/source-caption/png-chunks.mjs
   var PNG_SIGNATURE = [137, 80, 78, 71, 13, 10, 26, 10];
   function hasPngSignature(buffer) {
@@ -459,21 +479,6 @@
         }
       }
       __name(isPixivUserUrl, "isPixivUserUrl");
-      function parsePixivFilenameUrl(filename) {
-        if (typeof filename !== "string") {
-          return null;
-        }
-        const m = filename.match(/^(\d{6,12})_p\d+(?:_|\.|$)/);
-        if (m) {
-          return `https://www.pixiv.net/artworks/${m[1]}`;
-        }
-        const m2 = filename.match(/^(\d{6,12})\.(jpg|jpeg|png|webp)$/i);
-        if (m2) {
-          return `https://www.pixiv.net/artworks/${m2[1]}`;
-        }
-        return null;
-      }
-      __name(parsePixivFilenameUrl, "parsePixivFilenameUrl");
       function extractSourceUrl(metadata) {
         if (!metadata || typeof metadata !== "object") {
           return [];
