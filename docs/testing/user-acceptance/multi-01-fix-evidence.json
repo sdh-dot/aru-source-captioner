@@ -1,0 +1,2383 @@
+{
+  "schemaVersion": 1,
+  "case": "MULTI-01",
+  "baselineCommit": "3acbd7f27581e997d90080ba451b532620273264",
+  "productCommit": "206e4bb",
+  "testCommit": "2d534d48454a4937de46e1323f298a44edbe9272",
+  "scope": "Actual Ruliweb native file input; 14 authorized files only; no authentication automation or copied sessions, no final post submission",
+  "uploadEndpoint": "https://api.ruliweb.com/upload/BImg",
+  "networkCorrelationLimit": "Opaque request IDs preserve request/response order only; request bodies were not inspected, so IDs are not assigned to filenames",
+  "files": [
+    {
+      "name": "139017213_p0_master1200 (1).jpg",
+      "bytes": 655492,
+      "sha256": "772944c75a4e3ee72b4537a788b1031580a13b245e6496444a61d2823ebe68e8",
+      "expectedUrl": "https://www.pixiv.net/artworks/139017213",
+      "metadataCandidates": [],
+      "offlineResults": {
+        "firefox": {
+          "status": "ok",
+          "url": "https://www.pixiv.net/artworks/139017213",
+          "reason": "filename_parsed"
+        },
+        "whale": {
+          "status": "ok",
+          "url": "https://www.pixiv.net/artworks/139017213",
+          "reason": "filename_fallback"
+        },
+        "firefox-classic": {
+          "status": "ok",
+          "url": "https://www.pixiv.net/artworks/139017213",
+          "reason": "filename_parsed"
+        },
+        "whale-classic": {
+          "status": "ok",
+          "url": "https://www.pixiv.net/artworks/139017213",
+          "reason": "filename_fallback"
+        }
+      },
+      "realSiteResults": {
+        "firefox": "PASS",
+        "whale": "PASS"
+      }
+    },
+    {
+      "name": "143805797_p0_master1200.jpg",
+      "bytes": 970655,
+      "sha256": "5d1b479ee11d9102c17ca9ba0df3416882bc795a30ae95d85d50cf9d04911ade",
+      "expectedUrl": "https://www.pixiv.net/artworks/143805797",
+      "metadataCandidates": [],
+      "offlineResults": {
+        "firefox": {
+          "status": "ok",
+          "url": "https://www.pixiv.net/artworks/143805797",
+          "reason": "filename_parsed"
+        },
+        "whale": {
+          "status": "ok",
+          "url": "https://www.pixiv.net/artworks/143805797",
+          "reason": "filename_fallback"
+        },
+        "firefox-classic": {
+          "status": "ok",
+          "url": "https://www.pixiv.net/artworks/143805797",
+          "reason": "filename_parsed"
+        },
+        "whale-classic": {
+          "status": "ok",
+          "url": "https://www.pixiv.net/artworks/143805797",
+          "reason": "filename_fallback"
+        }
+      },
+      "realSiteResults": {
+        "firefox": "PASS",
+        "whale": "PASS"
+      }
+    },
+    {
+      "name": "144648326_p0_master1200 (2).jpg",
+      "bytes": 966610,
+      "sha256": "c1056a56af4e265368f4f3fe175d2afdda8926ccc7af58d29eee6144cdb53004",
+      "expectedUrl": "https://www.pixiv.net/artworks/144648326",
+      "metadataCandidates": [],
+      "offlineResults": {
+        "firefox": {
+          "status": "ok",
+          "url": "https://www.pixiv.net/artworks/144648326",
+          "reason": "filename_parsed"
+        },
+        "whale": {
+          "status": "ok",
+          "url": "https://www.pixiv.net/artworks/144648326",
+          "reason": "filename_fallback"
+        },
+        "firefox-classic": {
+          "status": "ok",
+          "url": "https://www.pixiv.net/artworks/144648326",
+          "reason": "filename_parsed"
+        },
+        "whale-classic": {
+          "status": "ok",
+          "url": "https://www.pixiv.net/artworks/144648326",
+          "reason": "filename_fallback"
+        }
+      },
+      "realSiteResults": {
+        "firefox": "PASS",
+        "whale": "PASS"
+      }
+    },
+    {
+      "name": "145632893_p0_master1200.jpg",
+      "bytes": 841519,
+      "sha256": "437827a2004d02ad7484d1b58c90b3fec0b747ffc442e905925077a46bc36ff7",
+      "expectedUrl": "https://www.pixiv.net/artworks/145632893",
+      "metadataCandidates": [],
+      "offlineResults": {
+        "firefox": {
+          "status": "ok",
+          "url": "https://www.pixiv.net/artworks/145632893",
+          "reason": "filename_parsed"
+        },
+        "whale": {
+          "status": "ok",
+          "url": "https://www.pixiv.net/artworks/145632893",
+          "reason": "filename_fallback"
+        },
+        "firefox-classic": {
+          "status": "ok",
+          "url": "https://www.pixiv.net/artworks/145632893",
+          "reason": "filename_parsed"
+        },
+        "whale-classic": {
+          "status": "ok",
+          "url": "https://www.pixiv.net/artworks/145632893",
+          "reason": "filename_fallback"
+        }
+      },
+      "realSiteResults": {
+        "firefox": "PASS",
+        "whale": "PASS"
+      }
+    },
+    {
+      "name": "146557008_p0_master1200 (2).jpg",
+      "bytes": 1169519,
+      "sha256": "65a4d5a3f90a3ce1ac378ae0eb5be1629cd08ac6ea31f41bf6412b687a1935b7",
+      "expectedUrl": "https://www.pixiv.net/artworks/146557008",
+      "metadataCandidates": [],
+      "offlineResults": {
+        "firefox": {
+          "status": "ok",
+          "url": "https://www.pixiv.net/artworks/146557008",
+          "reason": "filename_parsed"
+        },
+        "whale": {
+          "status": "ok",
+          "url": "https://www.pixiv.net/artworks/146557008",
+          "reason": "filename_fallback"
+        },
+        "firefox-classic": {
+          "status": "ok",
+          "url": "https://www.pixiv.net/artworks/146557008",
+          "reason": "filename_parsed"
+        },
+        "whale-classic": {
+          "status": "ok",
+          "url": "https://www.pixiv.net/artworks/146557008",
+          "reason": "filename_fallback"
+        }
+      },
+      "realSiteResults": {
+        "firefox": "PASS",
+        "whale": "PASS"
+      }
+    },
+    {
+      "name": "148161896_p0_master1200 (3).jpg",
+      "bytes": 709848,
+      "sha256": "fe745b4b1dae75c8444f3ed3b9dd141d46218ba513b13a8a96f61c1317cf3815",
+      "expectedUrl": "https://www.pixiv.net/artworks/148161896",
+      "metadataCandidates": [],
+      "offlineResults": {
+        "firefox": {
+          "status": "ok",
+          "url": "https://www.pixiv.net/artworks/148161896",
+          "reason": "filename_parsed"
+        },
+        "whale": {
+          "status": "ok",
+          "url": "https://www.pixiv.net/artworks/148161896",
+          "reason": "filename_fallback"
+        },
+        "firefox-classic": {
+          "status": "ok",
+          "url": "https://www.pixiv.net/artworks/148161896",
+          "reason": "filename_parsed"
+        },
+        "whale-classic": {
+          "status": "ok",
+          "url": "https://www.pixiv.net/artworks/148161896",
+          "reason": "filename_fallback"
+        }
+      },
+      "realSiteResults": {
+        "firefox": "PASS",
+        "whale": "PASS"
+      }
+    },
+    {
+      "name": "149405647_p0_master1200 (1).jpg",
+      "bytes": 473046,
+      "sha256": "d3d28aab8955598c86e18df1da48e4a178d4a6d702c760df3da0c6e07f36e451",
+      "expectedUrl": "https://www.pixiv.net/artworks/149405647",
+      "metadataCandidates": [],
+      "offlineResults": {
+        "firefox": {
+          "status": "ok",
+          "url": "https://www.pixiv.net/artworks/149405647",
+          "reason": "filename_parsed"
+        },
+        "whale": {
+          "status": "ok",
+          "url": "https://www.pixiv.net/artworks/149405647",
+          "reason": "filename_fallback"
+        },
+        "firefox-classic": {
+          "status": "ok",
+          "url": "https://www.pixiv.net/artworks/149405647",
+          "reason": "filename_parsed"
+        },
+        "whale-classic": {
+          "status": "ok",
+          "url": "https://www.pixiv.net/artworks/149405647",
+          "reason": "filename_fallback"
+        }
+      },
+      "realSiteResults": {
+        "firefox": "PASS",
+        "whale": "PASS"
+      }
+    },
+    {
+      "name": "149440438_p0_master1200 (1).jpg",
+      "bytes": 556529,
+      "sha256": "f7dfdf2a11d76ca753ed02daa5dbe13bf847b32377e71fe61966e7d3391047ef",
+      "expectedUrl": "https://www.pixiv.net/artworks/149440438",
+      "metadataCandidates": [],
+      "offlineResults": {
+        "firefox": {
+          "status": "ok",
+          "url": "https://www.pixiv.net/artworks/149440438",
+          "reason": "filename_parsed"
+        },
+        "whale": {
+          "status": "ok",
+          "url": "https://www.pixiv.net/artworks/149440438",
+          "reason": "filename_fallback"
+        },
+        "firefox-classic": {
+          "status": "ok",
+          "url": "https://www.pixiv.net/artworks/149440438",
+          "reason": "filename_parsed"
+        },
+        "whale-classic": {
+          "status": "ok",
+          "url": "https://www.pixiv.net/artworks/149440438",
+          "reason": "filename_fallback"
+        }
+      },
+      "realSiteResults": {
+        "firefox": "PASS",
+        "whale": "PASS"
+      }
+    },
+    {
+      "name": "149856375_p0_master1200.jpg",
+      "bytes": 800919,
+      "sha256": "4814691221ae587f38870a3ee65298dac22e7b3f77679a5918fa3778713015e2",
+      "expectedUrl": "https://www.pixiv.net/artworks/149856375",
+      "metadataCandidates": [],
+      "offlineResults": {
+        "firefox": {
+          "status": "ok",
+          "url": "https://www.pixiv.net/artworks/149856375",
+          "reason": "filename_parsed"
+        },
+        "whale": {
+          "status": "ok",
+          "url": "https://www.pixiv.net/artworks/149856375",
+          "reason": "filename_fallback"
+        },
+        "firefox-classic": {
+          "status": "ok",
+          "url": "https://www.pixiv.net/artworks/149856375",
+          "reason": "filename_parsed"
+        },
+        "whale-classic": {
+          "status": "ok",
+          "url": "https://www.pixiv.net/artworks/149856375",
+          "reason": "filename_fallback"
+        }
+      },
+      "realSiteResults": {
+        "firefox": "PASS",
+        "whale": "PASS"
+      }
+    },
+    {
+      "name": "150523094_p0_master1200 (1).jpg",
+      "bytes": 741960,
+      "sha256": "c749bc0685f42cc746e3e0840cc4c247fcde3bbd644cf6c92454f83283d7d4ff",
+      "expectedUrl": "https://www.pixiv.net/artworks/150523094",
+      "metadataCandidates": [],
+      "offlineResults": {
+        "firefox": {
+          "status": "ok",
+          "url": "https://www.pixiv.net/artworks/150523094",
+          "reason": "filename_parsed"
+        },
+        "whale": {
+          "status": "ok",
+          "url": "https://www.pixiv.net/artworks/150523094",
+          "reason": "filename_fallback"
+        },
+        "firefox-classic": {
+          "status": "ok",
+          "url": "https://www.pixiv.net/artworks/150523094",
+          "reason": "filename_parsed"
+        },
+        "whale-classic": {
+          "status": "ok",
+          "url": "https://www.pixiv.net/artworks/150523094",
+          "reason": "filename_fallback"
+        }
+      },
+      "realSiteResults": {
+        "firefox": "PASS",
+        "whale": "PASS"
+      }
+    },
+    {
+      "name": "150930959_p0_master1200.jpg",
+      "bytes": 723776,
+      "sha256": "8a80cb589e83b838fcadff3a4f3104e65eb227f254a053c2c748a75f9ae875f8",
+      "expectedUrl": "https://www.pixiv.net/artworks/150930959",
+      "metadataCandidates": [],
+      "offlineResults": {
+        "firefox": {
+          "status": "ok",
+          "url": "https://www.pixiv.net/artworks/150930959",
+          "reason": "filename_parsed"
+        },
+        "whale": {
+          "status": "ok",
+          "url": "https://www.pixiv.net/artworks/150930959",
+          "reason": "filename_fallback"
+        },
+        "firefox-classic": {
+          "status": "ok",
+          "url": "https://www.pixiv.net/artworks/150930959",
+          "reason": "filename_parsed"
+        },
+        "whale-classic": {
+          "status": "ok",
+          "url": "https://www.pixiv.net/artworks/150930959",
+          "reason": "filename_fallback"
+        }
+      },
+      "realSiteResults": {
+        "firefox": "PASS",
+        "whale": "PASS"
+      }
+    },
+    {
+      "name": "1a12fe68d09538348.webp",
+      "bytes": 71356,
+      "sha256": "8fa71fc397d1ea8af1ea86153f788f055f8badbd6b275556456c10c4afafd6f0",
+      "expectedUrl": null,
+      "metadataCandidates": [],
+      "offlineResults": {
+        "firefox": {
+          "status": "missing",
+          "url": null,
+          "reason": "webp_no_exif"
+        },
+        "whale": {
+          "status": "missing",
+          "url": null,
+          "reason": "webp_no_exif"
+        },
+        "firefox-classic": {
+          "status": "missing",
+          "url": null,
+          "reason": "webp_no_exif"
+        },
+        "whale-classic": {
+          "status": "missing",
+          "url": null,
+          "reason": "webp_no_exif"
+        }
+      },
+      "realSiteResults": {
+        "firefox": "PASS",
+        "whale": "PASS"
+      }
+    },
+    {
+      "name": "1a134fc7ba817e8d8.webp",
+      "bytes": 25852,
+      "sha256": "f770e717e9d0c4b636b64f7fabbef93827effe286220b0f09f1f85257e7f5275",
+      "expectedUrl": null,
+      "metadataCandidates": [],
+      "offlineResults": {
+        "firefox": {
+          "status": "missing",
+          "url": null,
+          "reason": "webp_no_exif"
+        },
+        "whale": {
+          "status": "missing",
+          "url": null,
+          "reason": "webp_no_exif"
+        },
+        "firefox-classic": {
+          "status": "missing",
+          "url": null,
+          "reason": "webp_no_exif"
+        },
+        "whale-classic": {
+          "status": "missing",
+          "url": null,
+          "reason": "webp_no_exif"
+        }
+      },
+      "realSiteResults": {
+        "firefox": "PASS",
+        "whale": "PASS"
+      }
+    },
+    {
+      "name": "1a1420fd7bc3a28af.webp",
+      "bytes": 104414,
+      "sha256": "d5d5b56ffc74f8237e0ebbec7b8dac155633e624413f14e97b07f1e1466e3c26",
+      "expectedUrl": null,
+      "metadataCandidates": [],
+      "offlineResults": {
+        "firefox": {
+          "status": "missing",
+          "url": null,
+          "reason": "webp_no_exif"
+        },
+        "whale": {
+          "status": "missing",
+          "url": null,
+          "reason": "webp_no_exif"
+        },
+        "firefox-classic": {
+          "status": "missing",
+          "url": null,
+          "reason": "webp_no_exif"
+        },
+        "whale-classic": {
+          "status": "missing",
+          "url": null,
+          "reason": "webp_no_exif"
+        }
+      },
+      "realSiteResults": {
+        "firefox": "PASS",
+        "whale": "PASS"
+      }
+    }
+  ],
+  "browsers": {
+    "firefox": {
+      "run": "20261017-104541-firefox",
+      "browserVersion": "158.0",
+      "extensionVersion": "1.0.4",
+      "testCommit": "2d534d48454a4937de46e1323f298a44edbe9272",
+      "startedAt": "2026-10-17T10:45:41+09:00",
+      "endedAt": "2026-10-17T10:48:40+09:00",
+      "status": "PASS",
+      "humanLoginPerformedByUser": true,
+      "freshTestProfile": true,
+      "testBrowserClosed": true,
+      "uploadRequests": 22,
+      "uploadHttp200": 22,
+      "bufferViewErrors": 0,
+      "webpUnknownFormatWarnings": 5,
+      "storageSyncFallbackWarnings": [],
+      "consoleLevels": {
+        "info": 35,
+        "warn": 6
+      },
+      "batchResults": [
+        {
+          "batch": "B01-jpg2",
+          "at": "2026-10-17T10:46:59+09:00",
+          "status": "PASS",
+          "newlySelected": [
+            "139017213_p0_master1200 (1).jpg",
+            "143805797_p0_master1200.jpg"
+          ],
+          "selectedOrder": [
+            "139017213_p0_master1200 (1).jpg",
+            "143805797_p0_master1200.jpg"
+          ],
+          "editorOrder": [
+            "139017213_p0_master1200 (1).jpg",
+            "143805797_p0_master1200.jpg"
+          ],
+          "files": [
+            {
+              "imageIndex": 0,
+              "fileName": "139017213_p0_master1200 (1).jpg",
+              "sha256": "772944c75a4e3ee72b4537a788b1031580a13b245e6496444a61d2823ebe68e8",
+              "expectedUrl": "https://www.pixiv.net/artworks/139017213",
+              "actualUrls": [
+                "https://www.pixiv.net/artworks/139017213"
+              ],
+              "status": "PASS",
+              "imageParagraph": 1,
+              "captionParagraphs": [
+                2
+              ]
+            },
+            {
+              "imageIndex": 1,
+              "fileName": "143805797_p0_master1200.jpg",
+              "sha256": "5d1b479ee11d9102c17ca9ba0df3416882bc795a30ae95d85d50cf9d04911ade",
+              "expectedUrl": "https://www.pixiv.net/artworks/143805797",
+              "actualUrls": [
+                "https://www.pixiv.net/artworks/143805797"
+              ],
+              "status": "PASS",
+              "imageParagraph": 5,
+              "captionParagraphs": [
+                6
+              ]
+            }
+          ],
+          "networkEvents": [
+            {
+              "event": "request-start",
+              "id": "u1",
+              "at": "2026-10-17T10:46:52+09:00",
+              "batch": "B01-jpg2"
+            },
+            {
+              "event": "request-start",
+              "id": "u2",
+              "at": "2026-10-17T10:46:52+09:00",
+              "batch": "B01-jpg2"
+            },
+            {
+              "event": "response-complete",
+              "id": "u1",
+              "at": "2026-10-17T10:46:55+09:00",
+              "batch": "B01-jpg2",
+              "status": 200
+            },
+            {
+              "event": "response-complete",
+              "id": "u2",
+              "at": "2026-10-17T10:46:55+09:00",
+              "batch": "B01-jpg2",
+              "status": 200
+            }
+          ],
+          "completionInversions": []
+        },
+        {
+          "batch": "B02-webp1",
+          "at": "2026-10-17T10:47:06+09:00",
+          "status": "PASS",
+          "newlySelected": [
+            "1a12fe68d09538348.webp"
+          ],
+          "selectedOrder": [
+            "139017213_p0_master1200 (1).jpg",
+            "143805797_p0_master1200.jpg",
+            "1a12fe68d09538348.webp"
+          ],
+          "editorOrder": [
+            "139017213_p0_master1200 (1).jpg",
+            "143805797_p0_master1200.jpg",
+            "1a12fe68d09538348.webp"
+          ],
+          "files": [
+            {
+              "imageIndex": 0,
+              "fileName": "139017213_p0_master1200 (1).jpg",
+              "sha256": "772944c75a4e3ee72b4537a788b1031580a13b245e6496444a61d2823ebe68e8",
+              "expectedUrl": "https://www.pixiv.net/artworks/139017213",
+              "actualUrls": [
+                "https://www.pixiv.net/artworks/139017213"
+              ],
+              "status": "PASS",
+              "imageParagraph": 1,
+              "captionParagraphs": [
+                2
+              ]
+            },
+            {
+              "imageIndex": 1,
+              "fileName": "143805797_p0_master1200.jpg",
+              "sha256": "5d1b479ee11d9102c17ca9ba0df3416882bc795a30ae95d85d50cf9d04911ade",
+              "expectedUrl": "https://www.pixiv.net/artworks/143805797",
+              "actualUrls": [
+                "https://www.pixiv.net/artworks/143805797"
+              ],
+              "status": "PASS",
+              "imageParagraph": 5,
+              "captionParagraphs": [
+                6
+              ]
+            },
+            {
+              "imageIndex": 2,
+              "fileName": "1a12fe68d09538348.webp",
+              "sha256": "8fa71fc397d1ea8af1ea86153f788f055f8badbd6b275556456c10c4afafd6f0",
+              "expectedUrl": null,
+              "actualUrls": [],
+              "status": "PASS",
+              "imageParagraph": 9,
+              "captionParagraphs": []
+            }
+          ],
+          "networkEvents": [
+            {
+              "event": "request-start",
+              "id": "u3",
+              "at": "2026-10-17T10:46:59+09:00",
+              "batch": "B02-webp1"
+            },
+            {
+              "event": "response-complete",
+              "id": "u3",
+              "at": "2026-10-17T10:47:03+09:00",
+              "batch": "B02-webp1",
+              "status": 200
+            }
+          ],
+          "completionInversions": []
+        },
+        {
+          "batch": "B03-mixed4",
+          "at": "2026-10-17T10:47:18+09:00",
+          "status": "PASS",
+          "newlySelected": [
+            "143805797_p0_master1200.jpg",
+            "1a134fc7ba817e8d8.webp",
+            "145632893_p0_master1200.jpg",
+            "1a1420fd7bc3a28af.webp"
+          ],
+          "selectedOrder": [
+            "143805797_p0_master1200.jpg",
+            "1a134fc7ba817e8d8.webp",
+            "145632893_p0_master1200.jpg",
+            "1a1420fd7bc3a28af.webp"
+          ],
+          "editorOrder": [
+            "143805797_p0_master1200.jpg",
+            "1a134fc7ba817e8d8.webp",
+            "145632893_p0_master1200.jpg",
+            "1a1420fd7bc3a28af.webp"
+          ],
+          "files": [
+            {
+              "imageIndex": 0,
+              "fileName": "143805797_p0_master1200.jpg",
+              "sha256": "5d1b479ee11d9102c17ca9ba0df3416882bc795a30ae95d85d50cf9d04911ade",
+              "expectedUrl": "https://www.pixiv.net/artworks/143805797",
+              "actualUrls": [
+                "https://www.pixiv.net/artworks/143805797"
+              ],
+              "status": "PASS",
+              "imageParagraph": 1,
+              "captionParagraphs": [
+                2
+              ]
+            },
+            {
+              "imageIndex": 1,
+              "fileName": "1a134fc7ba817e8d8.webp",
+              "sha256": "f770e717e9d0c4b636b64f7fabbef93827effe286220b0f09f1f85257e7f5275",
+              "expectedUrl": null,
+              "actualUrls": [],
+              "status": "PASS",
+              "imageParagraph": 5,
+              "captionParagraphs": []
+            },
+            {
+              "imageIndex": 2,
+              "fileName": "145632893_p0_master1200.jpg",
+              "sha256": "437827a2004d02ad7484d1b58c90b3fec0b747ffc442e905925077a46bc36ff7",
+              "expectedUrl": "https://www.pixiv.net/artworks/145632893",
+              "actualUrls": [
+                "https://www.pixiv.net/artworks/145632893"
+              ],
+              "status": "PASS",
+              "imageParagraph": 8,
+              "captionParagraphs": [
+                9
+              ]
+            },
+            {
+              "imageIndex": 3,
+              "fileName": "1a1420fd7bc3a28af.webp",
+              "sha256": "d5d5b56ffc74f8237e0ebbec7b8dac155633e624413f14e97b07f1e1466e3c26",
+              "expectedUrl": null,
+              "actualUrls": [],
+              "status": "PASS",
+              "imageParagraph": 12,
+              "captionParagraphs": []
+            }
+          ],
+          "networkEvents": [
+            {
+              "event": "request-start",
+              "id": "u4",
+              "at": "2026-10-17T10:47:10+09:00",
+              "batch": "B03-mixed4"
+            },
+            {
+              "event": "request-start",
+              "id": "u5",
+              "at": "2026-10-17T10:47:10+09:00",
+              "batch": "B03-mixed4"
+            },
+            {
+              "event": "request-start",
+              "id": "u6",
+              "at": "2026-10-17T10:47:11+09:00",
+              "batch": "B03-mixed4"
+            },
+            {
+              "event": "request-start",
+              "id": "u7",
+              "at": "2026-10-17T10:47:11+09:00",
+              "batch": "B03-mixed4"
+            },
+            {
+              "event": "response-complete",
+              "id": "u5",
+              "at": "2026-10-17T10:47:13+09:00",
+              "batch": "B03-mixed4",
+              "status": 200
+            },
+            {
+              "event": "response-complete",
+              "id": "u4",
+              "at": "2026-10-17T10:47:13+09:00",
+              "batch": "B03-mixed4",
+              "status": 200
+            },
+            {
+              "event": "response-complete",
+              "id": "u6",
+              "at": "2026-10-17T10:47:14+09:00",
+              "batch": "B03-mixed4",
+              "status": 200
+            },
+            {
+              "event": "response-complete",
+              "id": "u7",
+              "at": "2026-10-17T10:47:14+09:00",
+              "batch": "B03-mixed4",
+              "status": 200
+            }
+          ],
+          "completionInversions": [
+            {
+              "startedEarlier": "u4",
+              "completedEarlier": "u5"
+            }
+          ]
+        },
+        {
+          "batch": "B04-jpg-rest9",
+          "at": "2026-10-17T10:47:32+09:00",
+          "status": "PASS",
+          "newlySelected": [
+            "144648326_p0_master1200 (2).jpg",
+            "145632893_p0_master1200.jpg",
+            "146557008_p0_master1200 (2).jpg",
+            "148161896_p0_master1200 (3).jpg",
+            "149405647_p0_master1200 (1).jpg",
+            "149440438_p0_master1200 (1).jpg",
+            "149856375_p0_master1200.jpg",
+            "150523094_p0_master1200 (1).jpg",
+            "150930959_p0_master1200.jpg"
+          ],
+          "selectedOrder": [
+            "144648326_p0_master1200 (2).jpg",
+            "145632893_p0_master1200.jpg",
+            "146557008_p0_master1200 (2).jpg",
+            "148161896_p0_master1200 (3).jpg",
+            "149405647_p0_master1200 (1).jpg",
+            "149440438_p0_master1200 (1).jpg",
+            "149856375_p0_master1200.jpg",
+            "150523094_p0_master1200 (1).jpg",
+            "150930959_p0_master1200.jpg"
+          ],
+          "editorOrder": [
+            "144648326_p0_master1200 (2).jpg",
+            "145632893_p0_master1200.jpg",
+            "146557008_p0_master1200 (2).jpg",
+            "148161896_p0_master1200 (3).jpg",
+            "149405647_p0_master1200 (1).jpg",
+            "149440438_p0_master1200 (1).jpg",
+            "149856375_p0_master1200.jpg",
+            "150523094_p0_master1200 (1).jpg",
+            "150930959_p0_master1200.jpg"
+          ],
+          "files": [
+            {
+              "imageIndex": 0,
+              "fileName": "144648326_p0_master1200 (2).jpg",
+              "sha256": "c1056a56af4e265368f4f3fe175d2afdda8926ccc7af58d29eee6144cdb53004",
+              "expectedUrl": "https://www.pixiv.net/artworks/144648326",
+              "actualUrls": [
+                "https://www.pixiv.net/artworks/144648326"
+              ],
+              "status": "PASS",
+              "imageParagraph": 1,
+              "captionParagraphs": [
+                2
+              ]
+            },
+            {
+              "imageIndex": 1,
+              "fileName": "145632893_p0_master1200.jpg",
+              "sha256": "437827a2004d02ad7484d1b58c90b3fec0b747ffc442e905925077a46bc36ff7",
+              "expectedUrl": "https://www.pixiv.net/artworks/145632893",
+              "actualUrls": [
+                "https://www.pixiv.net/artworks/145632893"
+              ],
+              "status": "PASS",
+              "imageParagraph": 5,
+              "captionParagraphs": [
+                6
+              ]
+            },
+            {
+              "imageIndex": 2,
+              "fileName": "146557008_p0_master1200 (2).jpg",
+              "sha256": "65a4d5a3f90a3ce1ac378ae0eb5be1629cd08ac6ea31f41bf6412b687a1935b7",
+              "expectedUrl": "https://www.pixiv.net/artworks/146557008",
+              "actualUrls": [
+                "https://www.pixiv.net/artworks/146557008"
+              ],
+              "status": "PASS",
+              "imageParagraph": 9,
+              "captionParagraphs": [
+                10
+              ]
+            },
+            {
+              "imageIndex": 3,
+              "fileName": "148161896_p0_master1200 (3).jpg",
+              "sha256": "fe745b4b1dae75c8444f3ed3b9dd141d46218ba513b13a8a96f61c1317cf3815",
+              "expectedUrl": "https://www.pixiv.net/artworks/148161896",
+              "actualUrls": [
+                "https://www.pixiv.net/artworks/148161896"
+              ],
+              "status": "PASS",
+              "imageParagraph": 13,
+              "captionParagraphs": [
+                14
+              ]
+            },
+            {
+              "imageIndex": 4,
+              "fileName": "149405647_p0_master1200 (1).jpg",
+              "sha256": "d3d28aab8955598c86e18df1da48e4a178d4a6d702c760df3da0c6e07f36e451",
+              "expectedUrl": "https://www.pixiv.net/artworks/149405647",
+              "actualUrls": [
+                "https://www.pixiv.net/artworks/149405647"
+              ],
+              "status": "PASS",
+              "imageParagraph": 17,
+              "captionParagraphs": [
+                18
+              ]
+            },
+            {
+              "imageIndex": 5,
+              "fileName": "149440438_p0_master1200 (1).jpg",
+              "sha256": "f7dfdf2a11d76ca753ed02daa5dbe13bf847b32377e71fe61966e7d3391047ef",
+              "expectedUrl": "https://www.pixiv.net/artworks/149440438",
+              "actualUrls": [
+                "https://www.pixiv.net/artworks/149440438"
+              ],
+              "status": "PASS",
+              "imageParagraph": 21,
+              "captionParagraphs": [
+                22
+              ]
+            },
+            {
+              "imageIndex": 6,
+              "fileName": "149856375_p0_master1200.jpg",
+              "sha256": "4814691221ae587f38870a3ee65298dac22e7b3f77679a5918fa3778713015e2",
+              "expectedUrl": "https://www.pixiv.net/artworks/149856375",
+              "actualUrls": [
+                "https://www.pixiv.net/artworks/149856375"
+              ],
+              "status": "PASS",
+              "imageParagraph": 25,
+              "captionParagraphs": [
+                26
+              ]
+            },
+            {
+              "imageIndex": 7,
+              "fileName": "150523094_p0_master1200 (1).jpg",
+              "sha256": "c749bc0685f42cc746e3e0840cc4c247fcde3bbd644cf6c92454f83283d7d4ff",
+              "expectedUrl": "https://www.pixiv.net/artworks/150523094",
+              "actualUrls": [
+                "https://www.pixiv.net/artworks/150523094"
+              ],
+              "status": "PASS",
+              "imageParagraph": 29,
+              "captionParagraphs": [
+                30
+              ]
+            },
+            {
+              "imageIndex": 8,
+              "fileName": "150930959_p0_master1200.jpg",
+              "sha256": "8a80cb589e83b838fcadff3a4f3104e65eb227f254a053c2c748a75f9ae875f8",
+              "expectedUrl": "https://www.pixiv.net/artworks/150930959",
+              "actualUrls": [
+                "https://www.pixiv.net/artworks/150930959"
+              ],
+              "status": "PASS",
+              "imageParagraph": 33,
+              "captionParagraphs": [
+                34
+              ]
+            }
+          ],
+          "networkEvents": [
+            {
+              "event": "request-start",
+              "id": "u8",
+              "at": "2026-10-17T10:47:21+09:00",
+              "batch": "B04-jpg-rest9"
+            },
+            {
+              "event": "request-start",
+              "id": "u9",
+              "at": "2026-10-17T10:47:22+09:00",
+              "batch": "B04-jpg-rest9"
+            },
+            {
+              "event": "request-start",
+              "id": "u10",
+              "at": "2026-10-17T10:47:22+09:00",
+              "batch": "B04-jpg-rest9"
+            },
+            {
+              "event": "request-start",
+              "id": "u11",
+              "at": "2026-10-17T10:47:23+09:00",
+              "batch": "B04-jpg-rest9"
+            },
+            {
+              "event": "request-start",
+              "id": "u12",
+              "at": "2026-10-17T10:47:23+09:00",
+              "batch": "B04-jpg-rest9"
+            },
+            {
+              "event": "request-start",
+              "id": "u13",
+              "at": "2026-10-17T10:47:24+09:00",
+              "batch": "B04-jpg-rest9"
+            },
+            {
+              "event": "request-start",
+              "id": "u14",
+              "at": "2026-10-17T10:47:24+09:00",
+              "batch": "B04-jpg-rest9"
+            },
+            {
+              "event": "response-complete",
+              "id": "u8",
+              "at": "2026-10-17T10:47:25+09:00",
+              "batch": "B04-jpg-rest9",
+              "status": 200
+            },
+            {
+              "event": "request-start",
+              "id": "u15",
+              "at": "2026-10-17T10:47:25+09:00",
+              "batch": "B04-jpg-rest9"
+            },
+            {
+              "event": "response-complete",
+              "id": "u9",
+              "at": "2026-10-17T10:47:25+09:00",
+              "batch": "B04-jpg-rest9",
+              "status": 200
+            },
+            {
+              "event": "request-start",
+              "id": "u16",
+              "at": "2026-10-17T10:47:25+09:00",
+              "batch": "B04-jpg-rest9"
+            },
+            {
+              "event": "response-complete",
+              "id": "u10",
+              "at": "2026-10-17T10:47:26+09:00",
+              "batch": "B04-jpg-rest9",
+              "status": 200
+            },
+            {
+              "event": "response-complete",
+              "id": "u11",
+              "at": "2026-10-17T10:47:26+09:00",
+              "batch": "B04-jpg-rest9",
+              "status": 200
+            },
+            {
+              "event": "response-complete",
+              "id": "u12",
+              "at": "2026-10-17T10:47:27+09:00",
+              "batch": "B04-jpg-rest9",
+              "status": 200
+            },
+            {
+              "event": "response-complete",
+              "id": "u13",
+              "at": "2026-10-17T10:47:27+09:00",
+              "batch": "B04-jpg-rest9",
+              "status": 200
+            },
+            {
+              "event": "response-complete",
+              "id": "u14",
+              "at": "2026-10-17T10:47:28+09:00",
+              "batch": "B04-jpg-rest9",
+              "status": 200
+            },
+            {
+              "event": "response-complete",
+              "id": "u15",
+              "at": "2026-10-17T10:47:28+09:00",
+              "batch": "B04-jpg-rest9",
+              "status": 200
+            },
+            {
+              "event": "response-complete",
+              "id": "u16",
+              "at": "2026-10-17T10:47:29+09:00",
+              "batch": "B04-jpg-rest9",
+              "status": 200
+            }
+          ],
+          "completionInversions": []
+        },
+        {
+          "batch": "B05-reversed4",
+          "at": "2026-10-17T10:47:44+09:00",
+          "status": "PASS",
+          "newlySelected": [
+            "1a1420fd7bc3a28af.webp",
+            "145632893_p0_master1200.jpg",
+            "1a134fc7ba817e8d8.webp",
+            "143805797_p0_master1200.jpg"
+          ],
+          "selectedOrder": [
+            "1a1420fd7bc3a28af.webp",
+            "145632893_p0_master1200.jpg",
+            "1a134fc7ba817e8d8.webp",
+            "143805797_p0_master1200.jpg"
+          ],
+          "editorOrder": [
+            "1a1420fd7bc3a28af.webp",
+            "145632893_p0_master1200.jpg",
+            "1a134fc7ba817e8d8.webp",
+            "143805797_p0_master1200.jpg"
+          ],
+          "files": [
+            {
+              "imageIndex": 0,
+              "fileName": "1a1420fd7bc3a28af.webp",
+              "sha256": "d5d5b56ffc74f8237e0ebbec7b8dac155633e624413f14e97b07f1e1466e3c26",
+              "expectedUrl": null,
+              "actualUrls": [],
+              "status": "PASS",
+              "imageParagraph": 1,
+              "captionParagraphs": []
+            },
+            {
+              "imageIndex": 1,
+              "fileName": "145632893_p0_master1200.jpg",
+              "sha256": "437827a2004d02ad7484d1b58c90b3fec0b747ffc442e905925077a46bc36ff7",
+              "expectedUrl": "https://www.pixiv.net/artworks/145632893",
+              "actualUrls": [
+                "https://www.pixiv.net/artworks/145632893"
+              ],
+              "status": "PASS",
+              "imageParagraph": 4,
+              "captionParagraphs": [
+                5
+              ]
+            },
+            {
+              "imageIndex": 2,
+              "fileName": "1a134fc7ba817e8d8.webp",
+              "sha256": "f770e717e9d0c4b636b64f7fabbef93827effe286220b0f09f1f85257e7f5275",
+              "expectedUrl": null,
+              "actualUrls": [],
+              "status": "PASS",
+              "imageParagraph": 8,
+              "captionParagraphs": []
+            },
+            {
+              "imageIndex": 3,
+              "fileName": "143805797_p0_master1200.jpg",
+              "sha256": "5d1b479ee11d9102c17ca9ba0df3416882bc795a30ae95d85d50cf9d04911ade",
+              "expectedUrl": "https://www.pixiv.net/artworks/143805797",
+              "actualUrls": [
+                "https://www.pixiv.net/artworks/143805797"
+              ],
+              "status": "PASS",
+              "imageParagraph": 11,
+              "captionParagraphs": [
+                12
+              ]
+            }
+          ],
+          "networkEvents": [
+            {
+              "event": "request-start",
+              "id": "u17",
+              "at": "2026-10-17T10:47:36+09:00",
+              "batch": "B05-reversed4"
+            },
+            {
+              "event": "request-start",
+              "id": "u18",
+              "at": "2026-10-17T10:47:36+09:00",
+              "batch": "B05-reversed4"
+            },
+            {
+              "event": "request-start",
+              "id": "u19",
+              "at": "2026-10-17T10:47:37+09:00",
+              "batch": "B05-reversed4"
+            },
+            {
+              "event": "request-start",
+              "id": "u20",
+              "at": "2026-10-17T10:47:37+09:00",
+              "batch": "B05-reversed4"
+            },
+            {
+              "event": "response-complete",
+              "id": "u17",
+              "at": "2026-10-17T10:47:39+09:00",
+              "batch": "B05-reversed4",
+              "status": 200
+            },
+            {
+              "event": "response-complete",
+              "id": "u19",
+              "at": "2026-10-17T10:47:39+09:00",
+              "batch": "B05-reversed4",
+              "status": 200
+            },
+            {
+              "event": "response-complete",
+              "id": "u18",
+              "at": "2026-10-17T10:47:40+09:00",
+              "batch": "B05-reversed4",
+              "status": 200
+            },
+            {
+              "event": "response-complete",
+              "id": "u20",
+              "at": "2026-10-17T10:47:41+09:00",
+              "batch": "B05-reversed4",
+              "status": 200
+            }
+          ],
+          "completionInversions": [
+            {
+              "startedEarlier": "u18",
+              "completedEarlier": "u19"
+            }
+          ]
+        },
+        {
+          "batch": "B06-duplicate-first",
+          "at": "2026-10-17T10:47:54+09:00",
+          "status": "PASS",
+          "newlySelected": [
+            "143805797_p0_master1200.jpg"
+          ],
+          "selectedOrder": [
+            "143805797_p0_master1200.jpg"
+          ],
+          "editorOrder": [
+            "143805797_p0_master1200.jpg"
+          ],
+          "files": [
+            {
+              "imageIndex": 0,
+              "fileName": "143805797_p0_master1200.jpg",
+              "sha256": "5d1b479ee11d9102c17ca9ba0df3416882bc795a30ae95d85d50cf9d04911ade",
+              "expectedUrl": "https://www.pixiv.net/artworks/143805797",
+              "actualUrls": [
+                "https://www.pixiv.net/artworks/143805797"
+              ],
+              "status": "PASS",
+              "imageParagraph": 1,
+              "captionParagraphs": [
+                2
+              ]
+            }
+          ],
+          "networkEvents": [
+            {
+              "event": "request-start",
+              "id": "u21",
+              "at": "2026-10-17T10:47:47+09:00",
+              "batch": "B06-duplicate-first"
+            },
+            {
+              "event": "response-complete",
+              "id": "u21",
+              "at": "2026-10-17T10:47:51+09:00",
+              "batch": "B06-duplicate-first",
+              "status": 200
+            }
+          ],
+          "completionInversions": []
+        },
+        {
+          "batch": "B07-duplicate-reselect",
+          "at": "2026-10-17T10:48:02+09:00",
+          "status": "PASS",
+          "newlySelected": [
+            "143805797_p0_master1200.jpg"
+          ],
+          "selectedOrder": [
+            "143805797_p0_master1200.jpg",
+            "143805797_p0_master1200.jpg"
+          ],
+          "editorOrder": [
+            "143805797_p0_master1200.jpg",
+            "143805797_p0_master1200.jpg"
+          ],
+          "files": [
+            {
+              "imageIndex": 0,
+              "fileName": "143805797_p0_master1200.jpg",
+              "sha256": "5d1b479ee11d9102c17ca9ba0df3416882bc795a30ae95d85d50cf9d04911ade",
+              "expectedUrl": "https://www.pixiv.net/artworks/143805797",
+              "actualUrls": [
+                "https://www.pixiv.net/artworks/143805797"
+              ],
+              "status": "PASS",
+              "imageParagraph": 1,
+              "captionParagraphs": [
+                2
+              ]
+            },
+            {
+              "imageIndex": 1,
+              "fileName": "143805797_p0_master1200.jpg",
+              "sha256": "5d1b479ee11d9102c17ca9ba0df3416882bc795a30ae95d85d50cf9d04911ade",
+              "expectedUrl": "https://www.pixiv.net/artworks/143805797",
+              "actualUrls": [
+                "https://www.pixiv.net/artworks/143805797"
+              ],
+              "status": "PASS",
+              "imageParagraph": 5,
+              "captionParagraphs": [
+                6
+              ]
+            }
+          ],
+          "networkEvents": [
+            {
+              "event": "request-start",
+              "id": "u22",
+              "at": "2026-10-17T10:47:55+09:00",
+              "batch": "B07-duplicate-reselect"
+            },
+            {
+              "event": "response-complete",
+              "id": "u22",
+              "at": "2026-10-17T10:47:58+09:00",
+              "batch": "B07-duplicate-reselect",
+              "status": 200
+            }
+          ],
+          "completionInversions": []
+        }
+      ],
+      "delayedObservation": "PASS",
+      "newDocumentEmptyObservation": "PASS"
+    },
+    "whale": {
+      "run": "20261017-104551-whale",
+      "browserVersion": "150.0.7871.252",
+      "extensionVersion": "0.1.3",
+      "testCommit": "2d534d48454a4937de46e1323f298a44edbe9272",
+      "startedAt": "2026-10-17T10:45:51+09:00",
+      "endedAt": "2026-10-17T10:48:37+09:00",
+      "status": "PASS",
+      "humanLoginPerformedByUser": true,
+      "freshTestProfile": true,
+      "testBrowserClosed": true,
+      "uploadRequests": 22,
+      "uploadHttp200": 22,
+      "bufferViewErrors": 0,
+      "webpUnknownFormatWarnings": 5,
+      "storageSyncFallbackWarnings": [
+        {
+          "at": "2026-10-17T10:48:21+09:00",
+          "text": "[Aru Source Captioner] chrome.storage.sync unavailable — using default options"
+        }
+      ],
+      "consoleLevels": {
+        "info": 29,
+        "warning": 18,
+        "error": 7
+      },
+      "batchResults": [
+        {
+          "batch": "B01-jpg2",
+          "at": "2026-10-17T10:47:08+09:00",
+          "status": "PASS",
+          "newlySelected": [
+            "139017213_p0_master1200 (1).jpg",
+            "143805797_p0_master1200.jpg"
+          ],
+          "selectedOrder": [
+            "139017213_p0_master1200 (1).jpg",
+            "143805797_p0_master1200.jpg"
+          ],
+          "editorOrder": [
+            "139017213_p0_master1200 (1).jpg",
+            "143805797_p0_master1200.jpg"
+          ],
+          "files": [
+            {
+              "imageIndex": 0,
+              "fileName": "139017213_p0_master1200 (1).jpg",
+              "sha256": "772944c75a4e3ee72b4537a788b1031580a13b245e6496444a61d2823ebe68e8",
+              "expectedUrl": "https://www.pixiv.net/artworks/139017213",
+              "actualUrls": [
+                "https://www.pixiv.net/artworks/139017213"
+              ],
+              "status": "PASS",
+              "imageParagraph": 1,
+              "captionParagraphs": [
+                2
+              ]
+            },
+            {
+              "imageIndex": 1,
+              "fileName": "143805797_p0_master1200.jpg",
+              "sha256": "5d1b479ee11d9102c17ca9ba0df3416882bc795a30ae95d85d50cf9d04911ade",
+              "expectedUrl": "https://www.pixiv.net/artworks/143805797",
+              "actualUrls": [
+                "https://www.pixiv.net/artworks/143805797"
+              ],
+              "status": "PASS",
+              "imageParagraph": 5,
+              "captionParagraphs": [
+                6
+              ]
+            }
+          ],
+          "networkEvents": [
+            {
+              "event": "request-start",
+              "id": "u1",
+              "at": "2026-10-17T10:46:59+09:00",
+              "batch": "B01-jpg2"
+            },
+            {
+              "event": "request-start",
+              "id": "u2",
+              "at": "2026-10-17T10:47:00+09:00",
+              "batch": "B01-jpg2"
+            },
+            {
+              "event": "response-complete",
+              "id": "u1",
+              "at": "2026-10-17T10:47:03+09:00",
+              "batch": "B01-jpg2",
+              "status": 200
+            },
+            {
+              "event": "response-complete",
+              "id": "u2",
+              "at": "2026-10-17T10:47:04+09:00",
+              "batch": "B01-jpg2",
+              "status": 200
+            }
+          ],
+          "completionInversions": []
+        },
+        {
+          "batch": "B02-webp1",
+          "at": "2026-10-17T10:47:15+09:00",
+          "status": "PASS",
+          "newlySelected": [
+            "1a12fe68d09538348.webp"
+          ],
+          "selectedOrder": [
+            "139017213_p0_master1200 (1).jpg",
+            "143805797_p0_master1200.jpg",
+            "1a12fe68d09538348.webp"
+          ],
+          "editorOrder": [
+            "139017213_p0_master1200 (1).jpg",
+            "143805797_p0_master1200.jpg",
+            "1a12fe68d09538348.webp"
+          ],
+          "files": [
+            {
+              "imageIndex": 0,
+              "fileName": "139017213_p0_master1200 (1).jpg",
+              "sha256": "772944c75a4e3ee72b4537a788b1031580a13b245e6496444a61d2823ebe68e8",
+              "expectedUrl": "https://www.pixiv.net/artworks/139017213",
+              "actualUrls": [
+                "https://www.pixiv.net/artworks/139017213"
+              ],
+              "status": "PASS",
+              "imageParagraph": 1,
+              "captionParagraphs": [
+                2
+              ]
+            },
+            {
+              "imageIndex": 1,
+              "fileName": "143805797_p0_master1200.jpg",
+              "sha256": "5d1b479ee11d9102c17ca9ba0df3416882bc795a30ae95d85d50cf9d04911ade",
+              "expectedUrl": "https://www.pixiv.net/artworks/143805797",
+              "actualUrls": [
+                "https://www.pixiv.net/artworks/143805797"
+              ],
+              "status": "PASS",
+              "imageParagraph": 5,
+              "captionParagraphs": [
+                6
+              ]
+            },
+            {
+              "imageIndex": 2,
+              "fileName": "1a12fe68d09538348.webp",
+              "sha256": "8fa71fc397d1ea8af1ea86153f788f055f8badbd6b275556456c10c4afafd6f0",
+              "expectedUrl": null,
+              "actualUrls": [],
+              "status": "PASS",
+              "imageParagraph": 9,
+              "captionParagraphs": []
+            }
+          ],
+          "networkEvents": [
+            {
+              "event": "request-start",
+              "id": "u3",
+              "at": "2026-10-17T10:47:09+09:00",
+              "batch": "B02-webp1"
+            },
+            {
+              "event": "response-complete",
+              "id": "u3",
+              "at": "2026-10-17T10:47:11+09:00",
+              "batch": "B02-webp1",
+              "status": 200
+            }
+          ],
+          "completionInversions": []
+        },
+        {
+          "batch": "B03-mixed4",
+          "at": "2026-10-17T10:47:27+09:00",
+          "status": "PASS",
+          "newlySelected": [
+            "143805797_p0_master1200.jpg",
+            "1a134fc7ba817e8d8.webp",
+            "145632893_p0_master1200.jpg",
+            "1a1420fd7bc3a28af.webp"
+          ],
+          "selectedOrder": [
+            "143805797_p0_master1200.jpg",
+            "1a134fc7ba817e8d8.webp",
+            "145632893_p0_master1200.jpg",
+            "1a1420fd7bc3a28af.webp"
+          ],
+          "editorOrder": [
+            "143805797_p0_master1200.jpg",
+            "1a134fc7ba817e8d8.webp",
+            "145632893_p0_master1200.jpg",
+            "1a1420fd7bc3a28af.webp"
+          ],
+          "files": [
+            {
+              "imageIndex": 0,
+              "fileName": "143805797_p0_master1200.jpg",
+              "sha256": "5d1b479ee11d9102c17ca9ba0df3416882bc795a30ae95d85d50cf9d04911ade",
+              "expectedUrl": "https://www.pixiv.net/artworks/143805797",
+              "actualUrls": [
+                "https://www.pixiv.net/artworks/143805797"
+              ],
+              "status": "PASS",
+              "imageParagraph": 1,
+              "captionParagraphs": [
+                2
+              ]
+            },
+            {
+              "imageIndex": 1,
+              "fileName": "1a134fc7ba817e8d8.webp",
+              "sha256": "f770e717e9d0c4b636b64f7fabbef93827effe286220b0f09f1f85257e7f5275",
+              "expectedUrl": null,
+              "actualUrls": [],
+              "status": "PASS",
+              "imageParagraph": 5,
+              "captionParagraphs": []
+            },
+            {
+              "imageIndex": 2,
+              "fileName": "145632893_p0_master1200.jpg",
+              "sha256": "437827a2004d02ad7484d1b58c90b3fec0b747ffc442e905925077a46bc36ff7",
+              "expectedUrl": "https://www.pixiv.net/artworks/145632893",
+              "actualUrls": [
+                "https://www.pixiv.net/artworks/145632893"
+              ],
+              "status": "PASS",
+              "imageParagraph": 8,
+              "captionParagraphs": [
+                9
+              ]
+            },
+            {
+              "imageIndex": 3,
+              "fileName": "1a1420fd7bc3a28af.webp",
+              "sha256": "d5d5b56ffc74f8237e0ebbec7b8dac155633e624413f14e97b07f1e1466e3c26",
+              "expectedUrl": null,
+              "actualUrls": [],
+              "status": "PASS",
+              "imageParagraph": 12,
+              "captionParagraphs": []
+            }
+          ],
+          "networkEvents": [
+            {
+              "event": "request-start",
+              "id": "u4",
+              "at": "2026-10-17T10:47:20+09:00",
+              "batch": "B03-mixed4"
+            },
+            {
+              "event": "request-start",
+              "id": "u5",
+              "at": "2026-10-17T10:47:20+09:00",
+              "batch": "B03-mixed4"
+            },
+            {
+              "event": "request-start",
+              "id": "u6",
+              "at": "2026-10-17T10:47:21+09:00",
+              "batch": "B03-mixed4"
+            },
+            {
+              "event": "response-complete",
+              "id": "u5",
+              "at": "2026-10-17T10:47:21+09:00",
+              "batch": "B03-mixed4",
+              "status": 200
+            },
+            {
+              "event": "response-complete",
+              "id": "u4",
+              "at": "2026-10-17T10:47:21+09:00",
+              "batch": "B03-mixed4",
+              "status": 200
+            },
+            {
+              "event": "request-start",
+              "id": "u7",
+              "at": "2026-10-17T10:47:21+09:00",
+              "batch": "B03-mixed4"
+            },
+            {
+              "event": "response-complete",
+              "id": "u6",
+              "at": "2026-10-17T10:47:22+09:00",
+              "batch": "B03-mixed4",
+              "status": 200
+            },
+            {
+              "event": "response-complete",
+              "id": "u7",
+              "at": "2026-10-17T10:47:23+09:00",
+              "batch": "B03-mixed4",
+              "status": 200
+            }
+          ],
+          "completionInversions": [
+            {
+              "startedEarlier": "u4",
+              "completedEarlier": "u5"
+            }
+          ]
+        },
+        {
+          "batch": "B04-jpg-rest9",
+          "at": "2026-10-17T10:47:42+09:00",
+          "status": "PASS",
+          "newlySelected": [
+            "144648326_p0_master1200 (2).jpg",
+            "145632893_p0_master1200.jpg",
+            "146557008_p0_master1200 (2).jpg",
+            "148161896_p0_master1200 (3).jpg",
+            "149405647_p0_master1200 (1).jpg",
+            "149440438_p0_master1200 (1).jpg",
+            "149856375_p0_master1200.jpg",
+            "150523094_p0_master1200 (1).jpg",
+            "150930959_p0_master1200.jpg"
+          ],
+          "selectedOrder": [
+            "144648326_p0_master1200 (2).jpg",
+            "145632893_p0_master1200.jpg",
+            "146557008_p0_master1200 (2).jpg",
+            "148161896_p0_master1200 (3).jpg",
+            "149405647_p0_master1200 (1).jpg",
+            "149440438_p0_master1200 (1).jpg",
+            "149856375_p0_master1200.jpg",
+            "150523094_p0_master1200 (1).jpg",
+            "150930959_p0_master1200.jpg"
+          ],
+          "editorOrder": [
+            "144648326_p0_master1200 (2).jpg",
+            "145632893_p0_master1200.jpg",
+            "146557008_p0_master1200 (2).jpg",
+            "148161896_p0_master1200 (3).jpg",
+            "149405647_p0_master1200 (1).jpg",
+            "149440438_p0_master1200 (1).jpg",
+            "149856375_p0_master1200.jpg",
+            "150523094_p0_master1200 (1).jpg",
+            "150930959_p0_master1200.jpg"
+          ],
+          "files": [
+            {
+              "imageIndex": 0,
+              "fileName": "144648326_p0_master1200 (2).jpg",
+              "sha256": "c1056a56af4e265368f4f3fe175d2afdda8926ccc7af58d29eee6144cdb53004",
+              "expectedUrl": "https://www.pixiv.net/artworks/144648326",
+              "actualUrls": [
+                "https://www.pixiv.net/artworks/144648326"
+              ],
+              "status": "PASS",
+              "imageParagraph": 1,
+              "captionParagraphs": [
+                2
+              ]
+            },
+            {
+              "imageIndex": 1,
+              "fileName": "145632893_p0_master1200.jpg",
+              "sha256": "437827a2004d02ad7484d1b58c90b3fec0b747ffc442e905925077a46bc36ff7",
+              "expectedUrl": "https://www.pixiv.net/artworks/145632893",
+              "actualUrls": [
+                "https://www.pixiv.net/artworks/145632893"
+              ],
+              "status": "PASS",
+              "imageParagraph": 5,
+              "captionParagraphs": [
+                6
+              ]
+            },
+            {
+              "imageIndex": 2,
+              "fileName": "146557008_p0_master1200 (2).jpg",
+              "sha256": "65a4d5a3f90a3ce1ac378ae0eb5be1629cd08ac6ea31f41bf6412b687a1935b7",
+              "expectedUrl": "https://www.pixiv.net/artworks/146557008",
+              "actualUrls": [
+                "https://www.pixiv.net/artworks/146557008"
+              ],
+              "status": "PASS",
+              "imageParagraph": 9,
+              "captionParagraphs": [
+                10
+              ]
+            },
+            {
+              "imageIndex": 3,
+              "fileName": "148161896_p0_master1200 (3).jpg",
+              "sha256": "fe745b4b1dae75c8444f3ed3b9dd141d46218ba513b13a8a96f61c1317cf3815",
+              "expectedUrl": "https://www.pixiv.net/artworks/148161896",
+              "actualUrls": [
+                "https://www.pixiv.net/artworks/148161896"
+              ],
+              "status": "PASS",
+              "imageParagraph": 13,
+              "captionParagraphs": [
+                14
+              ]
+            },
+            {
+              "imageIndex": 4,
+              "fileName": "149405647_p0_master1200 (1).jpg",
+              "sha256": "d3d28aab8955598c86e18df1da48e4a178d4a6d702c760df3da0c6e07f36e451",
+              "expectedUrl": "https://www.pixiv.net/artworks/149405647",
+              "actualUrls": [
+                "https://www.pixiv.net/artworks/149405647"
+              ],
+              "status": "PASS",
+              "imageParagraph": 17,
+              "captionParagraphs": [
+                18
+              ]
+            },
+            {
+              "imageIndex": 5,
+              "fileName": "149440438_p0_master1200 (1).jpg",
+              "sha256": "f7dfdf2a11d76ca753ed02daa5dbe13bf847b32377e71fe61966e7d3391047ef",
+              "expectedUrl": "https://www.pixiv.net/artworks/149440438",
+              "actualUrls": [
+                "https://www.pixiv.net/artworks/149440438"
+              ],
+              "status": "PASS",
+              "imageParagraph": 21,
+              "captionParagraphs": [
+                22
+              ]
+            },
+            {
+              "imageIndex": 6,
+              "fileName": "149856375_p0_master1200.jpg",
+              "sha256": "4814691221ae587f38870a3ee65298dac22e7b3f77679a5918fa3778713015e2",
+              "expectedUrl": "https://www.pixiv.net/artworks/149856375",
+              "actualUrls": [
+                "https://www.pixiv.net/artworks/149856375"
+              ],
+              "status": "PASS",
+              "imageParagraph": 25,
+              "captionParagraphs": [
+                26
+              ]
+            },
+            {
+              "imageIndex": 7,
+              "fileName": "150523094_p0_master1200 (1).jpg",
+              "sha256": "c749bc0685f42cc746e3e0840cc4c247fcde3bbd644cf6c92454f83283d7d4ff",
+              "expectedUrl": "https://www.pixiv.net/artworks/150523094",
+              "actualUrls": [
+                "https://www.pixiv.net/artworks/150523094"
+              ],
+              "status": "PASS",
+              "imageParagraph": 29,
+              "captionParagraphs": [
+                30
+              ]
+            },
+            {
+              "imageIndex": 8,
+              "fileName": "150930959_p0_master1200.jpg",
+              "sha256": "8a80cb589e83b838fcadff3a4f3104e65eb227f254a053c2c748a75f9ae875f8",
+              "expectedUrl": "https://www.pixiv.net/artworks/150930959",
+              "actualUrls": [
+                "https://www.pixiv.net/artworks/150930959"
+              ],
+              "status": "PASS",
+              "imageParagraph": 33,
+              "captionParagraphs": [
+                34
+              ]
+            }
+          ],
+          "networkEvents": [
+            {
+              "event": "request-start",
+              "id": "u8",
+              "at": "2026-10-17T10:47:33+09:00",
+              "batch": "B04-jpg-rest9"
+            },
+            {
+              "event": "request-start",
+              "id": "u9",
+              "at": "2026-10-17T10:47:34+09:00",
+              "batch": "B04-jpg-rest9"
+            },
+            {
+              "event": "request-start",
+              "id": "u10",
+              "at": "2026-10-17T10:47:34+09:00",
+              "batch": "B04-jpg-rest9"
+            },
+            {
+              "event": "request-start",
+              "id": "u11",
+              "at": "2026-10-17T10:47:35+09:00",
+              "batch": "B04-jpg-rest9"
+            },
+            {
+              "event": "response-complete",
+              "id": "u8",
+              "at": "2026-10-17T10:47:35+09:00",
+              "batch": "B04-jpg-rest9",
+              "status": 200
+            },
+            {
+              "event": "response-complete",
+              "id": "u9",
+              "at": "2026-10-17T10:47:35+09:00",
+              "batch": "B04-jpg-rest9",
+              "status": 200
+            },
+            {
+              "event": "request-start",
+              "id": "u12",
+              "at": "2026-10-17T10:47:35+09:00",
+              "batch": "B04-jpg-rest9"
+            },
+            {
+              "event": "response-complete",
+              "id": "u10",
+              "at": "2026-10-17T10:47:36+09:00",
+              "batch": "B04-jpg-rest9",
+              "status": 200
+            },
+            {
+              "event": "request-start",
+              "id": "u13",
+              "at": "2026-10-17T10:47:36+09:00",
+              "batch": "B04-jpg-rest9"
+            },
+            {
+              "event": "response-complete",
+              "id": "u11",
+              "at": "2026-10-17T10:47:36+09:00",
+              "batch": "B04-jpg-rest9",
+              "status": 200
+            },
+            {
+              "event": "request-start",
+              "id": "u14",
+              "at": "2026-10-17T10:47:36+09:00",
+              "batch": "B04-jpg-rest9"
+            },
+            {
+              "event": "response-complete",
+              "id": "u12",
+              "at": "2026-10-17T10:47:36+09:00",
+              "batch": "B04-jpg-rest9",
+              "status": 200
+            },
+            {
+              "event": "request-start",
+              "id": "u15",
+              "at": "2026-10-17T10:47:37+09:00",
+              "batch": "B04-jpg-rest9"
+            },
+            {
+              "event": "response-complete",
+              "id": "u13",
+              "at": "2026-10-17T10:47:37+09:00",
+              "batch": "B04-jpg-rest9",
+              "status": 200
+            },
+            {
+              "event": "request-start",
+              "id": "u16",
+              "at": "2026-10-17T10:47:37+09:00",
+              "batch": "B04-jpg-rest9"
+            },
+            {
+              "event": "response-complete",
+              "id": "u14",
+              "at": "2026-10-17T10:47:38+09:00",
+              "batch": "B04-jpg-rest9",
+              "status": 200
+            },
+            {
+              "event": "response-complete",
+              "id": "u15",
+              "at": "2026-10-17T10:47:38+09:00",
+              "batch": "B04-jpg-rest9",
+              "status": 200
+            },
+            {
+              "event": "response-complete",
+              "id": "u16",
+              "at": "2026-10-17T10:47:38+09:00",
+              "batch": "B04-jpg-rest9",
+              "status": 200
+            }
+          ],
+          "completionInversions": []
+        },
+        {
+          "batch": "B05-reversed4",
+          "at": "2026-10-17T10:47:54+09:00",
+          "status": "PASS",
+          "newlySelected": [
+            "1a1420fd7bc3a28af.webp",
+            "145632893_p0_master1200.jpg",
+            "1a134fc7ba817e8d8.webp",
+            "143805797_p0_master1200.jpg"
+          ],
+          "selectedOrder": [
+            "1a1420fd7bc3a28af.webp",
+            "145632893_p0_master1200.jpg",
+            "1a134fc7ba817e8d8.webp",
+            "143805797_p0_master1200.jpg"
+          ],
+          "editorOrder": [
+            "1a1420fd7bc3a28af.webp",
+            "145632893_p0_master1200.jpg",
+            "1a134fc7ba817e8d8.webp",
+            "143805797_p0_master1200.jpg"
+          ],
+          "files": [
+            {
+              "imageIndex": 0,
+              "fileName": "1a1420fd7bc3a28af.webp",
+              "sha256": "d5d5b56ffc74f8237e0ebbec7b8dac155633e624413f14e97b07f1e1466e3c26",
+              "expectedUrl": null,
+              "actualUrls": [],
+              "status": "PASS",
+              "imageParagraph": 1,
+              "captionParagraphs": []
+            },
+            {
+              "imageIndex": 1,
+              "fileName": "145632893_p0_master1200.jpg",
+              "sha256": "437827a2004d02ad7484d1b58c90b3fec0b747ffc442e905925077a46bc36ff7",
+              "expectedUrl": "https://www.pixiv.net/artworks/145632893",
+              "actualUrls": [
+                "https://www.pixiv.net/artworks/145632893"
+              ],
+              "status": "PASS",
+              "imageParagraph": 4,
+              "captionParagraphs": [
+                5
+              ]
+            },
+            {
+              "imageIndex": 2,
+              "fileName": "1a134fc7ba817e8d8.webp",
+              "sha256": "f770e717e9d0c4b636b64f7fabbef93827effe286220b0f09f1f85257e7f5275",
+              "expectedUrl": null,
+              "actualUrls": [],
+              "status": "PASS",
+              "imageParagraph": 8,
+              "captionParagraphs": []
+            },
+            {
+              "imageIndex": 3,
+              "fileName": "143805797_p0_master1200.jpg",
+              "sha256": "5d1b479ee11d9102c17ca9ba0df3416882bc795a30ae95d85d50cf9d04911ade",
+              "expectedUrl": "https://www.pixiv.net/artworks/143805797",
+              "actualUrls": [
+                "https://www.pixiv.net/artworks/143805797"
+              ],
+              "status": "PASS",
+              "imageParagraph": 11,
+              "captionParagraphs": [
+                12
+              ]
+            }
+          ],
+          "networkEvents": [
+            {
+              "event": "request-start",
+              "id": "u17",
+              "at": "2026-10-17T10:47:47+09:00",
+              "batch": "B05-reversed4"
+            },
+            {
+              "event": "request-start",
+              "id": "u18",
+              "at": "2026-10-17T10:47:48+09:00",
+              "batch": "B05-reversed4"
+            },
+            {
+              "event": "request-start",
+              "id": "u19",
+              "at": "2026-10-17T10:47:48+09:00",
+              "batch": "B05-reversed4"
+            },
+            {
+              "event": "response-complete",
+              "id": "u17",
+              "at": "2026-10-17T10:47:48+09:00",
+              "batch": "B05-reversed4",
+              "status": 200
+            },
+            {
+              "event": "request-start",
+              "id": "u20",
+              "at": "2026-10-17T10:47:49+09:00",
+              "batch": "B05-reversed4"
+            },
+            {
+              "event": "response-complete",
+              "id": "u19",
+              "at": "2026-10-17T10:47:49+09:00",
+              "batch": "B05-reversed4",
+              "status": 200
+            },
+            {
+              "event": "response-complete",
+              "id": "u18",
+              "at": "2026-10-17T10:47:49+09:00",
+              "batch": "B05-reversed4",
+              "status": 200
+            },
+            {
+              "event": "response-complete",
+              "id": "u20",
+              "at": "2026-10-17T10:47:50+09:00",
+              "batch": "B05-reversed4",
+              "status": 200
+            }
+          ],
+          "completionInversions": [
+            {
+              "startedEarlier": "u18",
+              "completedEarlier": "u19"
+            }
+          ]
+        },
+        {
+          "batch": "B06-duplicate-first",
+          "at": "2026-10-17T10:48:03+09:00",
+          "status": "PASS",
+          "newlySelected": [
+            "143805797_p0_master1200.jpg"
+          ],
+          "selectedOrder": [
+            "143805797_p0_master1200.jpg"
+          ],
+          "editorOrder": [
+            "143805797_p0_master1200.jpg"
+          ],
+          "files": [
+            {
+              "imageIndex": 0,
+              "fileName": "143805797_p0_master1200.jpg",
+              "sha256": "5d1b479ee11d9102c17ca9ba0df3416882bc795a30ae95d85d50cf9d04911ade",
+              "expectedUrl": "https://www.pixiv.net/artworks/143805797",
+              "actualUrls": [
+                "https://www.pixiv.net/artworks/143805797"
+              ],
+              "status": "PASS",
+              "imageParagraph": 1,
+              "captionParagraphs": [
+                2
+              ]
+            }
+          ],
+          "networkEvents": [
+            {
+              "event": "request-start",
+              "id": "u21",
+              "at": "2026-10-17T10:47:58+09:00",
+              "batch": "B06-duplicate-first"
+            },
+            {
+              "event": "response-complete",
+              "id": "u21",
+              "at": "2026-10-17T10:48:00+09:00",
+              "batch": "B06-duplicate-first",
+              "status": 200
+            }
+          ],
+          "completionInversions": []
+        },
+        {
+          "batch": "B07-duplicate-reselect",
+          "at": "2026-10-17T10:48:10+09:00",
+          "status": "PASS",
+          "newlySelected": [
+            "143805797_p0_master1200.jpg"
+          ],
+          "selectedOrder": [
+            "143805797_p0_master1200.jpg",
+            "143805797_p0_master1200.jpg"
+          ],
+          "editorOrder": [
+            "143805797_p0_master1200.jpg",
+            "143805797_p0_master1200.jpg"
+          ],
+          "files": [
+            {
+              "imageIndex": 0,
+              "fileName": "143805797_p0_master1200.jpg",
+              "sha256": "5d1b479ee11d9102c17ca9ba0df3416882bc795a30ae95d85d50cf9d04911ade",
+              "expectedUrl": "https://www.pixiv.net/artworks/143805797",
+              "actualUrls": [
+                "https://www.pixiv.net/artworks/143805797"
+              ],
+              "status": "PASS",
+              "imageParagraph": 1,
+              "captionParagraphs": [
+                2
+              ]
+            },
+            {
+              "imageIndex": 1,
+              "fileName": "143805797_p0_master1200.jpg",
+              "sha256": "5d1b479ee11d9102c17ca9ba0df3416882bc795a30ae95d85d50cf9d04911ade",
+              "expectedUrl": "https://www.pixiv.net/artworks/143805797",
+              "actualUrls": [
+                "https://www.pixiv.net/artworks/143805797"
+              ],
+              "status": "PASS",
+              "imageParagraph": 5,
+              "captionParagraphs": [
+                6
+              ]
+            }
+          ],
+          "networkEvents": [
+            {
+              "event": "request-start",
+              "id": "u22",
+              "at": "2026-10-17T10:48:05+09:00",
+              "batch": "B07-duplicate-reselect"
+            },
+            {
+              "event": "response-complete",
+              "id": "u22",
+              "at": "2026-10-17T10:48:06+09:00",
+              "batch": "B07-duplicate-reselect",
+              "status": 200
+            }
+          ],
+          "completionInversions": []
+        }
+      ],
+      "delayedObservation": "PASS",
+      "newDocumentEmptyObservation": "PASS"
+    }
+  },
+  "firefoxExifrNativeProbe": {
+    "browser": "158.0",
+    "scope": "Local native file input only, no upload or authentication",
+    "results": [
+      {
+        "name": "139017213_p0_master1200 (1).jpg",
+        "fileReader": {
+          "tag": "[object ArrayBuffer]",
+          "localArrayBuffer": false
+        },
+        "arrayBufferLocal": false,
+        "bytesLocal": false,
+        "classicFile": {
+          "status": "error",
+          "message": "BufferView.set(): Invalid data argument."
+        },
+        "esmFile": {
+          "status": "error",
+          "message": "BufferView.set(): Invalid data argument."
+        },
+        "esmBytes": {
+          "status": "error",
+          "message": "Invalid input argument"
+        },
+        "classicWhole": {
+          "status": "ok",
+          "source": null
+        },
+        "esmWhole": {
+          "status": "ok",
+          "source": null
+        }
+      },
+      {
+        "name": "source-exif.jpg",
+        "fileReader": {
+          "tag": "[object ArrayBuffer]",
+          "localArrayBuffer": false
+        },
+        "arrayBufferLocal": false,
+        "bytesLocal": false,
+        "classicFile": {
+          "status": "error",
+          "message": "BufferView.set(): Invalid data argument."
+        },
+        "esmFile": {
+          "status": "error",
+          "message": "BufferView.set(): Invalid data argument."
+        },
+        "esmBytes": {
+          "status": "error",
+          "message": "Invalid input argument"
+        },
+        "classicWhole": {
+          "status": "ok",
+          "source": "https://www.pixiv.net/artworks/55667788"
+        },
+        "esmWhole": {
+          "status": "ok",
+          "source": "https://www.pixiv.net/artworks/55667788"
+        }
+      },
+      {
+        "name": "source-xmp.jpg",
+        "fileReader": {
+          "tag": "[object ArrayBuffer]",
+          "localArrayBuffer": false
+        },
+        "arrayBufferLocal": false,
+        "bytesLocal": false,
+        "classicFile": {
+          "status": "error",
+          "message": "BufferView.set(): Invalid data argument."
+        },
+        "esmFile": {
+          "status": "error",
+          "message": "BufferView.set(): Invalid data argument."
+        },
+        "esmBytes": {
+          "status": "error",
+          "message": "Invalid input argument"
+        },
+        "classicWhole": {
+          "status": "ok",
+          "source": "https://www.pixiv.net/artworks/66778899"
+        },
+        "esmWhole": {
+          "status": "ok",
+          "source": "https://www.pixiv.net/artworks/66778899"
+        }
+      },
+      {
+        "name": "source-iptc.jpg",
+        "fileReader": {
+          "tag": "[object ArrayBuffer]",
+          "localArrayBuffer": false
+        },
+        "arrayBufferLocal": false,
+        "bytesLocal": false,
+        "classicFile": {
+          "status": "error",
+          "message": "BufferView.set(): Invalid data argument."
+        },
+        "esmFile": {
+          "status": "error",
+          "message": "BufferView.set(): Invalid data argument."
+        },
+        "esmBytes": {
+          "status": "error",
+          "message": "Invalid input argument"
+        },
+        "classicWhole": {
+          "status": "ok",
+          "source": "https://www.pixiv.net/artworks/77889900"
+        },
+        "esmWhole": {
+          "status": "ok",
+          "source": "https://www.pixiv.net/artworks/77889900"
+        }
+      }
+    ]
+  },
+  "automation": [
+    {
+      "name": "typecheck",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "format:check",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "lint",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "test:typescript",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "test:esm",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "test:integration",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "test",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "verify",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "verify:wxt",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "verify:typescript",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "verify:esm",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "audit:esm",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "lint:firefox",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "test:historical",
+      "code": 1,
+      "signal": null
+    }
+  ],
+  "historicalComparison": {
+    "baselineFailureNames": 94,
+    "currentFailureNames": 94,
+    "added": [],
+    "removed": []
+  },
+  "manifestComparison": {
+    "firefox": {
+      "identical": true,
+      "sha256": "a55da4ef17cac0e1591eed6be44a4778a1f6ba71203ae0651edcfba58f7d89ec"
+    },
+    "whale": {
+      "identical": true,
+      "sha256": "f14c1994964d10ed492696f288a9c58d89ee5c19b6f45bce81f3676ed25ba3b1"
+    },
+    "chrome": {
+      "identical": true,
+      "sha256": "f14c1994964d10ed492696f288a9c58d89ee5c19b6f45bce81f3676ed25ba3b1"
+    }
+  },
+  "protection": {
+    "worktrees": 8,
+    "files": 3066,
+    "archives": 201,
+    "remoteRefsMatch": true,
+    "prsMatch": true,
+    "failures": []
+  },
+  "notRun": [
+    "Full classic extension real-site upload",
+    "Safe actual upload-failure/retry",
+    "Same filename with different image contents",
+    "Same-document listener count or forced reinitialization",
+    "Android device, Native Host, 25MB memory stress, final publish"
+  ],
+  "localEvidenceRoot": "E:/dev/VSCode/personal/tmp/aru-multi01-fix/real-upload",
+  "evidencePrivacy": "Only editor-element screenshots; no credentials, request headers, cookies, tokens, upload request body, or user image binaries in committed evidence"
+}
