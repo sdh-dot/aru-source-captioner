@@ -1,25 +1,56 @@
 {
   "name": "aru-source-captioner",
-  "version": "0.1.2",
+  "version": "1.0.4",
   "private": true,
   "description": "A browser extension for image source attribution and icon management on Ruliweb.",
   "license": "MIT",
-  "engines": {
-    "node": ">=24.0.0"
-  },
+  "type": "module",
   "scripts": {
-    "build": "node tools/build.mjs",
+    "build": "npm run build:legacy && npm run build:chromium && npm run build:firefox && npm run build:whale",
     "verify": "node tools/verify.mjs",
     "test": "node tools/test.mjs",
     "test:historical": "node tools/test-historical.mjs",
     "lint:firefox": "addons-linter firefox --output text",
     "package:firefox": "node tools/package.mjs firefox",
     "lint:firefox:strict": "addons-linter firefox --output text --warnings-as-errors",
-    "package:chromium": "node tools/package.mjs whale"
+    "package:chromium": "node tools/package.mjs whale",
+    "verify:esm": "node tools/build-esm.mjs --check",
+    "test:esm": "node --test --test-concurrency=1 tests/esm/tag-contract.test.mjs tests/esm/modules.test.mjs tests/esm/build.test.mjs tests/esm/completion.test.mjs",
+    "audit:esm": "node tools/audit-esm.mjs",
+    "test:integration": "node --test tests/integration/contracts.test.mjs",
+    "benchmark:integration": "node tools/benchmark-integration.mjs",
+    "build:legacy": "node tools/build-esm.mjs",
+    "build:chromium": "wxt build -b chrome",
+    "build:firefox": "wxt build -b firefox",
+    "build:whale": "wxt build -b whale",
+    "dev": "wxt",
+    "dev:firefox": "wxt -b firefox",
+    "typecheck": "tsc --noEmit",
+    "compile": "tsc --noEmit",
+    "format:check": "oxfmt --check src entrypoints runtime config wxt.config.ts oxlint.config.ts oxfmt.config.ts tsconfig.json package.json",
+    "lint": "oxlint src entrypoints runtime config wxt.config.ts oxlint.config.ts oxfmt.config.ts",
+    "prepare:wxt": "wxt prepare",
+    "verify:wxt": "node tools/verify-wxt.mjs",
+    "verify:typescript": "node tools/compile-typescript.mjs --check",
+    "test:typescript": "node --test --test-concurrency=1 tests/typescript/*.test.ts"
+  },
+  "dependencies": {
+    "exifr": "7.1.3"
   },
   "devDependencies": {
+    "@types/node": "24.10.1",
+    "acorn": "8.19.0",
     "addons-linter": "10.14.0",
+    "esbuild": "0.28.2",
     "jquery": "3.7.1",
-    "jsdom": "26.1.0"
+    "jsdom": "26.1.0",
+    "oxfmt": "0.72.0",
+    "oxlint": "1.87.0",
+    "typescript": "5.9.3",
+    "vite": "8.1.5",
+    "wxt": "0.21.3"
+  },
+  "engines": {
+    "node": ">=24.0.0"
   }
 }

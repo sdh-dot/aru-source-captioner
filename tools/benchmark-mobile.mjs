@@ -1,0 +1,24 @@
+// Deterministic public synthetic workload. No Ruliweb requests or media downloads.
+import fs from 'node:fs';import path from 'node:path';import {execFileSync} from 'node:child_process';import {performance} from 'node:perf_hooks';import {JSDOM} from 'jsdom';
+const root=path.resolve(import.meta.dirname,'..'),names=['core','metadata','attribute-tags','site-adapter','registry','catalog','design-system','library-search','ui-preferences','picker'];
+const baseline='1164afc3745d6af47e4e3fc750540963226f8355';
+const modules=Object.fromEntries(['before','after'].map(version=>[version,Object.fromEntries(names.map(name=>{const file='docs/source/ruliweb-icons/'+name+'.js';return [name,version==='before'?execFileSync('git',['show',baseline+':'+file],{cwd:root,encoding:'utf8'}):fs.readFileSync(path.join(root,file),'utf8')];}))]));
+const median=values=>[...values].sort((a,b)=>a-b)[Math.floor(values.length/2)];
+async function run(version,repeated=false){
+ const dom=new JSDOM('<body></body>',{url:'https://m.ruliweb.com/community/board/98/read/4998',runScripts:'outside-only',pretendToBeVisual:true}),w=dom.window;w.TextEncoder=TextEncoder;w.TextDecoder=TextDecoder;w.HTMLMediaElement.prototype.pause=function(){};w.HTMLMediaElement.prototype.load=function(){};
+ Object.defineProperty(w.HTMLElement.prototype,'clientWidth',{get(){return 360;}});Object.defineProperty(w.HTMLElement.prototype,'clientHeight',{get(){return 250;}});w.matchMedia=()=>({matches:false,addEventListener(){},removeEventListener(){}});
+ for(const name of names)w.eval(modules[version][name]);const A=w.AruIcons;
+ const sizes=Array.from({length:17},(_,i)=>i===16?92:91),slaves=sizes.map((n,i)=>({page:i+1,articleId:repeated?7000:7000+i,images:Array.from({length:n},(_,j)=>'https://i1.ruliweb.com/ori/synthetic-'+(repeated?0:i)+'-'+j+(j%10===0?'.mp4?gif':'.webp'))}));
+ const payload={version:1,name:'합성 1,548개 팩',boardId:98,mainArticleId:4998,slaves};const startParse=performance.now();const parsed=await A.Metadata.parseCarriers({v1:[Buffer.from(JSON.stringify(payload)).toString('base64url')]},{articleId:4998,boardId:98});const metadataMs=performance.now()-startParse;
+ const htmlById=new Map();for(const slave of slaves){if(htmlById.has(slave.articleId))continue;const urls=repeated?slaves.at(-1).images:slave.images;htmlById.set(slave.articleId,'<div class="view_content" itemprop="articleBody">'+urls.map((url,i)=>{const tag=i%10===0?'video':'img';return '<'+tag+' src="'+url+'" data-aru-id="synthetic-'+i+'" data-aru-tags="'+A.AttributeTags.encode(['아루',i%2?'미소':'분노'])+'"></'+tag+'>';}).join('')+'</div>');}
+ let documentReads=0,domParseMs=0,collectMs=0;const original=A.SiteAdapter.readArticlePack;
+ // verifyReferences closes over the collector, so its total includes URL/tag work.
+ const startVerify=performance.now();const state=await A.SiteAdapter.verifyReferences(parsed,{intervalMs:0,readDocument:async id=>{documentReads++;const start=performance.now();const doc=new w.DOMParser().parseFromString(htmlById.get(id),'text/html');domParseMs+=performance.now()-start;return doc;}});const verifyMs=performance.now()-startVerify;
+ const testDoc=new w.DOMParser().parseFromString(htmlById.values().next().value,'text/html');let t=performance.now();original(testDoc,7000,'合成','98');collectMs=performance.now()-t;
+ t=performance.now();const engine=new A.LibrarySearchEngine(),ref={boardId:'98',articleId:4998,title:payload.name,source:'direct'};engine.setEntries([ref]);engine.remember(ref,parsed.pack);engine.setState({currentKey:'98:4998',query:'아루'});const searchMs=performance.now()-t;
+ t=performance.now();const picker=A.createPicker({librarySearch:engine,uiPreferences:{read:async()=>null},targetValid:false});picker.setPack(parsed.pack);const renderMs=performance.now()-t,view=picker.getSnapshot();
+ const data={metadataMs,verifyMs,domParseMs,singleSourceCollectMs:collectMs,indexAndSearchMs:searchMs,renderMs,documentReads,icons:parsed.pack.icons.length,tagged:parsed.pack.icons.filter(i=>i.imageMetadata?.tags?.includes('아루')).length,matched:view.uniqueCount,cards:view.renderedCards,verified:state.verifiedCount};picker.destroy();engine.destroy();w.close();return data;
+}
+const report={fixture:'1,548 synthetic icons, 17 references, Node/jsdom 360px; no device/network/media decode measurement',samples:5,distinct:{},repeated:{}};
+for(const repeated of [false,true])for(const version of ['before','after']){await run(version,repeated);const samples=[];for(let i=0;i<5;i++)samples.push(await run(version,repeated));report[repeated?'repeated':'distinct'][version]=Object.fromEntries(Object.keys(samples[0]).map(key=>[key,Number(median(samples.map(x=>x[key])).toFixed(2))]));}
+fs.mkdirSync(path.join(root,'docs/results'),{recursive:true});fs.writeFileSync(path.join(root,'docs/results/mobile-performance.json'),JSON.stringify(report,null,2)+'\n');console.log(JSON.stringify(report,null,2));

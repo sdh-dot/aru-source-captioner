@@ -1,0 +1,100 @@
+# 역사적 테스트 비교
+
+2026-10-15. 기준 모바일 작업본과 새 업로드 작업본에서 기존 테스트를 같은 환경으로 실행했다. 전체 287개, 통과 193개, 실패 94개가 두 작업본에서 동일하다. 작업본 절대 경로는 상대 경로로 바꾸어 비교했다. 신규 실패 0개, 해결 0개. 테스트 및 기대값을 삭제하거나 완화하지 않았다.
+
+이전 버전·마스터 에셋·과거 진단 파일이 공개 저장소에 없거나 이전 UI의 고정 가정을 비교하는 검사 등이 포함된다. 역사적 전체를 통과했다고 보고하지 않는다. 실제 실행에서 실패한 이름은 아래와 같다.
+
+- 1500 and 3000 tagged NORMAL images retain virtual rendering/media caps and grouped searches
+- 4998 fresh referenced metadata enriches tags without changing all 1548 refs/URLs/order/groups/carrier
+- Apply requires a valid preview token, rejects wrong representative ID and leaves HTML unchanged
+- BUNDLE duplicate URL metadata is skipped, malformed tag does not block reference checks or carrier keywords
+- Chrome/Whale callback and Firefox Promise adapters keep settings untouched and store only one explicit local draft key
+- Enter searches, pages preserve selected references, new query resets selection and thumbnail failure falls back
+- NORMAL category memberships and fold state stay local after dedup with fresher BUNDLE membership
+- NORMAL collection rereads source and caches actual tags: add
+- NORMAL collection rereads source and caches actual tags: change
+- NORMAL collection rereads source and caches actual tags: first
+- NORMAL collection rereads source and caches actual tags: old-empty
+- NORMAL collection rereads source and caches actual tags: old-no-tags
+- NORMAL collection rereads source and caches actual tags: remove
+- NORMAL keeps grouped folds and catalog is reachable when entering/leaving a BUNDLE
+- UI add/reorder/remove/preview/explicit Apply uses selected editor without touching it beforehand
+- a site change event modifying unrelated text aborts metadata, preserves that text and never publishes
+- access denial stops remaining batch without retry; cancellation does not add cancelled sources
+- actual SearchIndex supports fixed/free/Korean/comma and AND queries plus catalog search
+- all package files outside three presentation bundles and manifest remain byte identical to RC2
+- anchor and site container preserve exact owner attrs, URL, ordinal and count
+- bad attributes isolate one image: invalid list
+- bad attributes isolate one image: malformed JSON
+- bad attributes isolate one image: malformed percent
+- bad attributes isolate one image: size limit
+- bad attributes isolate one image: unknown version
+- batch preserves result order despite selection order, skips duplicate before lookup, retains successes/failed selected item and body
+- both loadable packages agree; small editor PNGs, extension icons, originals and masters are byte preserved
+- both production content bundles exactly include the writer-sourced tag codec and all existing common modules
+- capture/preview never expose draft body text and never change native editor HTML
+- changed editor content invalidates old preview; latest preview never discards body text
+- complete all-pack memory results search without repeating cache IO; explicit refresh remains available
+- docs/tests/bundle-generator/diagnostic.test.cjs
+- docs/tests/design-polish-rc1/polish.test.cjs
+- docs/tests/metadata-reader/integration.test.cjs
+- docs/tests/tag-display/accuracy-ui.test.cjs
+- docs/tests/tag-display/diagnostic.test.cjs
+- docs/tests/tag-display/native-integration.test.cjs
+- duplicate PC/mobile lookup is blocked before issuing another request; changing title invalidates generated preview
+- duplicate search clicks are suppressed, cancel/error is visible and URL direct add remains available
+- editor replacement and repeated open clean up sessions/modal without duplicate instances
+- every baseline browser and shared source is unchanged except two content bundles, two reader sources and builder
+- existing BUNDLE UI restores full reference data without fetching all sources or any media
+- existing identical BUNDLE has no changes; no-op cannot be applied even through MAIN
+- existing native bridges, metadata/editor/download/manifest/IDs remain byte exact to r2
+- explicit Apply appends one compatible carrier, preserves all old nodes/text/media/attributes/attachments and serializer state
+- explicit decoration-only ledger accounts for every change inside picker and design source
+- font is packaged identically with OFL license, no expanded host permissions/identity; browser bundles identical
+- generator and existing metadata UI do not collide; generated preview/media remain inert text
+- header character is decorative, stays 32px and leaves dialog/close/search actions intact
+- invalid serialization, missing API and oversize body display disabled reason instead of forced enable
+- large archived masters produce three square transparent modal PNGs with visible content and clear margins
+- large reference list mounts at most 50 rows, paginates, and reorders across page boundaries without fetching images
+- manifest adds only four packaged UI resources; IDs, permissions, CSP, update and script registrations unchanged
+- manifest change exposes only three new local modal assets on previously allowed origins; all identity, CSP and registrations preserved
+- missing runtime asset resolver keeps usable text buttons and existing header fallback
+- missing/empty metadata, legacy CSV and case-sensitive names use unchanged writer meanings
+- modify restores unbound carrier and explicit Apply binds actual ID while retaining foreign fields/order and one carrier
+- multi-image anchor cannot guess owner; nested images keep their own tags
+- native Summernote undo/redo preserves pending typing and preceding history; writer metadata editing still works afterwards
+- native serializer stripping carrier triggers rollback of only new carrier/history
+- native snapshot model reads attrs while preserving insertion selection URL
+- new and modify UI auto-prepare valid changes; button has reason and never mutates before user action
+- new unbound BUNDLE rereads 97 IMG + 3 MP4 attributes: 100 tags/search matches and latest tags without copying into carrier
+- new write can generate preview/apply using explicit zero; body/media stay unchanged until explicit Apply
+- new write captures safely, requires actual representative ID for Apply, never guesses or registers a post
+- new-write UI saves composition and later modify UI loads draft with real ID, then applies
+- no new permissions/identity/script routes and native bridges, caption/downloader/options remain byte exact
+- old catalog BUNDLE cache rereads; r2 enriched BUNDLE reuse and explicit refresh remain supported
+- one ordinary anchor/image occurrence is not ambiguous when enriching BUNDLE tags
+- one, six/608 and seventeen/1548 source BUNDLEs keep metadata/internal groups but mount only one list
+- only the planned 8 existing files and 14 new icons change in each loadable package
+- opt-in OFF creates no entry/observer; ON one button/editor; repeated discovery and OFF cleanly remove it
+- original reread refreshes summary and URL list without changing source or editor until explicit apply
+- presentation-only source ledger proves all data, insertion, search, virtual scroll and focus code is untouched
+- r1 original collector reproduces the tag-search failure for identical HTML
+- read-only media diagnostic reads actual media/geometry without DOM, storage, network or private draft access
+- replaced editor/source, released session and codeview reject before mutation
+- same URL different image attrs retain first occurrence without union; ID collisions do not dedupe distinct URLs
+- same session tag additions/changes/removal via refresh use forceRead and invalidate only selected source keys
+- serializer unexpectedly losing an old attachment fails and rolls back carrier while preserving draft
+- shared header CSS is scoped, keeps theme tokens and avoids media/grid/scroll/search dimensions
+- source algorithms, native bridges, settings and all historical tests/evidence preserved from RC1
+- stale preview after user edits or media upload fails without losing content or applying metadata
+- tagged cache roundtrip in Chromium JSON callback transport preserves private/settings records
+- tagged cache roundtrip in Firefox Promise transport preserves private/settings records
+- typing sends no request; explicit search renders titles/lazy actual thumbnail, Ctrl/Shift/select-all without replacing media nodes
+- unknown fields dropped by a forged preview are rejected by MAIN, not merely by the UI
+- unsupported v2/malformed metadata scan leaves editor unchanged and does not open editable restoration
+- update preserves carrier HTML/unknown fields, creates no duplicate, and maintains page identities
+- uploads pending stop preview; empty/mismatched board state cannot generate a session
+- writer/reader codec parity: Korean fixed and free tags
+- writer/reader codec parity: commas remain one free tag
+- writer/reader codec parity: duplicate whitespace tags
+- writer/reader codec parity: empty tags

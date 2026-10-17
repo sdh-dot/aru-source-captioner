@@ -1,0 +1,244 @@
+{
+  "checkedAt": "2026-10-16T11:08:35.832Z",
+  "integrationBase": "402cf68823d7856325906c08a3af3e8f0c2b95d2",
+  "remote": {
+    "main": "1164afc3745d6af47e4e3fc750540963226f8355",
+    "pr1": "fee0aeb7e221b787cf1cf3fd5c7518c1c0cacdb8",
+    "pr2": "4d871f702fb633722c09e0074e6fa0d9429c17f6",
+    "pr3": "402cf68823d7856325906c08a3af3e8f0c2b95d2"
+  },
+  "repositories": [
+    {
+      "directory": "E:\\dev\\VSCode\\personal\\aru_archive\\browser-extension\\github-publication\\repository",
+      "head": "1164afc3745d6af47e4e3fc750540963226f8355",
+      "status": "",
+      "files": 202
+    },
+    {
+      "directory": "E:\\dev\\VSCode\\personal\\aru_archive\\browser-extension\\android-upload-attribution",
+      "head": "4d871f702fb633722c09e0074e6fa0d9429c17f6",
+      "status": "M docs/source/ruliweb-icons/library-reader.js\n M docs/source/ruliweb-icons/library-search.js\n M docs/source/upload-attribution/core.js\n M docs/source/upload-attribution/ui.js\n M docs/tools/build-generator.mjs\n M firefox/features/bundle-generator/content.bundle.js\n M firefox/features/icon-metadata/content.bundle.js\n M firefox/features/ruliweb-icons/content.bundle.js\n M firefox/features/upload-attribution/core.js\n M firefox/features/upload-attribution/ui.js\n M firefox/manifest.json\n M tools/build.mjs\n M tools/test.mjs\n M tools/verify.mjs\n M whale/features/bundle-generator/content.bundle.js\n M whale/features/icon-metadata/content.bundle.js\n M whale/features/ruliweb-icons/content.bundle.js\n M whale/features/upload-attribution/core.js\n M whale/features/upload-attribution/ui.js\n M whale/manifest.json\n?? docs/architecture/dom-api-feasibility-analysis.md\n?? docs/optimization/phase1-to-phase5-summary.md\n?? docs/optimization/validation-evidence.json\n?? docs/performance/measurements.json\n?? docs/performance/phase1-baseline-report.md\n?? docs/performance/phase2-dom-optimization.md\n?? docs/performance/phase3-data-optimization.md\n?? docs/release/phase5-validation-report.md\n?? docs/release/release-notes-draft.md\n?? docs/source/performance/metrics.js\n?? docs/stability/phase4-upload-attribution.md\n?? firefox/features/performance/metrics.js\n?? tests/optimization.test.cjs\n?? tests/performance.test.cjs\n?? tools/benchmark-optimization.cjs\n?? tools/validate-optimization.mjs\n?? whale/features/performance/metrics.js",
+      "files": 254
+    },
+    {
+      "directory": "E:\\dev\\VSCode\\personal\\aru_archive\\browser-extension\\android-firefox-loading-ux",
+      "head": "a6087a7c740db200f1aba6c3941ec9c8338501f4",
+      "status": "M firefox/manifest.json",
+      "files": 213
+    },
+    {
+      "directory": "E:\\dev\\VSCode\\personal\\aru_archive\\browser-extension\\esm-core-transition",
+      "head": "402cf68823d7856325906c08a3af3e8f0c2b95d2",
+      "status": "",
+      "files": 355
+    }
+  ],
+  "parentLegacy": {
+    "directory": "E:/dev/VSCode/personal/aru_archive",
+    "head": "3e40f6c5b8b55816cd8936dbc8041eadce9904b2",
+    "trackedUserChanges": [
+      "browser-extension/aru-source-captioner-firefox/background.js",
+      "browser-extension/aru-source-captioner-firefox/manifest.json",
+      "browser-extension/aru-source-captioner-firefox/options.html",
+      "browser-extension/aru-source-captioner-firefox/options.js",
+      "browser-extension/aru-source-captioner/background.js",
+      "browser-extension/aru-source-captioner/manifest.json",
+      "browser-extension/aru-source-captioner/options.html",
+      "browser-extension/aru-source-captioner/options.js"
+    ],
+    "relatedBranches": [
+      "chore/remove-legacy-firefox-manifest c40bbc5a144b29c300ca03f5926b3aadd0d36528",
+      "chore/source-captioner-store-manifests 6bdb12c95629901b19eab36895e5327a0b771ce5",
+      "feat/source-captioner-auto-insert 109c81fe41f55125b8de8e01d1fe14bcfd4a9aa4"
+    ],
+    "decision": "다른 aru_archive 저장소의 구형 Captioner 이력. 본문 끝/FIFO 자동 삽입과 옛 ID/패키징은 재도입 보류; icon 옵션 unknown 필드 보존은 현재 ESM과 중복."
+  },
+  "restoredTreeEquality": {
+    "localCommit": "a6087a7c740db200f1aba6c3941ec9c8338501f4",
+    "remoteRestoredCommit": "724fce1f60b52ebc50cb65fdaafc0786578d9cfb",
+    "tree": "97d1e63429df26f1cb796c4b50642e16b9c778bc"
+  },
+  "manualPorts": {
+    "base": "402cf68823d7856325906c08a3af3e8f0c2b95d2",
+    "pr1": "fee0aeb7e221b787cf1cf3fd5c7518c1c0cacdb8",
+    "hybrid": [
+      {
+        "from": "docs/source/ruliweb-icons/library-search.js",
+        "sourceWorktree": "E:/dev/VSCode/personal/aru_archive/browser-extension/android-upload-attribution",
+        "sourceHead": "4d871f702fb633722c09e0074e6fa0d9429c17f6",
+        "sourceSha256": "dd7190bfe4a54e3cedb51b78762edc880add749f65fec41395f00d0efe1cacdd",
+        "baseSha256": "64a19985e0e53a59356c0dfcae18a6b1530f411a8c516015c27bec025c927de4",
+        "to": "docs/source/ruliweb-icons/library-search.mjs"
+      },
+      {
+        "from": "docs/source/ruliweb-icons/library-reader.js",
+        "sourceWorktree": "E:/dev/VSCode/personal/aru_archive/browser-extension/android-upload-attribution",
+        "sourceHead": "4d871f702fb633722c09e0074e6fa0d9429c17f6",
+        "sourceSha256": "5579fdc764c555771361b01ded050bb473e07e3ed0d398847a45cf9ebf1d91a4",
+        "baseSha256": "4e07949fb169ec13a4646f624d04c40e6c589bab0094de7b83720afdf94028a1",
+        "to": "docs/source/ruliweb-icons/library-reader.mjs"
+      },
+      {
+        "from": "docs/source/upload-attribution/core.js",
+        "sourceWorktree": "E:/dev/VSCode/personal/aru_archive/browser-extension/android-upload-attribution",
+        "sourceHead": "4d871f702fb633722c09e0074e6fa0d9429c17f6",
+        "sourceSha256": "1eba7fd27c4785fe28121c991769b0dc89e7ac0a07640da7743959cb1fc848bf",
+        "baseSha256": "7255fb03d0ae1746e1e6c9420648fe3c33f9011c62c9aff03209aaf73de1c14d",
+        "to": "docs/source/upload-attribution/core.mjs"
+      },
+      {
+        "from": "docs/source/upload-attribution/ui.js",
+        "sourceWorktree": "E:/dev/VSCode/personal/aru_archive/browser-extension/android-upload-attribution",
+        "sourceHead": "4d871f702fb633722c09e0074e6fa0d9429c17f6",
+        "sourceSha256": "655e902081f728ff05074f1865c08c8b9504d6ad5d86dea95df409a5157abb6c",
+        "baseSha256": "172bacdd3496d20c24a32d6bb397f61f123665c6cf1a109703296230696285aa",
+        "to": "docs/source/upload-attribution/ui.mjs"
+      },
+      {
+        "from": "tests/performance.test.cjs",
+        "sourceWorktree": "E:/dev/VSCode/personal/aru_archive/browser-extension/android-upload-attribution",
+        "sourceSha256": "47ce7d2f3b0b0cb9f4b650b596beda01db0b7caef1a1d7705518398038b01c65",
+        "to": "tests/performance.test.cjs",
+        "assertionsUnchanged": true
+      },
+      {
+        "from": "tests/optimization.test.cjs",
+        "sourceWorktree": "E:/dev/VSCode/personal/aru_archive/browser-extension/android-upload-attribution",
+        "sourceSha256": "8df3abb1f1487d8508e13610be3d29db8e7addd603e69af563f9ab08b5817b85",
+        "to": "tests/optimization.test.cjs",
+        "assertionsUnchanged": true
+      }
+    ],
+    "metricsSha256": "7191b3e8962bc2b514690c35551a026639a8abdb32de03c81f9c42ba56860075",
+    "metricsDefaultOff": true,
+    "manifestUnchanged": true
+  },
+  "fixtureHashes": {
+    "hybrid": "3e7727b14bf4fd3807f102b7282402978a2daa04e34ee26ec759e4380222f2e9",
+    "original": "c0077eaba89b27227b8d66c6f5150613ad5c419eb31af48c611a08034d832c64"
+  },
+  "testHarnessAdaptation": "Hybrid의 12개 assertion/기대값 보존. git show로 읽던 4d871f7 기준 소스/Manifest를 동일 SHA의 fixture로 대체해 Git 없는 환경에서 12개 재검증.",
+  "matrix": [
+    [
+      "아이콘 검색·필터",
+      "main 1164afc / a6087a7",
+      "Hybrid 4d871f7 + 미커밋",
+      "기존 검색 ESM 유지, 최신 사전·정규화 재사용 반영",
+      "없음",
+      "fee0aeb와 같은 파일, 처리 상태 규칙을 합성",
+      "P1",
+      "검색 동등성·H 최적화·E2E"
+    ],
+    [
+      "NORMAL 태그 부분 처리",
+      "PR #1 fee0aeb",
+      "PR #1 fee0aeb",
+      "feature/reader/search 6조건 이식",
+      "없음",
+      "Hybrid 성능 코드와 조건을 수동 결합",
+      "P0",
+      "PR1 5회귀·직접 ESM partial 재시도"
+    ],
+    [
+      "통합팩 검색·구성",
+      "main 1164afc",
+      "a6087a7 / ESM b134023",
+      "기준 ESM에 이미 포함",
+      "없음",
+      "중복 재적용하지 않음",
+      "P2",
+      "기존 model/search·ESM 직렬화·E2E"
+    ],
+    [
+      "태그 등록·수정·제거",
+      "main / Phase 1",
+      "ESM 2f755c3·b134023",
+      "기존 codec·plan·Selection 재사용",
+      "없음",
+      "저장 normalize와 검색 normalize 분리",
+      "P0",
+      "기존 ESM 51·MAIN 태그 E2E"
+    ],
+    [
+      "이미지 출처 매칭",
+      "PR #2 4d871f7",
+      "Hybrid 미커밋",
+      "root/name 인덱스·TTL·순서·동명 이력 보존",
+      "실제 서버 파일 대응 증명",
+      "오래된 FIFO/본문 끝 삽입은 재도입 보류",
+      "P0",
+      "1700 seeded 비교·순열·기존 content adapter"
+    ],
+    [
+      "Firefox Android 업로드",
+      "레거시 / PR #2",
+      "PR #2 + Hybrid 종료 안정화",
+      "정확 대응 유지, 공유 큐·취소·root 교체 정리 반영",
+      "Android 실기기·Native 결과",
+      "옛 자동 삽입 대안은 기존 안전 규칙과 충돌",
+      "P0",
+      "기존 업로드 회귀·취소/12순열·실기기 후속"
+    ],
+    [
+      "DOM 감시 최적화",
+      "PR #2 Controller",
+      "Hybrid 미커밋",
+      "전역 root 발견 + root별 이미지 감시·UI 필터",
+      "없음",
+      "기존 MutationObserver API·microtask 유지",
+      "P1",
+      "관련/무관 변경·root 교체·100회 종료·별도 측정"
+    ],
+    [
+      "캐시·인덱싱",
+      "main / a6087a7",
+      "fee0aeb + Hybrid",
+      "partial 유지·root/name·팩 사전 재사용 반영",
+      "증분 인덱스·IDB batching은 원래 미구현",
+      "캐시 키·32개 검색 캐시·512레코드 유지",
+      "P1",
+      "캐시/태그 재시도·TTL·결과 순서 동등성"
+    ],
+    [
+      "아이콘 삽입·작성기",
+      "main",
+      "PR #2 / ESM b134023",
+      "MAIN/ISOLATED·composer·serializer 기존 구현 유지",
+      "로그인 게시·저장·Native Host",
+      "브리지/이벤트 재설계 보류",
+      "P0",
+      "세 브라우저 삽입·MAIN 편집·재초기화"
+    ],
+    [
+      "브라우저별 호환·설정",
+      "main / 상위 레거시",
+      "PR #2 / ESM 402cf68",
+      "기존 Manifest·ID·옵션 보존",
+      "최소 버전·Android 기기",
+      "구형 버전/패키징 변경은 제외",
+      "P0",
+      "두 Manifest hash·기존 설정·실제 세 브라우저"
+    ],
+    [
+      "개발 수치 계측",
+      "Hybrid 미커밋",
+      "Hybrid 미커밋 → 통합 ESM",
+      "OFF 기본값·허용 키·512표본, 명시적 metrics 주입",
+      "없음",
+      "Manifest prelude 대신 기존 ESM 경계에 연결",
+      "P2",
+      "동결 원본 oracle·전역 금지·동일 API·계측 OFF 검사"
+    ]
+  ],
+  "matrixColumns": [
+    "기능",
+    "최초 구현",
+    "최신 수정",
+    "ESM 반영",
+    "남은 누락/검증",
+    "충돌 처리",
+    "우선순위",
+    "검증"
+  ],
+  "externalWxt": "미제공, 통합 대상으로 가정하지 않음"
+}

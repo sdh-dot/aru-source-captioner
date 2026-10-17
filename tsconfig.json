@@ -1,0 +1,21 @@
+{
+  "extends": "./.wxt/tsconfig.json",
+  "compilerOptions": {
+    "allowJs": true,
+    "checkJs": false,
+    "noUncheckedIndexedAccess": false,
+    "lib": ["DOM", "DOM.Iterable", "ES2022"],
+    "types": ["node"],
+    "resolveJsonModule": true
+  },
+  "include": [
+    "entrypoints/**/*.ts",
+    "runtime/**/*.ts",
+    "config/**/*.ts",
+    "wxt.config.ts",
+    "oxfmt.config.ts",
+    "oxlint.config.ts",
+    ".wxt/wxt.d.ts",
+    "src/**/*.ts"
+  ]
+}

@@ -1,0 +1,839 @@
+[
+  {
+    "file": "docs/source/ruliweb-icons/registry.js",
+    "module": "docs/source/ruliweb-icons/registry.mjs",
+    "name": "createIconsRegistry",
+    "purpose": "등록 목록은 JSON 원본에서 읽고 실행 영역마다 독립된 객체를 제공한다.",
+    "dependencies": {},
+    "exports": {
+      "AruIcons": [
+        "packRegistry"
+      ]
+    },
+    "entry": "docs/source/compat/ruliweb-icons-registry.mjs"
+  },
+  {
+    "file": "docs/source/ruliweb-icons/catalog.js",
+    "module": "docs/source/ruliweb-icons/catalog.mjs",
+    "name": "createIconsCatalog",
+    "purpose": "카탈로그의 출처·식별자와 표시 모델을 분리하고 원본 이미지 순서를 유지한다.",
+    "dependencies": {
+      "icons": [
+        "packRegistry",
+        "SiteAdapter",
+        "SearchIndex",
+        "DesignSystem",
+        "Catalog",
+        "CatalogView",
+        "MediaBudget",
+        "CatalogSources"
+      ]
+    },
+    "exports": {
+      "AruIcons": [
+        "Catalog",
+        "CatalogView",
+        "MediaBudget",
+        "CatalogSources"
+      ]
+    },
+    "entry": "docs/source/compat/ruliweb-icons-catalog.mjs"
+  },
+  {
+    "file": "docs/source/ruliweb-icons/design-system.js",
+    "module": "docs/source/ruliweb-icons/design-system.mjs",
+    "name": "createIconsDesignSystem",
+    "purpose": "확장 UI의 Shadow DOM에만 스타일을 설치하고 사이트 본문의 스타일은 바꾸지 않는다.",
+    "dependencies": {
+      "icons": [
+        "DesignSystem"
+      ]
+    },
+    "exports": {
+      "AruIcons": [
+        "DesignSystem"
+      ]
+    },
+    "entry": "docs/source/compat/ruliweb-icons-design-system.mjs"
+  },
+  {
+    "file": "docs/source/ruliweb-icons/library-search.js",
+    "module": "docs/source/ruliweb-icons/library-search.mjs",
+    "name": "createIconsLibrarySearch",
+    "purpose": "여러 팩에 속한 같은 이미지는 한 행으로 검색하되 각 출처와 태그 소유 관계를 보존한다.",
+    "dependencies": {
+      "icons": [
+        "normalize",
+        "CatalogSources",
+        "queryTokens",
+        "LibrarySearchEngine",
+        "libraryIconIdentity",
+        "libraryFixedTags"
+      ]
+    },
+    "exports": {
+      "AruIcons": [
+        "LibrarySearchEngine",
+        "libraryIconIdentity",
+        "libraryFixedTags"
+      ]
+    },
+    "entry": "docs/source/compat/ruliweb-icons-library-search.mjs"
+  },
+  {
+    "file": "docs/source/ruliweb-icons/library-reader.js",
+    "module": "docs/source/ruliweb-icons/library-reader.mjs",
+    "name": "createIconsLibraryReader",
+    "purpose": "공개 게시글에서 실제 태그를 읽으며 캐시 재사용·강제 새로고침의 기존 조건을 유지한다.",
+    "dependencies": {
+      "icons": [
+        "SiteAdapter",
+        "BrowserAdapter",
+        "feature",
+        "Metadata",
+        "LibraryPackReader"
+      ]
+    },
+    "exports": {
+      "AruIcons": [
+        "LibraryPackReader"
+      ]
+    },
+    "entry": "docs/source/compat/ruliweb-icons-library-reader.mjs"
+  },
+  {
+    "file": "docs/source/ruliweb-icons/ui-preferences.js",
+    "module": "docs/source/ruliweb-icons/ui-preferences.mjs",
+    "name": "createIconsUiPreferences",
+    "purpose": "UI 선택 상태를 독립적으로 저장하고 기존 설정의 알 수 없는 필드를 보존한다.",
+    "dependencies": {
+      "icons": [
+        "createUiPreferences",
+        "UiPreferences"
+      ]
+    },
+    "exports": {
+      "AruIcons": [
+        "createUiPreferences",
+        "UiPreferences"
+      ]
+    },
+    "entry": "docs/source/compat/ruliweb-icons-ui-preferences.mjs"
+  },
+  {
+    "file": "docs/source/ruliweb-icons/picker.js",
+    "module": "docs/source/ruliweb-icons/picker.mjs",
+    "name": "createIconsPicker",
+    "purpose": "가상 목록과 미디어 수명을 관리하며 검색 결과·선택 대상·삽입 URL의 대응을 보존한다.",
+    "dependencies": {
+      "icons": [
+        "isMouseDoubleClick",
+        "iconTagLabels",
+        "Metadata",
+        "createPicker",
+        "SearchIndex",
+        "FoldState",
+        "DesignSystem",
+        "CatalogView",
+        "UiPreferences",
+        "MediaBudget",
+        "ComposerAdapter",
+        "libraryFixedTags"
+      ]
+    },
+    "exports": {
+      "AruIcons": [
+        "isMouseDoubleClick",
+        "iconTagLabels",
+        "createPicker"
+      ]
+    },
+    "entry": "docs/source/compat/ruliweb-icons-picker.mjs"
+  },
+  {
+    "file": "docs/source/ruliweb-icons/feature.js",
+    "module": "docs/source/ruliweb-icons/feature.mjs",
+    "name": "createIconsFeature",
+    "purpose": "사용자 옵션에 따라 작성기별 기능을 시작·정리하고 탐색 후 중복 초기화를 막는다.",
+    "dependencies": {
+      "icons": [
+        "SiteAdapter",
+        "BrowserAdapter",
+        "createPicker",
+        "ComposerController",
+        "ComposerAdapter",
+        "CatalogSources",
+        "LibrarySearchEngine",
+        "LibraryPackReader",
+        "Metadata",
+        "IconFeature",
+        "feature"
+      ]
+    },
+    "exports": {
+      "AruIcons": [
+        "IconFeature",
+        "feature"
+      ]
+    },
+    "entry": "docs/source/compat/ruliweb-icons-feature.mjs"
+  },
+  {
+    "file": "docs/source/ruliweb-icons/composer-bridge.js",
+    "module": "docs/source/ruliweb-icons/composer-bridge.mjs",
+    "name": "createIconsComposerBridge",
+    "purpose": "페이지 작성기 API와 동기 DOM 이벤트 계약을 연결하며 직접 게시하지 않는다.",
+    "dependencies": {},
+    "exports": {},
+    "entry": "docs/source/compat/ruliweb-icons-composer-bridge.mjs"
+  },
+  {
+    "file": "docs/source/ruliweb-icons/background.js",
+    "module": "docs/source/ruliweb-icons/background.mjs",
+    "name": "createIconsBackground",
+    "purpose": "공개 아이콘 스냅샷만 확장 저장소에 캐시하며 Native Host와 개인 데이터 경로를 분리한다.",
+    "dependencies": {
+      "icons": [
+        "CacheProtocol"
+      ]
+    },
+    "exports": {
+      "AruIcons": [
+        "CacheProtocol"
+      ]
+    },
+    "entry": "docs/source/compat/ruliweb-icons-background.mjs"
+  },
+  {
+    "file": "docs/source/bundle-generator/core.js",
+    "module": "docs/source/bundle-generator/core.mjs",
+    "name": "createBundleCore",
+    "purpose": "통합팩의 원문·알 수 없는 필드·참조 순서를 보존하며 변경 계획을 만든다.",
+    "dependencies": {
+      "bundle": [],
+      "icons": [
+        "Metadata",
+        "SiteAdapter"
+      ]
+    },
+    "exports": {
+      "AruBundle": [
+        "fail",
+        "clone",
+        "articleUrl",
+        "validate",
+        "existing",
+        "encode",
+        "preserveUnknown",
+        "Draft",
+        "readPublicDocument",
+        "SourceReader"
+      ]
+    },
+    "entry": "docs/source/compat/bundle-generator-core.mjs"
+  },
+  {
+    "file": "docs/source/bundle-generator/client.js",
+    "module": "docs/source/bundle-generator/client.mjs",
+    "name": "createBundleClient",
+    "purpose": "ISOLATED UI의 통합팩 요청을 기존 MAIN 이벤트 계약에 맞춰 연결한다.",
+    "dependencies": {
+      "bundle": [
+        "fail",
+        "Draft"
+      ]
+    },
+    "exports": {
+      "AruBundle": [
+        "Client",
+        "Browser"
+      ]
+    },
+    "entry": "docs/source/compat/bundle-generator-client.mjs"
+  },
+  {
+    "file": "docs/source/bundle-generator/search.js",
+    "module": "docs/source/bundle-generator/search.mjs",
+    "name": "createBundleSearch",
+    "purpose": "게시판 검색과 다중 선택 순서를 관리하고 중복 요청·취소 계약을 유지한다.",
+    "dependencies": {
+      "bundle": [
+        "fail",
+        "articleUrl",
+        "clone"
+      ],
+      "icons": [
+        "Metadata"
+      ]
+    },
+    "exports": {
+      "AruBundle": [
+        "searchUrl",
+        "parseSearch",
+        "readSearchHTML",
+        "BoardSearch",
+        "SearchSelection"
+      ]
+    },
+    "entry": "docs/source/compat/bundle-generator-search.mjs"
+  },
+  {
+    "file": "docs/source/bundle-generator/search-ui.js",
+    "module": "docs/source/bundle-generator/search-ui.mjs",
+    "name": "createBundleSearchUi",
+    "purpose": "게시판 검색 결과의 페이지별 선택을 통합팩 편집 순서와 연결한다.",
+    "dependencies": {
+      "bundle": [
+        "BoardSearch",
+        "SearchSelection",
+        "fail"
+      ]
+    },
+    "exports": {
+      "AruBundle": [
+        "SearchPanel"
+      ]
+    },
+    "entry": "docs/source/compat/bundle-generator-search-ui.mjs"
+  },
+  {
+    "file": "docs/source/bundle-generator/ui.js",
+    "module": "docs/source/bundle-generator/ui.mjs",
+    "name": "createBundleUi",
+    "purpose": "통합팩 편집 상태와 미리보기를 분리하고 명시적 적용 전에는 작성기를 수정하지 않는다.",
+    "dependencies": {
+      "bundle": [
+        "Browser",
+        "SourceReader",
+        "Draft",
+        "SearchPanel",
+        "articleUrl",
+        "fail",
+        "encode",
+        "clone"
+      ],
+      "icons": [
+        "DesignSystem",
+        "Metadata"
+      ]
+    },
+    "exports": {
+      "AruBundle": [
+        "Panel"
+      ]
+    },
+    "entry": "docs/source/compat/bundle-generator-ui.mjs"
+  },
+  {
+    "file": "docs/source/bundle-generator/controller.js",
+    "module": "docs/source/bundle-generator/controller.mjs",
+    "name": "createBundleController",
+    "purpose": "사용자 옵션과 작성기 수명에 맞춰 통합팩 UI를 설치·정리한다.",
+    "dependencies": {
+      "bundle": [
+        "Browser",
+        "Client",
+        "Panel"
+      ],
+      "icons": [
+        "DesignSystem"
+      ]
+    },
+    "exports": {
+      "AruBundle": [
+        "Controller"
+      ]
+    },
+    "entry": "docs/source/compat/bundle-generator-controller.mjs"
+  },
+  {
+    "file": "docs/source/bundle-generator/bridge.js",
+    "module": "docs/source/bundle-generator/bridge.mjs",
+    "name": "createBundleBridge",
+    "purpose": "MAIN 작성기에서 미리보기 세션을 검증한 뒤 명시적 적용 요청만 편집기에 반영한다.",
+    "dependencies": {
+      "bundle": [
+        "fail",
+        "existing",
+        "validate",
+        "preserveUnknown"
+      ],
+      "icons": [
+        "Metadata"
+      ]
+    },
+    "exports": {},
+    "entry": "docs/source/compat/bundle-generator-bridge.mjs"
+  },
+  {
+    "file": "docs/source/icon-metadata/interface.js",
+    "module": "docs/source/icon-metadata/interface.mjs",
+    "name": "createMetadataInterface",
+    "purpose": "태그 편집 UI와 선택 모델을 연결하고 MAIN의 이미지 handle 검증 계약을 유지한다.",
+    "dependencies": {
+      "metadata": [
+        "Selection",
+        "FIXED",
+        "normalize",
+        "Panel",
+        "Browser",
+        "Client"
+      ],
+      "icons": [
+        "DesignSystem"
+      ]
+    },
+    "exports": {
+      "AruMetadata": [
+        "Client",
+        "Browser",
+        "Panel",
+        "Controller",
+        "countLabel"
+      ]
+    },
+    "entry": "docs/source/compat/icon-metadata-interface.mjs"
+  },
+  {
+    "file": "docs/source/upload-attribution/core.js",
+    "module": "docs/source/upload-attribution/core.mjs",
+    "name": "createAttributionCore",
+    "purpose": "업로드한 파일의 출처 매칭과 게시판 이미지 증거를 분리해 잘못된 자동 연결을 막는다.",
+    "dependencies": {
+      "attribution": []
+    },
+    "exports": {
+      "AruSourceAttribution": [
+        "Registry",
+        "Controller"
+      ]
+    },
+    "entry": "docs/source/compat/upload-attribution-core.mjs"
+  },
+  {
+    "file": "docs/source/upload-attribution/ui.js",
+    "module": "docs/source/upload-attribution/ui.mjs",
+    "name": "createAttributionUi",
+    "purpose": "업로드 출처 매칭 결과를 작성기 수명에 맞춰 연결하며 기존 이벤트 계약을 보존한다.",
+    "dependencies": {
+      "icons": [
+        "DesignSystem"
+      ],
+      "uploadUI": []
+    },
+    "exports": {
+      "AruUploadUI": null
+    },
+    "entry": "docs/source/compat/upload-attribution-ui.mjs"
+  },
+  {
+    "file": "firefox/content.js",
+    "module": "docs/source/platform/firefox/content.mjs",
+    "name": "installFirefoxContent",
+    "purpose": "브라우저별 기존 초기화·저장 키·사용자 설정과 이벤트 계약을 유지한다.",
+    "dependencies": {
+      "attribution": [
+        "Controller"
+      ]
+    },
+    "exports": {},
+    "entry": "docs/source/compat/platform-firefox-content.mjs"
+  },
+  {
+    "file": "firefox/options.js",
+    "module": "docs/source/platform/firefox/options.mjs",
+    "name": "installFirefoxOptions",
+    "purpose": "브라우저별 기존 초기화·저장 키·사용자 설정과 이벤트 계약을 유지한다.",
+    "dependencies": {},
+    "exports": {},
+    "entry": "docs/source/compat/platform-firefox-options.mjs"
+  },
+  {
+    "file": "firefox/background.js",
+    "module": "docs/source/platform/firefox/background.mjs",
+    "name": "installFirefoxBackground",
+    "purpose": "브라우저별 기존 초기화·저장 키·사용자 설정과 이벤트 계약을 유지한다.",
+    "dependencies": {
+      "downloads": [
+        "ownsDownload"
+      ]
+    },
+    "exports": {},
+    "entry": "docs/source/compat/platform-firefox-background.mjs"
+  },
+  {
+    "file": "firefox/features/body-download/core.js",
+    "module": "docs/source/body-download/core.mjs",
+    "name": "createDownloadCore",
+    "purpose": "로컬 다운로드 원장의 경로·파일 형식·미디어 검증을 공개 아이콘 메타데이터와 분리한다.",
+    "dependencies": {
+      "downloads": []
+    },
+    "exports": {
+      "AruBodyDownload": [
+        "HOSTS",
+        "JOB_KEY",
+        "error",
+        "article",
+        "mediaUrl",
+        "safeName",
+        "folder",
+        "originalFilename",
+        "numbered",
+        "streamMedia",
+        "signature",
+        "inspect",
+        "actualName",
+        "localManifest"
+      ]
+    },
+    "entry": "docs/source/compat/body-download-core.mjs"
+  },
+  {
+    "file": "firefox/features/body-download/browser-api.js",
+    "module": "docs/source/body-download/browser-api.mjs",
+    "name": "createDownloadBrowserApi",
+    "purpose": "다운로드 설정과 로컬 원장에 대한 Promise·callback 브라우저 API 차이를 흡수한다.",
+    "dependencies": {
+      "downloads": [
+        "error",
+        "JOB_KEY"
+      ]
+    },
+    "exports": {
+      "AruBodyDownload": [
+        "api",
+        "call",
+        "options",
+        "readJob",
+        "writeJob",
+        "ownsDownload"
+      ]
+    },
+    "entry": "docs/source/compat/body-download-browser-api.mjs"
+  },
+  {
+    "file": "firefox/features/body-download/engine.js",
+    "module": "docs/source/body-download/engine.mjs",
+    "name": "createDownloadEngine",
+    "purpose": "다운로드 재시도·취소·진행 원장을 관리하며 미디어 원본 바이트를 다시 인코딩하지 않는다.",
+    "dependencies": {
+      "downloads": [
+        "error",
+        "mediaUrl",
+        "inspect",
+        "api",
+        "call",
+        "writeJob",
+        "options",
+        "numbered",
+        "actualName",
+        "localManifest"
+      ]
+    },
+    "exports": {
+      "AruBodyDownload": [
+        "fetchImage",
+        "DownloadRunner"
+      ]
+    },
+    "entry": "docs/source/compat/body-download-engine.mjs"
+  },
+  {
+    "file": "firefox/features/body-download/ui.js",
+    "module": "docs/source/body-download/ui.mjs",
+    "name": "createDownloadUi",
+    "purpose": "로컬 다운로드 작업을 표시하고 사용자 조작에 따른 실행·취소를 연결한다.",
+    "dependencies": {
+      "downloads": [
+        "readJob",
+        "error",
+        "DownloadRunner",
+        "options",
+        "call",
+        "api",
+        "article",
+        "writeJob"
+      ]
+    },
+    "exports": {},
+    "entry": "docs/source/compat/body-download-ui.mjs"
+  },
+  {
+    "file": "firefox/features/body-download/content.bundle.js",
+    "module": "docs/source/body-download/content.mjs",
+    "name": "createDownloadContent",
+    "purpose": "같은 확장에서 온 수집 요청만 허용하고 탐색으로 바뀐 게시글은 수집하지 않는다.",
+    "dependencies": {
+      "downloads": [
+        "api",
+        "error",
+        "options",
+        "article",
+        "extract"
+      ]
+    },
+    "exports": {},
+    "entry": "docs/source/compat/body-download-content.mjs"
+  },
+  {
+    "file": "firefox/features/body-download/background.bundle.js",
+    "module": "docs/source/body-download/background.mjs",
+    "name": "createDownloadBackground",
+    "purpose": "사용자가 요청한 본문 다운로드만 직렬 실행하고 로컬 원장과 관리 탭을 연결한다.",
+    "dependencies": {
+      "downloads": [
+        "api",
+        "options",
+        "call",
+        "writeJob",
+        "error",
+        "article",
+        "readJob",
+        "actualName",
+        "mediaUrl",
+        "folder"
+      ]
+    },
+    "exports": {},
+    "entry": "docs/source/compat/body-download-background.mjs"
+  },
+  {
+    "file": "whale/content.js",
+    "module": "docs/source/platform/whale/content.mjs",
+    "name": "installWhaleContent",
+    "purpose": "브라우저별 기존 초기화·저장 키·사용자 설정과 이벤트 계약을 유지한다.",
+    "dependencies": {
+      "attribution": [
+        "Controller"
+      ]
+    },
+    "exports": {},
+    "entry": "docs/source/compat/platform-whale-content.mjs"
+  },
+  {
+    "file": "whale/options.js",
+    "module": "docs/source/platform/whale/options.mjs",
+    "name": "installWhaleOptions",
+    "purpose": "브라우저별 기존 초기화·저장 키·사용자 설정과 이벤트 계약을 유지한다.",
+    "dependencies": {},
+    "exports": {},
+    "entry": "docs/source/compat/platform-whale-options.mjs"
+  },
+  {
+    "file": "whale/background.js",
+    "module": "docs/source/platform/whale/background.mjs",
+    "name": "installWhaleBackground",
+    "purpose": "브라우저별 기존 초기화·저장 키·사용자 설정과 이벤트 계약을 유지한다.",
+    "dependencies": {
+      "downloads": [
+        "ownsDownload"
+      ]
+    },
+    "exports": {},
+    "entry": "docs/source/compat/platform-whale-background.mjs"
+  },
+  {
+    "file": "whale/features/body-download/core.js",
+    "module": "docs/source/body-download/core.mjs",
+    "name": "createDownloadCore",
+    "purpose": "로컬 다운로드 원장의 경로·파일 형식·미디어 검증을 공개 아이콘 메타데이터와 분리한다.",
+    "dependencies": {
+      "downloads": []
+    },
+    "exports": {
+      "AruBodyDownload": [
+        "HOSTS",
+        "JOB_KEY",
+        "error",
+        "article",
+        "mediaUrl",
+        "safeName",
+        "folder",
+        "originalFilename",
+        "numbered",
+        "streamMedia",
+        "signature",
+        "inspect",
+        "actualName",
+        "localManifest"
+      ]
+    },
+    "entry": "docs/source/compat/body-download-core.mjs"
+  },
+  {
+    "file": "whale/features/body-download/browser-api.js",
+    "module": "docs/source/body-download/browser-api.mjs",
+    "name": "createDownloadBrowserApi",
+    "purpose": "다운로드 설정과 로컬 원장에 대한 Promise·callback 브라우저 API 차이를 흡수한다.",
+    "dependencies": {
+      "downloads": [
+        "error",
+        "JOB_KEY"
+      ]
+    },
+    "exports": {
+      "AruBodyDownload": [
+        "api",
+        "call",
+        "options",
+        "readJob",
+        "writeJob",
+        "ownsDownload"
+      ]
+    },
+    "entry": "docs/source/compat/body-download-browser-api.mjs"
+  },
+  {
+    "file": "whale/features/body-download/engine.js",
+    "module": "docs/source/body-download/engine.mjs",
+    "name": "createDownloadEngine",
+    "purpose": "다운로드 재시도·취소·진행 원장을 관리하며 미디어 원본 바이트를 다시 인코딩하지 않는다.",
+    "dependencies": {
+      "downloads": [
+        "error",
+        "mediaUrl",
+        "inspect",
+        "api",
+        "call",
+        "writeJob",
+        "options",
+        "numbered",
+        "actualName",
+        "localManifest"
+      ]
+    },
+    "exports": {
+      "AruBodyDownload": [
+        "fetchImage",
+        "DownloadRunner"
+      ]
+    },
+    "entry": "docs/source/compat/body-download-engine.mjs"
+  },
+  {
+    "file": "whale/features/body-download/ui.js",
+    "module": "docs/source/body-download/ui.mjs",
+    "name": "createDownloadUi",
+    "purpose": "로컬 다운로드 작업을 표시하고 사용자 조작에 따른 실행·취소를 연결한다.",
+    "dependencies": {
+      "downloads": [
+        "readJob",
+        "error",
+        "DownloadRunner",
+        "options",
+        "call",
+        "api",
+        "article",
+        "writeJob"
+      ]
+    },
+    "exports": {},
+    "entry": "docs/source/compat/body-download-ui.mjs"
+  },
+  {
+    "file": "whale/features/body-download/content.bundle.js",
+    "module": "docs/source/body-download/content.mjs",
+    "name": "createDownloadContent",
+    "purpose": "같은 확장에서 온 수집 요청만 허용하고 탐색으로 바뀐 게시글은 수집하지 않는다.",
+    "dependencies": {
+      "downloads": [
+        "api",
+        "error",
+        "options",
+        "article",
+        "extract"
+      ]
+    },
+    "exports": {},
+    "entry": "docs/source/compat/body-download-content.mjs"
+  },
+  {
+    "file": "whale/features/body-download/background.bundle.js",
+    "module": "docs/source/body-download/background.mjs",
+    "name": "createDownloadBackground",
+    "purpose": "사용자가 요청한 본문 다운로드만 직렬 실행하고 로컬 원장과 관리 탭을 연결한다.",
+    "dependencies": {
+      "downloads": [
+        "api",
+        "options",
+        "call",
+        "writeJob",
+        "error",
+        "article",
+        "readJob",
+        "actualName",
+        "mediaUrl",
+        "folder"
+      ]
+    },
+    "exports": {},
+    "entry": "docs/source/compat/body-download-background.mjs"
+  },
+  {
+    "file": "docs/MOBILE-TAGS-READONLY.js",
+    "module": "docs/MOBILE-TAGS-READONLY.mjs",
+    "name": "inspectMobileTags",
+    "purpose": "로컬 진단·데모를 명시적 호출로만 실행하며 실제 게시 요청을 만들지 않는다.",
+    "dependencies": {},
+    "exports": {},
+    "entry": "docs/source/compat/docs-MOBILE-TAGS-READONLY.mjs"
+  },
+  {
+    "file": "docs/READONLY-UPLOAD-DIAGNOSTIC.js",
+    "module": "docs/READONLY-UPLOAD-DIAGNOSTIC.mjs",
+    "name": "inspectUploadState",
+    "purpose": "로컬 진단·데모를 명시적 호출로만 실행하며 실제 게시 요청을 만들지 않는다.",
+    "dependencies": {},
+    "exports": {},
+    "entry": "docs/source/compat/docs-READONLY-UPLOAD-DIAGNOSTIC.mjs"
+  },
+  {
+    "file": "docs/demo/upload-surfaces.js",
+    "module": "docs/demo/upload-surfaces.mjs",
+    "name": "installUploadDemo",
+    "purpose": "로컬 진단·데모를 명시적 호출로만 실행하며 실제 게시 요청을 만들지 않는다.",
+    "dependencies": {
+      "icons": [
+        "ComposerController",
+        "Metadata",
+        "LibrarySearchEngine",
+        "createPicker"
+      ],
+      "metadata": [
+        "Controller",
+        "Panel"
+      ],
+      "bundle": [
+        "Controller",
+        "Panel",
+        "Draft"
+      ],
+      "uploadUI": []
+    },
+    "exports": {
+      "AruIcons": [
+        "Metadata"
+      ]
+    },
+    "entry": "docs/source/compat/docs-demo-upload-surfaces.mjs"
+  },
+  {
+    "file": "docs/source/performance/metrics.js",
+    "module": "docs/source/performance/metrics.mjs",
+    "name": "createPerformanceMetrics",
+    "purpose": "명시적 opt-in 수치 계측",
+    "dependencies": {},
+    "exports": {
+      "AruPerformance": [
+        "configure",
+        "reset",
+        "start",
+        "count",
+        "gauge",
+        "snapshot"
+      ]
+    },
+    "entry": "docs/source/compat/performance-metrics.mjs"
+  }
+]

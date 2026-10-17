@@ -1,0 +1,190 @@
+[
+  {
+    "output": "docs/source/body-download/background.mjs",
+    "source": "src/body-download/background.ts"
+  },
+  {
+    "output": "docs/source/body-download/browser-api.mjs",
+    "source": "src/body-download/browser-api.ts"
+  },
+  {
+    "output": "docs/source/body-download/content.mjs",
+    "source": "src/body-download/content.ts"
+  },
+  {
+    "output": "docs/source/body-download/core.mjs",
+    "source": "src/body-download/core.ts"
+  },
+  {
+    "output": "docs/source/body-download/engine.mjs",
+    "source": "src/body-download/engine.ts"
+  },
+  {
+    "output": "docs/source/body-download/extractor.mjs",
+    "source": "src/body-download/extractor.ts"
+  },
+  {
+    "output": "docs/source/body-download/ui.mjs",
+    "source": "src/body-download/ui.ts"
+  },
+  {
+    "output": "docs/source/bundle-generator/bridge.mjs",
+    "source": "src/bundle-generator/bridge.ts"
+  },
+  {
+    "output": "docs/source/bundle-generator/client.mjs",
+    "source": "src/bundle-generator/client.ts"
+  },
+  {
+    "output": "docs/source/bundle-generator/controller.mjs",
+    "source": "src/bundle-generator/controller.ts"
+  },
+  {
+    "output": "docs/source/bundle-generator/core.mjs",
+    "source": "src/bundle-generator/core.ts"
+  },
+  {
+    "output": "docs/source/bundle-generator/search-ui.mjs",
+    "source": "src/bundle-generator/search-ui.ts"
+  },
+  {
+    "output": "docs/source/bundle-generator/search.mjs",
+    "source": "src/bundle-generator/search.ts"
+  },
+  {
+    "output": "docs/source/bundle-generator/ui.mjs",
+    "source": "src/bundle-generator/ui.ts"
+  },
+  {
+    "output": "docs/source/icon-metadata/interface.mjs",
+    "source": "src/icon-metadata/interface.ts"
+  },
+  {
+    "output": "docs/source/icon-metadata/metadata-editor-bridge.mjs",
+    "source": "src/icon-metadata/metadata-editor-bridge.ts"
+  },
+  {
+    "output": "docs/source/performance/metrics.mjs",
+    "source": "src/performance/metrics.ts"
+  },
+  {
+    "output": "docs/source/platform/firefox/background.mjs",
+    "source": "src/platform/firefox/background.ts"
+  },
+  {
+    "output": "docs/source/platform/firefox/content.mjs",
+    "source": "src/platform/firefox/content.ts"
+  },
+  {
+    "output": "docs/source/platform/firefox/options.mjs",
+    "source": "src/platform/firefox/options.ts"
+  },
+  {
+    "output": "docs/source/platform/whale/background.mjs",
+    "source": "src/platform/whale/background.ts"
+  },
+  {
+    "output": "docs/source/platform/whale/content.mjs",
+    "source": "src/platform/whale/content.ts"
+  },
+  {
+    "output": "docs/source/platform/whale/options.mjs",
+    "source": "src/platform/whale/options.ts"
+  },
+  {
+    "output": "docs/source/ruliweb-icons/background.mjs",
+    "source": "src/ruliweb-icons/background.ts"
+  },
+  {
+    "output": "docs/source/ruliweb-icons/browser-adapter.mjs",
+    "source": "src/ruliweb-icons/browser-adapter.ts"
+  },
+  {
+    "output": "docs/source/ruliweb-icons/catalog.mjs",
+    "source": "src/ruliweb-icons/catalog.ts"
+  },
+  {
+    "output": "docs/source/ruliweb-icons/composer-adapter.mjs",
+    "source": "src/ruliweb-icons/composer-adapter.ts"
+  },
+  {
+    "output": "docs/source/ruliweb-icons/composer-bridge.mjs",
+    "source": "src/ruliweb-icons/composer-bridge.ts"
+  },
+  {
+    "output": "docs/source/ruliweb-icons/core.mjs",
+    "source": "src/ruliweb-icons/core.ts"
+  },
+  {
+    "output": "docs/source/ruliweb-icons/design-system.mjs",
+    "source": "src/ruliweb-icons/design-system.ts"
+  },
+  {
+    "output": "docs/source/ruliweb-icons/feature.mjs",
+    "source": "src/ruliweb-icons/feature.ts"
+  },
+  {
+    "output": "docs/source/ruliweb-icons/library-reader.mjs",
+    "source": "src/ruliweb-icons/library-reader.ts"
+  },
+  {
+    "output": "docs/source/ruliweb-icons/library-search.mjs",
+    "source": "src/ruliweb-icons/library-search.ts"
+  },
+  {
+    "output": "docs/source/ruliweb-icons/metadata-core.mjs",
+    "source": "src/ruliweb-icons/metadata-core.ts"
+  },
+  {
+    "output": "docs/source/ruliweb-icons/metadata.mjs",
+    "source": "src/ruliweb-icons/metadata.ts"
+  },
+  {
+    "output": "docs/source/ruliweb-icons/picker.mjs",
+    "source": "src/ruliweb-icons/picker.ts"
+  },
+  {
+    "output": "docs/source/ruliweb-icons/registry.mjs",
+    "source": "src/ruliweb-icons/registry.ts"
+  },
+  {
+    "output": "docs/source/ruliweb-icons/site-adapter.mjs",
+    "source": "src/ruliweb-icons/site-adapter.ts"
+  },
+  {
+    "output": "docs/source/ruliweb-icons/ui-preferences.mjs",
+    "source": "src/ruliweb-icons/ui-preferences.ts"
+  },
+  {
+    "output": "docs/source/runtime/downloads.mjs",
+    "source": "src/runtime/downloads.ts"
+  },
+  {
+    "output": "docs/source/runtime/icons.mjs",
+    "source": "src/runtime/icons.ts"
+  },
+  {
+    "output": "docs/source/runtime/module-scope.mjs",
+    "source": "src/runtime/module-scope.ts"
+  },
+  {
+    "output": "docs/source/upload-attribution/core.mjs",
+    "source": "src/upload-attribution/core.ts"
+  },
+  {
+    "output": "docs/source/upload-attribution/ui.mjs",
+    "source": "src/upload-attribution/ui.ts"
+  },
+  {
+    "output": "shared/icon-metadata/legacy-adapter.mjs",
+    "source": "src/icon-metadata/legacy-adapter.ts"
+  },
+  {
+    "output": "shared/icon-metadata/tag-codec.mjs",
+    "source": "src/icon-metadata/tag-codec.ts"
+  },
+  {
+    "output": "shared/icon-metadata/tag-edit-model.mjs",
+    "source": "src/icon-metadata/tag-edit-model.ts"
+  }
+]
