@@ -1,6 +1,6 @@
 # 글쓰기 화면 이미지편집 탭 배치 오류 수정
 
-상태: 원인 확인·최소 수정·자동 회귀·실제 Firefox 검증 완료. **Whale 수정 후 최종 검증은 사용자 재로그인 대기이며 전체 작업 완료가 아니다.**
+상태: 원인 확인·최소 수정·자동 회귀·실제 Firefox/Whale 기존 탭의 글쓰기 배치 검증 완료. Whale 자동 새 탭의 API 누락, 실제 답글 입력 UI와 모바일 실기기는 별도 미해결/미검증으로 남긴다.
 
 ## 기준과 작업 보호
 
@@ -62,19 +62,24 @@ Hybrid AST 비교에서는 이번에 의도한 탭 장식 제외 조건 한 개�
 | 항목 | Firefox | Whale |
 | --- | --- | --- |
 | 기준 확장, 글쓰기 오류 재현 | 재현 | 재현 |
-| 확장 전체 OFF 비교 | 임시 확장 제거 후 재진입, 세로 문구 없음 | 최초 비교 무효: 페이지 이동 중단. 재검증 대기 |
-| 아이콘 OFF / 출처 기능 ON | 기준에서 여전히 오류, 원인이 Picker가 아님 확인 | 재검증 대기 |
-| 수정 후 아이콘 ON / OFF | 두 상태 모두 탭 보존 | 재로그인 대기 |
-| 수정 후 새로고침 / 새 탭 재진입 | 정상, 진입 버튼·메타데이터 버튼·업로드 style 각각 1개 | 재로그인 대기 |
-| 창 너비 1280 / 800 / 500px | 세로 문구 없음, 중복 초기화 없음 | 재로그인 대기 |
-| 실제 공개 페이지 댓글 입력 UI | 댓글 입력 1개·확장 진입 1개, 업로드 장식 0개 | 대기 |
+| 확장 전체 OFF 비교 | 임시 확장 제거 후 재진입, 세로 문구 없음 | 확장 관리 화면 OFF 확인 후 기존 탭 새로고침, 확장 진입·메타데이터·업로드 style 모두 0개, 세로 문구 없음 |
+| 기준 코드에서 아이콘 OFF / 출처 기능 ON | 여전히 오류, 원인이 Picker가 아님 확인 | 이 조합의 기준 코드 비교는 NOT RUN |
+| 수정 후 아이콘 ON / OFF | 두 상태 모두 탭 보존 | 정상. ON: 선택·태그 각 1개, OFF: 각각 0개. 출처 UI style 1개 유지, 탭 장식 0개 |
+| 수정 후 새로고침 | 정상, 중복 초기화 없음 | 기존 탭의 실제 navigation timeOrigin 변경 확인, ON 상태에서 각 진입·style 1개 |
+| 수정 후 작성기 재진입 | 새 탭 재진입 정상 | 기존 탭에서 게시판 이동 후 작성기로 돌아와 정상, 각 진입·style 1개 |
+| 창 너비 1280 / 800 / 500px | 세로 문구 없음, 중복 초기화 없음 | 세로 문구 없음, 각 진입·style 1개 |
+| 실제 공개 페이지 댓글 입력 UI | 댓글 입력 1개·확장 진입 1개, 업로드 장식 0개 | 댓글 입력 1개·확장 진입 1개, 업로드 style 및 댓글 장식 0개 |
 | 실제 답글 입력 UI | NOT RUN: 조사한 공개 페이지에서 reply_input 0개 | NOT RUN |
 | 댓글·답글 DOM 보존 단위 검사 | 6개 신규 테스트에 포함 | 공통 구현 검사 |
 | Android 등 모바일 실기기 | NOT RUN | NOT RUN |
 
 좁은 데스크톱 창에서 사이트 고정 폭 때문에 편집기 일부가 잘리는 현상이 남는다. 이 수정은 모바일 반응형 개편을 포함하지 않으며 500px 창 검사를 모바일 실기기 PASS로 대체하지 않는다.
 
-Whale의 최초 확장 OFF 비교는 페이지 이동이 중단되어 기존 DOM이 남았으므로 판정에서 제외한다. 이후 OFF/ON 상태에서는 `chrome.storage.sync unavailable`과 아이콘 UI 누락이 관찰되어 정상 수정 검증으로 인정하지 않았다. 같은 전용 프로필에서 브라우저를 재시작해 확인하며, 재시작으로 사라진 로그인은 사용자에게 다시 요청했다. 이 전용 프로필 재사용은 인증 정보를 다른 프로필로 복사하는 작업이 아니다.
+Whale의 최초 확장 OFF 비교는 페이지 이동이 중단되어 기존 DOM이 남았으므로 판정에서 제외했다. 같은 전용 프로필을 재시작하고 사용자가 재로그인한 후 14:49~14:54 KST에 최종 비교했다. 이 프로필 재사용은 인증 정보를 다른 프로필로 복사하는 작업이 아니다.
+
+테스트 runner의 `page.goto()`는 페이지 이동 확인창을 dismiss하여 `net::ERR_ABORTED`를 발생시켰다. 이를 새로고침 성공으로 세지 않았다. 내용과 이미지가 없는 테스트 작성기임을 확인하고 같은 탭에 브라우저 CDP `Page.reload` / `Page.navigate`를 사용해 실제 문서 재로딩·게시판 왕복을 수행했다. DOM이나 제품 코드를 덮어쓰지 않았으며, `performance.timeOrigin` 변경과 로딩 후 버튼 개수로 확인했다. 종료 중 중복 dialog 해제의 `No dialog is showing` 예외도 runner 오류로 구분한다.
+
+별도 관찰: 자동화의 `context.new_page()`로 연 탭에서는 `chrome.storage.sync unavailable`과 선택·태그 UI 누락이 관찰됐다. 옵션 저장값은 ON이고 기존 인증 탭에서는 같은 옵션에 두 UI가 정상 동작했다. 자동 새 탭을 정상 재진입 PASS로 세지 않았다. 원인이 Whale·자동화 연결·확장 재활성화 중 어디에 있는지는 확정하지 않았고, 이 경로의 기준 코드 대조와 일반 브라우저 새 탭 재현은 미완료다. 이번 UI 변경에는 브라우저 API 처리 변경이 없으나, 이 관찰을 해결됐거나 기존 결함으로 확정한 것으로 보고하지 않는다. 배포 전 별도 재현이 필요하다.
 
 ## 자동 검증
 
@@ -123,10 +128,15 @@ Whale의 최초 확장 OFF 비교는 페이지 이동이 중단되어 기존 DOM
 - `site/screenshots/20261017-121816-firefox/baseline-all-editor.png`: Firefox 수정 전.
 - `site/screenshots/20261017-121816-whale/baseline-all-editor.png`: Whale 수정 전.
 - `site/screenshots/20261017-121816-firefox/fixed-editor-1792207659632.png`: Firefox 수정 후, 아이콘 ON.
-- `candidate-site/`: 재시작한 Whale의 검증 증거. 재로그인 완료 전 기록은 PASS가 아니다.
+- `candidate-site/`: 재시작한 Whale의 검증 증거. 재로그인 완료 전 기록과 자동 새 탭의 API 누락 기록은 PASS가 아니다.
+- `candidate-site/screenshots/20261017-122724-whale/fixed-editor-1792216175063.png`: Whale 재로그인 후 수정 화면.
+- `candidate-site/screenshots/20261017-122724-whale/verified-icons-on.png`, `verified-icons-off.png`, `verified-reentry.png`, `verified-extension-off.png`: 동일한 기존 탭의 상태별 비교.
+- `whale-verified-icons-on.json`, `whale-verified-icons-off.json`, `whale-verified-reentry.json`, `whale-verified-comment.json`, `whale-verified-extension-off.json`: 최종 판정 근거. 탭 장식 0개, 사이트 label 원본 보존, 실제 문서 navigation 및 옵션별 UI 개수 확인.
+- `whale-final-validation.json`: 최종 기존 탭 상태·창 너비·사이트 label 동일성·생성물 135개 해시의 검증 요약.
+- `protection-whale-final.json`: 재로그인 후에도 기존 Worktree 10개·파일 4,081개·배포 파일 201개·원격 refs·기존 PR이 그대로임을 재확인.
 - `baseline-validation/`, `final-validation/`, `validation-summary.json`: 기준/수정 후 명령 결과, Historical 및 Lint 비교.
 - `candidate-output-sha256.json`: 브라우저 후보 생성물의 해시.
 - `committed-build-equivalence.json`: 수정 커밋과 검증에 사용한 생성물 135개의 일치 확인.
 - `new-tests-on-baseline.log`, `editor-layout-tests.log`: 신규 검사에서 수정 전 2개 실패 / 수정 후 6개 통과.
 
-제품·테스트 로컬 커밋: `30d5d71678d8ac06e8dd400ef40680079ca076d6` (`fix: 이미지편집 탭의 업로드 장식 간섭 방지`). 이 커밋은 기존 PR #6에 반영하지 않았다. 보고서의 Whale 대기 상태는 사용자 로그인 후 갱신한다. Push·PR 수정·Merge·배포는 하지 않는다.
+제품·테스트 로컬 커밋: `30d5d71678d8ac06e8dd400ef40680079ca076d6` (`fix: 이미지편집 탭의 업로드 장식 간섭 방지`). 중간 보고서 커밋은 `c0808db`이며, 재로그인 후 결과는 후속 문서 커밋으로 추가했다. 이 커밋들은 기존 PR #6에 반영하지 않았다. 테스트 전용 브라우저만 종료했고 Push·PR 수정·Merge·배포는 하지 않았다.
