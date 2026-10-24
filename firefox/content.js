@@ -356,7 +356,7 @@
             }
           }
         }
-        const artworkId = (payload.artwork_id || "").trim();
+        const artworkId = typeof payload.artwork_id === "string" ? payload.artwork_id.trim() : "";
         if (/^\d{6,12}$/.test(artworkId)) {
           return {
             status: "ok",
@@ -486,7 +486,7 @@
           return [];
         }
         const candidates = [];
-        collectFromPossibleAruJson(metadata, candidates);
+        const fallbackMetadata = collectFromPossibleAruJson(metadata, candidates);
         for (const key of ["Source", "source"]) {
           const v = metadata[key];
           if (typeof v === "string") {
@@ -516,9 +516,9 @@
             }
           }
         }
-        collectUrlCandidates(metadata, candidates);
+        collectUrlCandidates(fallbackMetadata, candidates);
         const rawAll = [];
-        walkStringFields(metadata, rawAll, 0);
+        walkStringFields(fallbackMetadata, rawAll, 0);
         for (const u of rawAll) {
           if (!isPixivUserUrl(u)) {
             candidates.push(u);
@@ -528,6 +528,7 @@
       }
       __name(extractSourceUrl, "extractSourceUrl");
       function collectFromPossibleAruJson(metadata, candidates) {
+        let fallbackMetadata = metadata;
         for (const field of TEXT_FIELDS_FOR_JSON) {
           const v = metadata[field];
           if (typeof v !== "string") {
@@ -537,15 +538,26 @@
           if (!obj || typeof obj !== "object") {
             continue;
           }
+          const invalidKeys = [...ARU_PAYLOAD_URL_KEYS, "artwork_id"].filter((key) => key in obj && typeof obj[key] !== "string");
+          if (invalidKeys.length) {
+            const validFields = { ...obj };
+            for (const key of invalidKeys) {
+              delete validFields[key];
+            }
+            fallbackMetadata = {
+              ...fallbackMetadata,
+              [field]: JSON.stringify(validFields)
+            };
+          }
           for (const key of ["artwork_url", "source_url", "artworkUrl"]) {
-            const urlVal = (obj[key] || "").trim();
+            const urlVal = typeof obj[key] === "string" ? obj[key].trim() : "";
             if (urlVal && /^https?:\/\//.test(urlVal) && !isPixivUserUrl(urlVal)) {
               candidates.push(urlVal);
             } else if (urlVal && isPixivUserUrl(urlVal)) {
               console.debug("[Aru Source Captioner] source candidate skipped (artist url):", { key, urlVal });
             }
           }
-          const artworkId = (obj.artwork_id || "").trim();
+          const artworkId = typeof obj.artwork_id === "string" ? obj.artwork_id.trim() : "";
           if (/^\d{6,12}$/.test(artworkId)) {
             candidates.push(`https://www.pixiv.net/artworks/${artworkId}`);
           }
@@ -557,6 +569,7 @@
             }
           }
         }
+        return fallbackMetadata;
       }
       __name(collectFromPossibleAruJson, "collectFromPossibleAruJson");
       function collectUrlCandidates(metadata, candidates) {

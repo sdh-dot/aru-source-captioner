@@ -343,10 +343,9 @@ export function installWhaleContent({
       return { status: "missing", url: null, reason: "png_itxt_missing" };
     }
 
-    function extractSourceFromAruArchivePayload(payload: {
-      [x: string]: any;
-      artwork_id: any;
-    }): ParsedSourceResult {
+    function extractSourceFromAruArchivePayload(
+      payload: Record<string, unknown>,
+    ): ParsedSourceResult {
       if (!payload || typeof payload !== "object") {
         return { status: "missing", url: null, reason: "png_itxt_no_url" };
       }
@@ -362,8 +361,9 @@ export function installWhaleContent({
         }
       }
 
-      // artwork_id가 숫자 Pixiv ID면 작품 URL 생성.
-      const artworkId = (payload.artwork_id || "").trim();
+      // 생산자의 문자열 ID만 허용하며 잘못된 외부 값을 출처로 강제 변환하지 않는다.
+      const artworkId =
+        typeof payload.artwork_id === "string" ? payload.artwork_id.trim() : "";
       if (/^\d{6,12}$/.test(artworkId)) {
         return {
           status: "ok",
@@ -520,7 +520,7 @@ export function installWhaleContent({
       const candidates: string[] = [];
 
       // 우선순위 1·2·3: AruArchive JSON (artwork_url / source_url / artwork_id)
-      collectFromPossibleAruJson(metadata, candidates);
+      const fallbackMetadata = collectFromPossibleAruJson(metadata, candidates);
 
       // 우선순위 4: XMP dc:Source — URL 형식이고 /users/ 가 아닌 경우만 허용
       for (const key of ["Source", "source"]) {
@@ -559,12 +559,12 @@ export function installWhaleContent({
       }
 
       // 우선순위 6: 텍스트 필드를 raw URL로 직접 사용 (https?:// 시작만)
-      collectUrlCandidates(metadata, candidates);
+      collectUrlCandidates(fallbackMetadata, candidates);
 
       // 우선순위 7: 모든 문자열 필드에서 https?:// 패턴 fallback.
       // /users/ URL은 작가 페이지이므로 작품 출처에서 제외.
       const rawAll: string[] = [];
-      walkStringFields(metadata, rawAll, 0);
+      walkStringFields(fallbackMetadata, rawAll, 0);
       for (const u of rawAll) {
         if (!isPixivUserUrl(u)) {
           candidates.push(u);
@@ -575,9 +575,10 @@ export function installWhaleContent({
     }
 
     function collectFromPossibleAruJson(
-      metadata: { [x: string]: any },
-      candidates: any[],
+      metadata: Record<string, unknown>,
+      candidates: string[],
     ) {
+      let fallbackMetadata = metadata;
       for (const field of TEXT_FIELDS_FOR_JSON) {
         const v = metadata[field];
         if (typeof v !== "string") {
@@ -588,9 +589,25 @@ export function installWhaleContent({
           continue;
         }
 
+        // 거절한 JSON 필드 안의 URL이 마지막 텍스트 fallback에서 다시 출처가 되지 않게 한다.
+        // 원본 메타데이터와 독립적인 정상 필드는 보존한다.
+        const invalidKeys = [...ARU_PAYLOAD_URL_KEYS, "artwork_id"].filter(
+          (key) => key in obj && typeof obj[key] !== "string",
+        );
+        if (invalidKeys.length) {
+          const validFields = { ...obj };
+          for (const key of invalidKeys) {
+            delete validFields[key];
+          }
+          fallbackMetadata = {
+            ...fallbackMetadata,
+            [field]: JSON.stringify(validFields),
+          };
+        }
+
         // artwork_url / source_url / artworkUrl: URL 형식이고 /users/ 아닌 경우만
         for (const key of ["artwork_url", "source_url", "artworkUrl"]) {
-          const urlVal = (obj[key] || "").trim();
+          const urlVal = typeof obj[key] === "string" ? obj[key].trim() : "";
           if (
             urlVal &&
             /^https?:\/\//.test(urlVal) &&
@@ -605,8 +622,9 @@ export function installWhaleContent({
           }
         }
 
-        // artwork_id가 숫자 Pixiv ID → 작품 URL 생성
-        const artworkId = (obj.artwork_id || "").trim();
+        // 문자열 ID만 판독해 잘못된 ID가 다른 정상 후보 탐색을 중단하지 않게 한다.
+        const artworkId =
+          typeof obj.artwork_id === "string" ? obj.artwork_id.trim() : "";
         if (/^\d{6,12}$/.test(artworkId)) {
           candidates.push(`https://www.pixiv.net/artworks/${artworkId}`);
         }
@@ -620,6 +638,7 @@ export function installWhaleContent({
           }
         }
       }
+      return fallbackMetadata;
     }
 
     function collectUrlCandidates(
