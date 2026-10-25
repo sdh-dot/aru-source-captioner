@@ -3447,7 +3447,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 
   // docs/source/ruliweb-icons/site-adapter.mjs
   function createSiteAdapter({ environment: global = defaultEnvironment, metadata = createMetadata({ environment: global }).Metadata, attributeTags = tag_codec_exports, isSafeMediaUrl } = {}) {
-    const { DOMParser, AbortController, TextDecoder: TextDecoder2, TextEncoder } = global;
+    const { DOMParser, AbortController: AbortController2, TextDecoder: TextDecoder2, TextEncoder } = global;
     const number = /* @__PURE__ */ __name((value) => Number.isSafeInteger(Number(value)) && Number(value) > 0 ? Number(value) : null, "number");
     const stopped = /* @__PURE__ */ __name(() => Object.assign(new Error("수집을 중지했습니다."), { code: "ABORTED" }), "stopped");
     function delay(ms, signal) {
@@ -4096,7 +4096,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
       if (!forceRead && global.location?.href?.split(/[?#]/)[0] === url && current?.querySelector('.view_content[itemprop="articleBody"],.view_content article')) {
         return current;
       }
-      const controller = new AbortController(), abort = /* @__PURE__ */ __name(() => controller.abort(), "abort");
+      const controller = new AbortController2(), abort = /* @__PURE__ */ __name(() => controller.abort(), "abort");
       signal?.addEventListener("abort", abort, { once: true });
       if (signal?.aborted) {
         controller.abort();

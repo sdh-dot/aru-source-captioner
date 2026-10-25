@@ -3,6 +3,182 @@
   var __defProp = Object.defineProperty;
   var __name = (target, value) => __defProp(target, "name", { value, configurable: true });
 
+  // docs/source/runtime/settings-read.mjs
+  var clock = {
+    setTimeout: /* @__PURE__ */ __name((callback, delay) => globalThis.setTimeout(callback, delay), "setTimeout"),
+    clearTimeout: /* @__PURE__ */ __name((handle) => globalThis.clearTimeout(handle), "clearTimeout")
+  };
+  function failure(code, message) {
+    return Object.assign(new Error(message), { code });
+  }
+  __name(failure, "failure");
+  function errorResult(error) {
+    const value = error instanceof Error ? error : failure("API_ERROR", String(error));
+    return {
+      state: /extension context invalidated/i.test(value.message) ? "invalidated" : "failed",
+      error: value,
+      attempts: 1
+    };
+  }
+  __name(errorResult, "errorResult");
+  function selectApi(root) {
+    const browser = root.browser;
+    const promiseApi = !!(browser?.runtime && browser.storage);
+    return { api: promiseApi ? browser : root.chrome, promiseApi };
+  }
+  __name(selectApi, "selectApi");
+  function readOnce(root, keys, timer, signal) {
+    return new Promise((resolve) => {
+      let finished = false;
+      let deadline;
+      const finish = /* @__PURE__ */ __name((result2) => {
+        if (finished) {
+          return;
+        }
+        finished = true;
+        timer.clearTimeout(deadline);
+        signal?.removeEventListener("abort", cancel);
+        resolve(result2);
+      }, "finish");
+      const cancel = /* @__PURE__ */ __name(() => finish({
+        state: "cancelled",
+        attempts: 1,
+        error: failure("SETTINGS_CANCELLED", "설정 조회가 취소되었습니다.")
+      }), "cancel");
+      if (signal?.aborted) {
+        cancel();
+        return;
+      }
+      signal?.addEventListener("abort", cancel, { once: true });
+      deadline = timer.setTimeout(() => finish({
+        state: "failed",
+        attempts: 1,
+        error: failure("SETTINGS_TIMEOUT", "설정 조회 응답 시간이 초과되었습니다.")
+      }), 1e3);
+      const accept = /* @__PURE__ */ __name((value) => {
+        if (!value || typeof value !== "object" || Array.isArray(value)) {
+          finish({
+            state: "failed",
+            attempts: 1,
+            error: failure("SETTINGS_INVALID_RESPONSE", "설정 조회 응답이 올바르지 않습니다.")
+          });
+        } else {
+          finish({
+            state: "success",
+            values: value,
+            attempts: 1
+          });
+        }
+      }, "accept");
+      try {
+        const { api, promiseApi } = selectApi(root);
+        const sync = api?.storage?.sync;
+        if (!sync || typeof sync.get !== "function") {
+          finish({
+            state: "failed",
+            attempts: 1,
+            error: failure("API_UNAVAILABLE", "확장 프로그램 API를 사용할 수 없습니다.")
+          });
+          return;
+        }
+        const callback = /* @__PURE__ */ __name((value) => {
+          try {
+            const error = api?.runtime?.lastError;
+            if (error) {
+              finish(errorResult(failure("API_ERROR", error.message || "확장 프로그램 API 요청에 실패했습니다.")));
+            } else {
+              accept(value);
+            }
+          } catch (error) {
+            finish(errorResult(error));
+          }
+        }, "callback");
+        const returned = promiseApi ? sync.get(keys) : sync.get(keys, callback);
+        if (returned && typeof returned.then === "function") {
+          Promise.resolve(returned).then(accept, (error) => finish(errorResult(error)));
+        }
+      } catch (error) {
+        finish(errorResult(error));
+      }
+    });
+  }
+  __name(readOnce, "readOnce");
+  async function readSettings(root, keys, options = {}) {
+    const timer = options.clock ?? clock;
+    const controller = new AbortController();
+    const cancel = /* @__PURE__ */ __name(() => controller.abort(), "cancel");
+    if (options.signal?.aborted) {
+      cancel();
+    } else {
+      options.signal?.addEventListener("abort", cancel, { once: true });
+    }
+    const unsubscribe = subscribeSettings(root, (changes, area) => {
+      if (area === "sync" && Object.keys(changes).some((key) => keys === null || keys.includes(key))) {
+        cancel();
+      }
+    });
+    try {
+      for (let attempt = 1; ; attempt++) {
+        const result2 = await readOnce(root, keys, timer, controller.signal);
+        result2.attempts = attempt;
+        if (controller.signal.aborted) {
+          return {
+            state: "cancelled",
+            attempts: attempt,
+            error: failure("SETTINGS_CANCELLED", "설정 조회가 취소되었습니다.")
+          };
+        }
+        if (result2.state !== "failed" || attempt === 3) {
+          return result2;
+        }
+        const proceed = await new Promise((resolve) => {
+          if (controller.signal.aborted) {
+            resolve(false);
+            return;
+          }
+          const cancelWait = /* @__PURE__ */ __name(() => {
+            timer.clearTimeout(handle);
+            resolve(false);
+          }, "cancelWait");
+          const handle = timer.setTimeout(() => {
+            controller.signal.removeEventListener("abort", cancelWait);
+            resolve(true);
+          }, attempt === 1 ? 200 : 500);
+          controller.signal.addEventListener("abort", cancelWait, { once: true });
+        });
+        if (!proceed) {
+          return {
+            state: "cancelled",
+            attempts: attempt,
+            error: failure("SETTINGS_CANCELLED", "설정 조회가 취소되었습니다.")
+          };
+        }
+      }
+    } finally {
+      options.signal?.removeEventListener("abort", cancel);
+      unsubscribe?.();
+    }
+  }
+  __name(readSettings, "readSettings");
+  function subscribeSettings(root, listener) {
+    try {
+      const changed = selectApi(root).api?.storage?.onChanged;
+      if (!changed) {
+        return void 0;
+      }
+      changed.addListener(listener);
+      return () => {
+        try {
+          changed.removeListener(listener);
+        } catch {
+        }
+      };
+    } catch {
+      return void 0;
+    }
+  }
+  __name(subscribeSettings, "subscribeSettings");
+
   // docs/source/source-caption/pixiv-filename.mjs
   function parsePixivFilenameUrl(filename) {
     if (typeof filename !== "string") {
@@ -140,7 +316,7 @@
   // docs/source/platform/firefox/content.mjs
   function installFirefoxContent({ environment = defaultEnvironment, dependencies = {} } = {}) {
     const window = environment.window ?? environment;
-    const { document, location, navigator, chrome, MutationObserver, HTMLElement, TextDecoder, URL, exifr, console } = environment;
+    const { document, location, navigator, MutationObserver, HTMLElement, TextDecoder, URL, exifr, console } = environment;
     const setTimeout = typeof environment.setTimeout === "function" ? (...args) => environment.setTimeout(...args) : void 0;
     const setInterval = typeof environment.setInterval === "function" ? (...args) => environment.setInterval(...args) : void 0;
     const clearInterval = typeof environment.clearInterval === "function" ? (...args) => environment.clearInterval(...args) : void 0;
@@ -178,64 +354,18 @@
         }
       }
       __name(isMobileAutoInsertEnvironment, "isMobileAutoInsertEnvironment");
-      function isChromeStorageSyncAvailable() {
-        try {
-          if (typeof chrome === "undefined") {
-            return false;
-          }
-          if (!chrome) {
-            return false;
-          }
-          if (!chrome.storage) {
-            return false;
-          }
-          if (!chrome.storage.sync) {
-            return false;
-          }
-          if (typeof chrome.storage.sync.get !== "function") {
-            return false;
-          }
-          return true;
-        } catch {
-          return false;
+      async function loadConfig() {
+        const result2 = await readSettings(environment, null);
+        if (result2.state !== "success") {
+          throw result2.error;
         }
-      }
-      __name(isChromeStorageSyncAvailable, "isChromeStorageSyncAvailable");
-      function loadConfig() {
-        return new Promise((resolve) => {
-          try {
-            if (!isChromeStorageSyncAvailable()) {
-              console.warn("[Aru Source Captioner] chrome.storage.sync unavailable — using default options");
-              resolve({ ...DEFAULT_OPTIONS });
-              return;
-            }
-            chrome.storage.sync.get(null, (items) => {
-              try {
-                if (typeof chrome !== "undefined" && chrome && chrome.runtime && chrome.runtime.lastError) {
-                  console.warn("[Aru Source Captioner] storage.get failed, falling back to defaults:", chrome.runtime.lastError.message);
-                  resolve({ ...DEFAULT_OPTIONS });
-                  return;
-                }
-                const merged = {
-                  ...DEFAULT_OPTIONS
-                };
-                const safeItems = items && typeof items === "object" ? items : {};
-                for (const key of Object.keys(DEFAULT_OPTIONS)) {
-                  if (key in safeItems) {
-                    merged[key] = safeItems[key];
-                  }
-                }
-                resolve(merged);
-              } catch (callbackErr) {
-                console.warn("[Aru Source Captioner] storage.get callback threw, falling back to defaults:", callbackErr);
-                resolve({ ...DEFAULT_OPTIONS });
-              }
-            });
-          } catch (err) {
-            console.warn("[Aru Source Captioner] loadConfig threw, falling back to defaults:", err);
-            resolve({ ...DEFAULT_OPTIONS });
+        const merged = { ...DEFAULT_OPTIONS };
+        for (const key of Object.keys(DEFAULT_OPTIONS)) {
+          if (key in result2.values) {
+            merged[key] = result2.values[key];
           }
-        });
+        }
+        return merged;
       }
       __name(loadConfig, "loadConfig");
       function publishUploadStatus(snapshot) {

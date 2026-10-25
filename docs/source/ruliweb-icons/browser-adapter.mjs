@@ -1,4 +1,5 @@
 // 자동 생성: src/ruliweb-icons/browser-adapter.ts. tools/compile-typescript.mjs로 갱신한다.
+import { readSettings, subscribeSettings } from "../runtime/settings-read.mjs";
 import { defaultEnvironment, } from "../runtime/contracts.mjs";
 // Promise/callback 차이와 Chromium JSON 바이트 포맷을 이 경계에서 보존한다.
 export function createBrowserAdapter(root = defaultEnvironment) {
@@ -8,10 +9,15 @@ export function createBrowserAdapter(root = defaultEnvironment) {
         preferredSort: "source",
         localOverlay: true,
     });
-    const promiseApi = typeof root.browser !== "undefined" &&
-        root.browser.runtime &&
-        root.browser.storage;
-    const api = promiseApi ? root.browser : root.chrome;
+    let promiseApi = false;
+    let api;
+    try {
+        promiseApi = !!(root.browser?.runtime && root.browser.storage);
+        api = promiseApi ? root.browser : root.chrome;
+    }
+    catch {
+        // 설정 getter의 실패는 readOptions의 유한 조회에서 판정한다.
+    }
     function failure(code, message) {
         const error = new Error(message);
         error.code = code;
@@ -129,10 +135,11 @@ export function createBrowserAdapter(root = defaultEnvironment) {
         });
     }
     async function readOptions() {
-        const stored = await invoke(api && api.storage && api.storage.sync, "get", [
-            ["enabled", "aruIconsOptions"],
-        ]);
-        const items = stored || {};
+        const result = await readSettings(root, ["enabled", "aruIconsOptions"]);
+        if (result.state !== "success") {
+            throw result.error;
+        }
+        const items = result.values;
         const supplied = items.aruIconsOptions;
         const iconOptions = Object.assign({}, defaults, supplied && typeof supplied === "object" && !Array.isArray(supplied)
             ? supplied
@@ -146,10 +153,7 @@ export function createBrowserAdapter(root = defaultEnvironment) {
             active: enabled && iconOptions.enabled === true,
         };
     }
-    function onChanged(callback) {
-        if (!api || !api.storage || !api.storage.onChanged) {
-            return () => { };
-        }
+    function onChanged(callback, onPending) {
         let disposed = false;
         let revision = 0;
         const listener = (changes, area) => {
@@ -157,6 +161,7 @@ export function createBrowserAdapter(root = defaultEnvironment) {
                 return;
             }
             const current = ++revision;
+            onPending?.();
             readOptions()
                 .then((options) => {
                 if (!disposed && current === revision) {
@@ -173,11 +178,11 @@ export function createBrowserAdapter(root = defaultEnvironment) {
                 }
             });
         };
-        api.storage.onChanged.addListener(listener);
+        const unsubscribe = subscribeSettings(root, listener);
         return () => {
             disposed = true;
             ++revision;
-            api.storage.onChanged.removeListener(listener);
+            unsubscribe?.();
         };
     }
     async function requestCache(action, payload) {

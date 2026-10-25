@@ -133,12 +133,16 @@ test('read-only upload diagnostic changes no editor/file/control state and conta
     assert.equal(diagnostic.uploadLikeResourceTimings.length,1);
   }finally{h.close();}
 });
-test('disabled extension leaves native upload UI untouched and existing settings can restore it',()=>{
+test('disabled extension leaves native upload UI untouched and verified settings can restore it',async()=>{
   const h=fixture();try{
-    let changed;h.w.chrome={runtime:{getURL:p=>'https://extension.invalid/'+p},storage:{sync:{get:(_,cb)=>cb({enabled:false})},onChanged:{addListener:listener=>changed=listener,removeListener(){}}}};
+    let enabled=false;const listeners=new Set();
+    const changed=value=>{enabled=value;for(const listener of [...listeners])listener({enabled:{newValue:value}},'sync');};
+    h.w.chrome={runtime:{getURL:p=>'https://extension.invalid/'+p},storage:{sync:{get:(_,cb)=>cb({enabled})},onChanged:{addListener:listener=>listeners.add(listener),removeListener:listener=>listeners.delete(listener)}}};
     h.w.eval(source('docs/source/ruliweb-icons/design-system.js'));h.w.eval(source('docs/source/upload-attribution/ui.js'));
-    assert.equal(h.w.document.querySelector('[data-aru-native-upload]'),null);changed({enabled:{newValue:true}},'sync');assert.ok(h.w.document.querySelector('[data-aru-native-upload]'));
-    changed({enabled:{newValue:false}},'sync');assert.equal(h.w.document.querySelector('[data-aru-native-upload]'),null);assert.equal(h.w.document.querySelector('[data-aru-native-upload-style]'),null);
+    await tick();assert.equal(h.w.document.querySelector('[data-aru-native-upload]'),null);
+    changed(true);assert.equal(h.w.document.querySelector('[data-aru-native-upload]'),null);
+    await tick();assert.ok(h.w.document.querySelector('[data-aru-native-upload]'));assert.equal(listeners.size,1);
+    changed(false);assert.equal(h.w.document.querySelector('[data-aru-native-upload]'),null);await tick();assert.equal(h.w.document.querySelector('[data-aru-native-upload-style]'),null);
   }finally{h.w.dispatchEvent(new h.w.Event('pagehide'));h.close();}
 });
 test('session capacity refuses attribution and displays a reason without changing native upload behavior',async()=>{

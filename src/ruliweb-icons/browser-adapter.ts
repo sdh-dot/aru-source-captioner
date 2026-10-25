@@ -1,3 +1,4 @@
+import { readSettings, subscribeSettings } from "../runtime/settings-read.ts";
 import type { DynamicApi, CodedError } from "../runtime/contracts.ts";
 
 import {
@@ -9,16 +10,19 @@ export function createBrowserAdapter(
   root: RuntimeEnvironment = defaultEnvironment,
 ) {
   const defaults = Object.freeze({
-    enabled: false,
+    enabled: false as boolean,
     autoLoad: true,
     preferredSort: "source",
     localOverlay: true,
   });
-  const promiseApi =
-    typeof root.browser !== "undefined" &&
-    root.browser.runtime &&
-    root.browser.storage;
-  const api = promiseApi ? root.browser : root.chrome;
+  let promiseApi = false;
+  let api: DynamicApi | undefined;
+  try {
+    promiseApi = !!(root.browser?.runtime && root.browser.storage);
+    api = promiseApi ? root.browser : root.chrome;
+  } catch {
+    // 설정 getter의 실패는 readOptions의 유한 조회에서 판정한다.
+  }
 
   function failure(code: string, message?: string | undefined): CodedError {
     const error = new Error(message);
@@ -160,10 +164,11 @@ export function createBrowserAdapter(
   }
 
   async function readOptions() {
-    const stored = await invoke(api && api.storage && api.storage.sync, "get", [
-      ["enabled", "aruIconsOptions"],
-    ]);
-    const items = stored || {};
+    const result = await readSettings(root, ["enabled", "aruIconsOptions"]);
+    if (result.state !== "success") {
+      throw result.error;
+    }
+    const items = result.values;
     const supplied = items.aruIconsOptions;
     const iconOptions = Object.assign(
       {},
@@ -188,20 +193,16 @@ export function createBrowserAdapter(
       aruIconsOptions: any;
       active: boolean;
     }) => void,
+    onPending?: () => void,
   ) {
-    if (!api || !api.storage || !api.storage.onChanged) {
-      return () => {};
-    }
     let disposed = false;
     let revision = 0;
-    const listener = (
-      changes: { enabled: any; aruIconsOptions: any },
-      area: string,
-    ) => {
+    const listener = (changes: Record<string, unknown>, area: string) => {
       if (area !== "sync" || (!changes.enabled && !changes.aruIconsOptions)) {
         return;
       }
       const current = ++revision;
+      onPending?.();
       readOptions()
         .then((options) => {
           if (!disposed && current === revision) {
@@ -218,11 +219,11 @@ export function createBrowserAdapter(
           }
         });
     };
-    api.storage.onChanged.addListener(listener);
+    const unsubscribe = subscribeSettings(root, listener);
     return () => {
       disposed = true;
       ++revision;
-      api.storage.onChanged.removeListener(listener);
+      unsubscribe?.();
     };
   }
 

@@ -45,14 +45,19 @@ export function createIconsFeature({ environment = defaultEnvironment, dependenc
                 if (this.unsubscribe || this.destroyed) {
                     return;
                 }
-                this.unsubscribe = this.browser.onChanged(() => this.applyOptions());
+                this.unsubscribe = this.browser.onChanged((options) => this.applyOptions(options), () => {
+                    ++this.optionsRevision;
+                    this.setActive(false);
+                });
                 await this.applyOptions();
             }
-            async applyOptions() {
+            async applyOptions(confirmed) {
                 const revision = ++this.optionsRevision;
+                // 재조회 중에는 이전 ON으로 새 효과를 시작하지 않는다. 기존 OFF 정리 경로를 재사용한다.
+                this.setActive(false);
                 let opts;
                 try {
-                    opts = await this.browser.readOptions();
+                    opts = confirmed ?? (await this.browser.readOptions());
                 }
                 catch (_) {
                     opts = {
@@ -63,8 +68,10 @@ export function createIconsFeature({ environment = defaultEnvironment, dependenc
                 if (this.destroyed || revision !== this.optionsRevision) {
                     return;
                 }
-                const active = opts.active === true;
                 this.options = opts.aruIconsOptions;
+                this.setActive(opts.active === true);
+            }
+            setActive(active) {
                 if (active === this.enabled) {
                     return;
                 }

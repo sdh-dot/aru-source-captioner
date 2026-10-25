@@ -31,7 +31,7 @@
     ]);
     const stats = /* @__PURE__ */ new Map(), windowSize = 512;
     let enabled = false, generation = 0;
-    const clock = /* @__PURE__ */ __name(() => g.performance.now(), "clock");
+    const clock2 = /* @__PURE__ */ __name(() => g.performance.now(), "clock");
     const row = /* @__PURE__ */ __name((name) => {
       if (!stats.has(name)) {
         stats.set(name, {
@@ -63,7 +63,7 @@
         if (!valid(name)) {
           return;
         }
-        const value = row(name), started = clock(), epoch = generation;
+        const value = row(name), started = clock2(), epoch = generation;
         value.active++;
         value.peak = Math.max(value.peak, value.active);
         let finished = false;
@@ -72,7 +72,7 @@
             return;
           }
           finished = true;
-          const duration = Math.max(0, clock() - started);
+          const duration = Math.max(0, clock2() - started);
           value.active--;
           value.count++;
           value.total += duration;
@@ -128,6 +128,182 @@
   }
   __name(getLegacyPerformanceMetrics, "getLegacyPerformanceMetrics");
 
+  // docs/source/runtime/settings-read.mjs
+  var clock = {
+    setTimeout: /* @__PURE__ */ __name((callback, delay) => globalThis.setTimeout(callback, delay), "setTimeout"),
+    clearTimeout: /* @__PURE__ */ __name((handle) => globalThis.clearTimeout(handle), "clearTimeout")
+  };
+  function failure(code, message) {
+    return Object.assign(new Error(message), { code });
+  }
+  __name(failure, "failure");
+  function errorResult(error) {
+    const value = error instanceof Error ? error : failure("API_ERROR", String(error));
+    return {
+      state: /extension context invalidated/i.test(value.message) ? "invalidated" : "failed",
+      error: value,
+      attempts: 1
+    };
+  }
+  __name(errorResult, "errorResult");
+  function selectApi(root) {
+    const browser = root.browser;
+    const promiseApi = !!(browser?.runtime && browser.storage);
+    return { api: promiseApi ? browser : root.chrome, promiseApi };
+  }
+  __name(selectApi, "selectApi");
+  function readOnce(root, keys, timer, signal) {
+    return new Promise((resolve) => {
+      let finished = false;
+      let deadline;
+      const finish = /* @__PURE__ */ __name((result2) => {
+        if (finished) {
+          return;
+        }
+        finished = true;
+        timer.clearTimeout(deadline);
+        signal?.removeEventListener("abort", cancel);
+        resolve(result2);
+      }, "finish");
+      const cancel = /* @__PURE__ */ __name(() => finish({
+        state: "cancelled",
+        attempts: 1,
+        error: failure("SETTINGS_CANCELLED", "설정 조회가 취소되었습니다.")
+      }), "cancel");
+      if (signal?.aborted) {
+        cancel();
+        return;
+      }
+      signal?.addEventListener("abort", cancel, { once: true });
+      deadline = timer.setTimeout(() => finish({
+        state: "failed",
+        attempts: 1,
+        error: failure("SETTINGS_TIMEOUT", "설정 조회 응답 시간이 초과되었습니다.")
+      }), 1e3);
+      const accept = /* @__PURE__ */ __name((value) => {
+        if (!value || typeof value !== "object" || Array.isArray(value)) {
+          finish({
+            state: "failed",
+            attempts: 1,
+            error: failure("SETTINGS_INVALID_RESPONSE", "설정 조회 응답이 올바르지 않습니다.")
+          });
+        } else {
+          finish({
+            state: "success",
+            values: value,
+            attempts: 1
+          });
+        }
+      }, "accept");
+      try {
+        const { api, promiseApi } = selectApi(root);
+        const sync = api?.storage?.sync;
+        if (!sync || typeof sync.get !== "function") {
+          finish({
+            state: "failed",
+            attempts: 1,
+            error: failure("API_UNAVAILABLE", "확장 프로그램 API를 사용할 수 없습니다.")
+          });
+          return;
+        }
+        const callback = /* @__PURE__ */ __name((value) => {
+          try {
+            const error = api?.runtime?.lastError;
+            if (error) {
+              finish(errorResult(failure("API_ERROR", error.message || "확장 프로그램 API 요청에 실패했습니다.")));
+            } else {
+              accept(value);
+            }
+          } catch (error) {
+            finish(errorResult(error));
+          }
+        }, "callback");
+        const returned = promiseApi ? sync.get(keys) : sync.get(keys, callback);
+        if (returned && typeof returned.then === "function") {
+          Promise.resolve(returned).then(accept, (error) => finish(errorResult(error)));
+        }
+      } catch (error) {
+        finish(errorResult(error));
+      }
+    });
+  }
+  __name(readOnce, "readOnce");
+  async function readSettings(root, keys, options = {}) {
+    const timer = options.clock ?? clock;
+    const controller = new AbortController();
+    const cancel = /* @__PURE__ */ __name(() => controller.abort(), "cancel");
+    if (options.signal?.aborted) {
+      cancel();
+    } else {
+      options.signal?.addEventListener("abort", cancel, { once: true });
+    }
+    const unsubscribe = subscribeSettings(root, (changes, area) => {
+      if (area === "sync" && Object.keys(changes).some((key) => keys === null || keys.includes(key))) {
+        cancel();
+      }
+    });
+    try {
+      for (let attempt = 1; ; attempt++) {
+        const result2 = await readOnce(root, keys, timer, controller.signal);
+        result2.attempts = attempt;
+        if (controller.signal.aborted) {
+          return {
+            state: "cancelled",
+            attempts: attempt,
+            error: failure("SETTINGS_CANCELLED", "설정 조회가 취소되었습니다.")
+          };
+        }
+        if (result2.state !== "failed" || attempt === 3) {
+          return result2;
+        }
+        const proceed = await new Promise((resolve) => {
+          if (controller.signal.aborted) {
+            resolve(false);
+            return;
+          }
+          const cancelWait = /* @__PURE__ */ __name(() => {
+            timer.clearTimeout(handle);
+            resolve(false);
+          }, "cancelWait");
+          const handle = timer.setTimeout(() => {
+            controller.signal.removeEventListener("abort", cancelWait);
+            resolve(true);
+          }, attempt === 1 ? 200 : 500);
+          controller.signal.addEventListener("abort", cancelWait, { once: true });
+        });
+        if (!proceed) {
+          return {
+            state: "cancelled",
+            attempts: attempt,
+            error: failure("SETTINGS_CANCELLED", "설정 조회가 취소되었습니다.")
+          };
+        }
+      }
+    } finally {
+      options.signal?.removeEventListener("abort", cancel);
+      unsubscribe?.();
+    }
+  }
+  __name(readSettings, "readSettings");
+  function subscribeSettings(root, listener) {
+    try {
+      const changed = selectApi(root).api?.storage?.onChanged;
+      if (!changed) {
+        return void 0;
+      }
+      changed.addListener(listener);
+      return () => {
+        try {
+          changed.removeListener(listener);
+        } catch {
+        }
+      };
+    } catch {
+      return void 0;
+    }
+  }
+  __name(subscribeSettings, "subscribeSettings");
+
   // docs/source/runtime/contracts.mjs
   var defaultEnvironment = globalThis;
 
@@ -149,6 +325,7 @@
   __name(createModuleScope, "createModuleScope");
 
   // docs/source/upload-attribution/ui.mjs
+  var activeUi = /* @__PURE__ */ new WeakMap();
   function createAttributionUi({ environment = defaultEnvironment, dependencies = {}, metrics = null } = {}) {
     let icons2 = createModuleScope(dependencies.icons, ["DesignSystem"], []);
     let uploadUI2 = createModuleScope(dependencies.uploadUI, [], []);
@@ -336,35 +513,52 @@
       }
       uploadUI2 = UploadUI;
       if (!g.__aruUploadNoAutoStart && g.document && /^\/community\/board\/[^/]+\/(write|modify)(?:\/|$)/.test(g.location.pathname)) {
+        activeUi.get(g.document)?.();
         let ui;
-        const apply = /* @__PURE__ */ __name((items) => {
-          if (items?.enabled === false) {
-            ui?.destroy();
-            ui = null;
-          } else if (!ui) {
-            ui = new UploadUI();
-          }
-        }, "apply");
-        const storage = g.chrome?.storage;
-        try {
-          if (storage?.sync?.get) {
-            storage.sync.get({ enabled: true }, apply);
-          } else {
-            apply({ enabled: true });
-          }
-        } catch (_) {
-          apply({ enabled: true });
-        }
+        let revision = 0;
+        let disposed = false;
+        let request;
+        let unsubscribe;
+        const pause = /* @__PURE__ */ __name(() => {
+          ui?.destroy();
+          ui = void 0;
+        }, "pause");
         const changed = /* @__PURE__ */ __name((changes, area) => {
           if (area === "sync" && changes.enabled) {
-            apply({ enabled: changes.enabled.newValue });
+            void refresh();
           }
         }, "changed");
-        storage?.onChanged?.addListener?.(changed);
-        g.addEventListener("pagehide", () => {
-          ui?.destroy();
-          storage?.onChanged?.removeListener?.(changed);
-        }, { once: true });
+        const refresh = /* @__PURE__ */ __name(async () => {
+          const current = ++revision;
+          request?.abort();
+          request = new g.AbortController();
+          pause();
+          unsubscribe ??= subscribeSettings(g, changed);
+          const result2 = await readSettings(g, ["enabled"], {
+            signal: request.signal
+          });
+          if (disposed || current !== revision || result2.state !== "success") {
+            return;
+          }
+          unsubscribe ??= subscribeSettings(g, changed);
+          if (result2.values.enabled !== false) {
+            ui = new UploadUI();
+          }
+        }, "refresh");
+        const dispose = /* @__PURE__ */ __name(() => {
+          disposed = true;
+          ++revision;
+          request?.abort();
+          pause();
+          unsubscribe?.();
+          g.removeEventListener("pagehide", dispose);
+          if (activeUi.get(g.document) === dispose) {
+            activeUi.delete(g.document);
+          }
+        }, "dispose");
+        activeUi.set(g.document, dispose);
+        g.addEventListener("pagehide", dispose, { once: true });
+        void refresh();
       }
     }, "initializeAttributionUi");
     initializeAttributionUi(environment);

@@ -1,7 +1,9 @@
 // 자동 생성: src/upload-attribution/ui.ts. tools/compile-typescript.mjs로 갱신한다.
+import { readSettings, subscribeSettings } from "../runtime/settings-read.mjs";
 import { defaultEnvironment, } from "../runtime/contracts.mjs";
 // 업로드 출처 매칭 결과를 작성기 수명에 맞춰 연결하며 기존 이벤트 계약을 보존한다.
 import { createModuleScope } from "../runtime/module-scope.mjs";
+const activeUi = new WeakMap();
 export function createAttributionUi({ environment = defaultEnvironment, dependencies = {}, metrics = null, } = {}) {
     let icons = createModuleScope(dependencies.icons, ["DesignSystem"], []);
     let uploadUI = createModuleScope(dependencies.uploadUI, [], []);
@@ -225,38 +227,53 @@ export function createAttributionUi({ environment = defaultEnvironment, dependen
         if (!g.__aruUploadNoAutoStart &&
             g.document &&
             /^\/community\/board\/[^/]+\/(write|modify)(?:\/|$)/.test(g.location.pathname)) {
+            activeUi.get(g.document)?.();
             let ui;
-            const apply = (items) => {
-                if (items?.enabled === false) {
-                    ui?.destroy();
-                    ui = null;
+            let revision = 0;
+            let disposed = false;
+            let request;
+            let unsubscribe;
+            const pause = () => {
+                ui?.destroy();
+                ui = undefined;
+            };
+            const changed = (changes, area) => {
+                if (area === "sync" && changes.enabled) {
+                    void refresh();
                 }
-                else if (!ui) {
+            };
+            const refresh = async () => {
+                const current = ++revision;
+                request?.abort();
+                request = new g.AbortController();
+                // 설정이 확인될 때까지 장식만 해제한다. 본문·파일·캡션은 수정하지 않는다.
+                pause();
+                unsubscribe ??= subscribeSettings(g, changed);
+                const result = await readSettings(g, ["enabled"], {
+                    signal: request.signal,
+                });
+                if (disposed || current !== revision || result.state !== "success") {
+                    return;
+                }
+                unsubscribe ??= subscribeSettings(g, changed);
+                if (result.values.enabled !== false) {
                     ui = new UploadUI();
                 }
             };
-            const storage = g.chrome?.storage;
-            try {
-                if (storage?.sync?.get) {
-                    storage.sync.get({ enabled: true }, apply);
-                }
-                else {
-                    apply({ enabled: true });
-                }
-            }
-            catch (_) {
-                apply({ enabled: true });
-            }
-            const changed = (changes, area) => {
-                if (area === "sync" && changes.enabled) {
-                    apply({ enabled: changes.enabled.newValue });
+            const dispose = () => {
+                disposed = true;
+                ++revision;
+                request?.abort();
+                pause();
+                unsubscribe?.();
+                g.removeEventListener("pagehide", dispose);
+                if (activeUi.get(g.document) === dispose) {
+                    activeUi.delete(g.document);
                 }
             };
-            storage?.onChanged?.addListener?.(changed);
-            g.addEventListener("pagehide", () => {
-                ui?.destroy();
-                storage?.onChanged?.removeListener?.(changed);
-            }, { once: true });
+            activeUi.set(g.document, dispose);
+            g.addEventListener("pagehide", dispose, { once: true });
+            void refresh();
         }
     };
     initializeAttributionUi(environment);

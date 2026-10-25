@@ -16,6 +16,18 @@ const sources=JSON.parse(fs.readFileSync(new URL('./fixtures/hybrid-source.json'
 const plain=value=>JSON.parse(JSON.stringify(value));
 function walk(node,visit){if(!node||typeof node!=='object')return;if(node.type)visit(node);for(const value of Object.values(node))if(Array.isArray(value))value.forEach(n=>walk(n,visit));else if(value&&typeof value==='object')walk(value,visit);}
 const canonical=source=>JSON.stringify(normalizeControlBlocks(parse('function compare(g){'+source+'}',{ecmaVersion:'latest'})));
+// A02-1에서 승인된 자동 시작 정책만 별도 동작 테스트로 검증한다. UI 구현과 진입 조건은 계속 고정 원본과 비교한다.
+function withoutAutoStartBody(source){
+  const ast=parse('function compare(g){'+source+'}',{ecmaVersion:'latest'});
+  const matches=ast.body[0].body.body.filter(node=>{
+    if(node.type!=='IfStatement')return false;
+    let found=false;walk(node.test,part=>{if(part.type==='MemberExpression'&&part.property.name==='__aruUploadNoAutoStart')found=true;});return found;
+  });
+  assert.equal(matches.length,1,'자동 시작 경계가 정확히 한 개여야 한다');
+  const block=matches[0].consequent;assert.equal(block.type,'BlockStatement');
+  const prefix='function compare(g){'.length;
+  return source.slice(0,block.start-prefix)+'{}'+source.slice(block.end-prefix);
+}
 function environment(){
   const dom=new JSDOM('<div class="seditor"><input type="file" accept="image/*"><div class="note-editable" contenteditable="true"></div></div>',{url:'https://bbs.ruliweb.com/community/board/300143/write',pretendToBeVisual:true});
   const w=dom.window;
@@ -25,7 +37,7 @@ function environment(){
   return {dom,w};
 }
 
-test('이식한 Hybrid 알고리즘의 AST는 namespace·PR1 부분 상태·이미지편집 탭 장식 제외 외에 같다',()=>{
+test('Hybrid 알고리즘·UI와 진입 조건은 보존하며 승인된 A02-1 자동 시작 본문만 별도 검증한다',()=>{
   const ports=[['ruliweb-icons/library-search','initializeIconsLibrarySearch'],['ruliweb-icons/library-reader','initializeIconsLibraryReader'],['upload-attribution/core','initializeAttributionCore'],['upload-attribution/ui','initializeAttributionUi']];
   for(const [name,initializer]of ports){
     const frozen=sources[name+'.js'];assert.equal(crypto.createHash('sha256').update(frozen.source).digest('hex'),frozen.sha256);
@@ -36,7 +48,8 @@ test('이식한 Hybrid 알고리즘의 AST는 namespace·PR1 부분 상태·이�
     if(name==='upload-attribution/ui')expected=expected.replace('if (this.records.has(control) || !D) return;', 'if (this.records.has(control) || !D || control.closest("#editor_tab_bar")) return;');
     const actual=fs.readFileSync(new URL('../../docs/source/'+name+'.mjs',import.meta.url),'utf8');let body;
     walk(parse(actual,{ecmaVersion:'latest',sourceType:'module'}),node=>{if(node.type==='VariableDeclarator'&&node.id.name===initializer)body=node.init.body;});
-    assert.equal(canonical(actual.slice(body.start+1,body.end-1)),canonical(expected),name);
+    const current=actual.slice(body.start+1,body.end-1);
+    assert.equal(canonical(name==='upload-attribution/ui'?withoutAutoStartBody(current):current),canonical(name==='upload-attribution/ui'?withoutAutoStartBody(expected):expected),name);
   }
 });
 

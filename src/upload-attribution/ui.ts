@@ -1,3 +1,4 @@
+import { readSettings, subscribeSettings } from "../runtime/settings-read.ts";
 import {
   defaultEnvironment,
   type RuntimeEnvironment,
@@ -5,6 +6,8 @@ import {
 } from "../runtime/contracts.ts";
 // 업로드 출처 매칭 결과를 작성기 수명에 맞춰 연결하며 기존 이벤트 계약을 보존한다.
 import { createModuleScope } from "../runtime/module-scope.ts";
+
+const activeUi = new WeakMap<Document, () => void>();
 
 export function createAttributionUi({
   environment = defaultEnvironment,
@@ -279,42 +282,53 @@ export function createAttributionUi({
         g.location.pathname,
       )
     ) {
-      let ui: UploadUI | null | undefined;
-      const apply = (items: { enabled: any }) => {
-        if (items?.enabled === false) {
-          ui?.destroy();
-          ui = null;
-        } else if (!ui) {
+      activeUi.get(g.document)?.();
+      let ui: UploadUI | undefined;
+      let revision = 0;
+      let disposed = false;
+      let request: AbortController | undefined;
+      let unsubscribe: (() => void) | undefined;
+      const pause = () => {
+        ui?.destroy();
+        ui = undefined;
+      };
+      const changed = (changes: Record<string, unknown>, area: string) => {
+        if (area === "sync" && changes.enabled) {
+          void refresh();
+        }
+      };
+      const refresh = async () => {
+        const current = ++revision;
+        request?.abort();
+        request = new g.AbortController();
+        // 설정이 확인될 때까지 장식만 해제한다. 본문·파일·캡션은 수정하지 않는다.
+        pause();
+        unsubscribe ??= subscribeSettings(g, changed);
+        const result = await readSettings(g, ["enabled"], {
+          signal: request.signal,
+        });
+        if (disposed || current !== revision || result.state !== "success") {
+          return;
+        }
+        unsubscribe ??= subscribeSettings(g, changed);
+        if (result.values.enabled !== false) {
           ui = new UploadUI();
         }
       };
-      const storage = g.chrome?.storage;
-      try {
-        if (storage?.sync?.get) {
-          storage.sync.get({ enabled: true }, apply);
-        } else {
-          apply({ enabled: true });
-        }
-      } catch (_) {
-        apply({ enabled: true });
-      }
-      const changed = (
-        changes: { enabled: { newValue: any } },
-        area: string,
-      ) => {
-        if (area === "sync" && changes.enabled) {
-          apply({ enabled: changes.enabled.newValue });
+      const dispose = () => {
+        disposed = true;
+        ++revision;
+        request?.abort();
+        pause();
+        unsubscribe?.();
+        g.removeEventListener("pagehide", dispose);
+        if (activeUi.get(g.document) === dispose) {
+          activeUi.delete(g.document);
         }
       };
-      storage?.onChanged?.addListener?.(changed);
-      g.addEventListener(
-        "pagehide",
-        () => {
-          ui?.destroy();
-          storage?.onChanged?.removeListener?.(changed);
-        },
-        { once: true },
-      );
+      activeUi.set(g.document, dispose);
+      g.addEventListener("pagehide", dispose, { once: true });
+      void refresh();
     }
   };
   initializeAttributionUi(environment);

@@ -3,6 +3,182 @@
   var __defProp = Object.defineProperty;
   var __name = (target, value) => __defProp(target, "name", { value, configurable: true });
 
+  // docs/source/runtime/settings-read.mjs
+  var clock = {
+    setTimeout: /* @__PURE__ */ __name((callback, delay) => globalThis.setTimeout(callback, delay), "setTimeout"),
+    clearTimeout: /* @__PURE__ */ __name((handle) => globalThis.clearTimeout(handle), "clearTimeout")
+  };
+  function failure(code, message) {
+    return Object.assign(new Error(message), { code });
+  }
+  __name(failure, "failure");
+  function errorResult(error) {
+    const value = error instanceof Error ? error : failure("API_ERROR", String(error));
+    return {
+      state: /extension context invalidated/i.test(value.message) ? "invalidated" : "failed",
+      error: value,
+      attempts: 1
+    };
+  }
+  __name(errorResult, "errorResult");
+  function selectApi(root) {
+    const browser = root.browser;
+    const promiseApi = !!(browser?.runtime && browser.storage);
+    return { api: promiseApi ? browser : root.chrome, promiseApi };
+  }
+  __name(selectApi, "selectApi");
+  function readOnce(root, keys, timer, signal) {
+    return new Promise((resolve) => {
+      let finished = false;
+      let deadline;
+      const finish = /* @__PURE__ */ __name((result) => {
+        if (finished) {
+          return;
+        }
+        finished = true;
+        timer.clearTimeout(deadline);
+        signal?.removeEventListener("abort", cancel);
+        resolve(result);
+      }, "finish");
+      const cancel = /* @__PURE__ */ __name(() => finish({
+        state: "cancelled",
+        attempts: 1,
+        error: failure("SETTINGS_CANCELLED", "설정 조회가 취소되었습니다.")
+      }), "cancel");
+      if (signal?.aborted) {
+        cancel();
+        return;
+      }
+      signal?.addEventListener("abort", cancel, { once: true });
+      deadline = timer.setTimeout(() => finish({
+        state: "failed",
+        attempts: 1,
+        error: failure("SETTINGS_TIMEOUT", "설정 조회 응답 시간이 초과되었습니다.")
+      }), 1e3);
+      const accept = /* @__PURE__ */ __name((value) => {
+        if (!value || typeof value !== "object" || Array.isArray(value)) {
+          finish({
+            state: "failed",
+            attempts: 1,
+            error: failure("SETTINGS_INVALID_RESPONSE", "설정 조회 응답이 올바르지 않습니다.")
+          });
+        } else {
+          finish({
+            state: "success",
+            values: value,
+            attempts: 1
+          });
+        }
+      }, "accept");
+      try {
+        const { api, promiseApi } = selectApi(root);
+        const sync = api?.storage?.sync;
+        if (!sync || typeof sync.get !== "function") {
+          finish({
+            state: "failed",
+            attempts: 1,
+            error: failure("API_UNAVAILABLE", "확장 프로그램 API를 사용할 수 없습니다.")
+          });
+          return;
+        }
+        const callback = /* @__PURE__ */ __name((value) => {
+          try {
+            const error = api?.runtime?.lastError;
+            if (error) {
+              finish(errorResult(failure("API_ERROR", error.message || "확장 프로그램 API 요청에 실패했습니다.")));
+            } else {
+              accept(value);
+            }
+          } catch (error) {
+            finish(errorResult(error));
+          }
+        }, "callback");
+        const returned = promiseApi ? sync.get(keys) : sync.get(keys, callback);
+        if (returned && typeof returned.then === "function") {
+          Promise.resolve(returned).then(accept, (error) => finish(errorResult(error)));
+        }
+      } catch (error) {
+        finish(errorResult(error));
+      }
+    });
+  }
+  __name(readOnce, "readOnce");
+  async function readSettings(root, keys, options = {}) {
+    const timer = options.clock ?? clock;
+    const controller = new AbortController();
+    const cancel = /* @__PURE__ */ __name(() => controller.abort(), "cancel");
+    if (options.signal?.aborted) {
+      cancel();
+    } else {
+      options.signal?.addEventListener("abort", cancel, { once: true });
+    }
+    const unsubscribe = subscribeSettings(root, (changes, area) => {
+      if (area === "sync" && Object.keys(changes).some((key) => keys === null || keys.includes(key))) {
+        cancel();
+      }
+    });
+    try {
+      for (let attempt = 1; ; attempt++) {
+        const result = await readOnce(root, keys, timer, controller.signal);
+        result.attempts = attempt;
+        if (controller.signal.aborted) {
+          return {
+            state: "cancelled",
+            attempts: attempt,
+            error: failure("SETTINGS_CANCELLED", "설정 조회가 취소되었습니다.")
+          };
+        }
+        if (result.state !== "failed" || attempt === 3) {
+          return result;
+        }
+        const proceed = await new Promise((resolve) => {
+          if (controller.signal.aborted) {
+            resolve(false);
+            return;
+          }
+          const cancelWait = /* @__PURE__ */ __name(() => {
+            timer.clearTimeout(handle);
+            resolve(false);
+          }, "cancelWait");
+          const handle = timer.setTimeout(() => {
+            controller.signal.removeEventListener("abort", cancelWait);
+            resolve(true);
+          }, attempt === 1 ? 200 : 500);
+          controller.signal.addEventListener("abort", cancelWait, { once: true });
+        });
+        if (!proceed) {
+          return {
+            state: "cancelled",
+            attempts: attempt,
+            error: failure("SETTINGS_CANCELLED", "설정 조회가 취소되었습니다.")
+          };
+        }
+      }
+    } finally {
+      options.signal?.removeEventListener("abort", cancel);
+      unsubscribe?.();
+    }
+  }
+  __name(readSettings, "readSettings");
+  function subscribeSettings(root, listener) {
+    try {
+      const changed = selectApi(root).api?.storage?.onChanged;
+      if (!changed) {
+        return void 0;
+      }
+      changed.addListener(listener);
+      return () => {
+        try {
+          changed.removeListener(listener);
+        } catch {
+        }
+      };
+    } catch {
+      return void 0;
+    }
+  }
+  __name(subscribeSettings, "subscribeSettings");
+
   // docs/source/runtime/contracts.mjs
   var defaultEnvironment = globalThis;
 
@@ -14,19 +190,24 @@
       preferredSort: "source",
       localOverlay: true
     });
-    const promiseApi = typeof root.browser !== "undefined" && root.browser.runtime && root.browser.storage;
-    const api = promiseApi ? root.browser : root.chrome;
-    function failure(code, message) {
+    let promiseApi = false;
+    let api;
+    try {
+      promiseApi = !!(root.browser?.runtime && root.browser.storage);
+      api = promiseApi ? root.browser : root.chrome;
+    } catch {
+    }
+    function failure2(code, message) {
       const error = new Error(message);
       error.code = code;
       return error;
     }
-    __name(failure, "failure");
+    __name(failure2, "failure");
     const BYTE_MARKER = "$aruIconsBytesV1";
     function carrierBytes(value, encode) {
       let nodes = 0;
       const seen = /* @__PURE__ */ new Set();
-      const invalid = /* @__PURE__ */ __name(() => failure("INVALID_REQUEST", "메타데이터 원본 바이트를 캐시에 전달할 수 없습니다."), "invalid");
+      const invalid = /* @__PURE__ */ __name(() => failure2("INVALID_REQUEST", "메타데이터 원본 바이트를 캐시에 전달할 수 없습니다."), "invalid");
       function visit(item, depth) {
         if (++nodes > 1e6 || depth > 20) {
           throw invalid();
@@ -94,7 +275,7 @@
     __name(carrierBytes, "carrierBytes");
     function invoke(target, method, args) {
       if (!api || !target || typeof target[method] !== "function") {
-        return Promise.reject(failure("API_UNAVAILABLE", "확장 프로그램 API를 사용할 수 없습니다."));
+        return Promise.reject(failure2("API_UNAVAILABLE", "확장 프로그램 API를 사용할 수 없습니다."));
       }
       if (promiseApi) {
         try {
@@ -108,7 +289,7 @@
           target[method](...args, (value) => {
             const error = api.runtime && api.runtime.lastError;
             if (error) {
-              reject(failure("API_ERROR", error.message || "확장 프로그램 API 요청에 실패했습니다."));
+              reject(failure2("API_ERROR", error.message || "확장 프로그램 API 요청에 실패했습니다."));
             } else {
               resolve(value);
             }
@@ -120,10 +301,11 @@
     }
     __name(invoke, "invoke");
     async function readOptions() {
-      const stored = await invoke(api && api.storage && api.storage.sync, "get", [
-        ["enabled", "aruIconsOptions"]
-      ]);
-      const items = stored || {};
+      const result = await readSettings(root, ["enabled", "aruIconsOptions"]);
+      if (result.state !== "success") {
+        throw result.error;
+      }
+      const items = result.values;
       const supplied = items.aruIconsOptions;
       const iconOptions = Object.assign({}, defaults, supplied && typeof supplied === "object" && !Array.isArray(supplied) ? supplied : {});
       const enabled = Object.prototype.hasOwnProperty.call(items, "enabled") ? items.enabled === true : true;
@@ -134,11 +316,7 @@
       };
     }
     __name(readOptions, "readOptions");
-    function onChanged(callback) {
-      if (!api || !api.storage || !api.storage.onChanged) {
-        return () => {
-        };
-      }
+    function onChanged(callback, onPending) {
       let disposed = false;
       let revision = 0;
       const listener = /* @__PURE__ */ __name((changes, area) => {
@@ -146,6 +324,7 @@
           return;
         }
         const current = ++revision;
+        onPending?.();
         readOptions().then((options) => {
           if (!disposed && current === revision) {
             callback(options);
@@ -160,20 +339,20 @@
           }
         });
       }, "listener");
-      api.storage.onChanged.addListener(listener);
+      const unsubscribe = subscribeSettings(root, listener);
       return () => {
         disposed = true;
         ++revision;
-        api.storage.onChanged.removeListener(listener);
+        unsubscribe?.();
       };
     }
     __name(onChanged, "onChanged");
     async function requestCache(action, payload) {
       if (!["get", "put", "invalidate", "info"].includes(action)) {
-        throw failure("INVALID_REQUEST", "지원하지 않는 캐시 요청입니다.");
+        throw failure2("INVALID_REQUEST", "지원하지 않는 캐시 요청입니다.");
       }
       if (!(await readOptions()).active) {
-        throw failure("FEATURE_DISABLED", "아이콘 기능이 비활성화되어 있습니다.");
+        throw failure2("FEATURE_DISABLED", "아이콘 기능이 비활성화되어 있습니다.");
       }
       let requestPayload = payload || {};
       if (action === "put" && Object.prototype.hasOwnProperty.call(requestPayload, "rawMetadata")) {
@@ -187,7 +366,7 @@
       ]);
       if (!response || response.ok !== true) {
         const error = response && response.error;
-        throw failure(error && error.code || "CACHE_UNAVAILABLE", error && error.message || "아이콘 캐시 응답을 받지 못했습니다.");
+        throw failure2(error && error.code || "CACHE_UNAVAILABLE", error && error.message || "아이콘 캐시 응답을 받지 못했습니다.");
       }
       if (action === "get" && response.result) {
         return {
