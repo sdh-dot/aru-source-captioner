@@ -912,7 +912,7 @@ export function installWhaleContent({ environment = defaultEnvironment, dependen
         //   - textarea.maxLength 초과 시 skip.
         //   - 커서를 마지막 빈 줄에 위치시키고 input/change 이벤트 dispatch.
         //   - 한 wrapper당 한 번만 주입 (data-aru-source-comment-bound guard).
-        //   - 한 file input당 한 번만 hook (data-aru-source-file-bound guard).
+        //   - input별 현재 binding으로 중복 hook을 막고 dataset은 설치 표식으로만 유지한다.
         //   - 기존 onclick / onchange / onkeydown / .common_img_button 이벤트는 절대 손대지 않는다.
         // 일반 댓글: textarea[name="comment_input"] / textarea#comment_input
         // 대댓글(reply): name/id가 comment_input_<commentId> 또는 re_comment_input_*
@@ -1230,9 +1230,8 @@ export function installWhaleContent({ environment = defaultEnvironment, dependen
         // 주의:
         //   - 기존 onchange inline 핸들러(app.comment_img / app.comment_img_drop 트리거)는
         //     절대 가로채지 않는다 — addEventListener("change", ...)로만 추가한다.
-        //   - 같은 file input에 중복 hook을 막기 위해 dataset 가드를 사용한다.
-        //   - 파일 input이 동적으로 교체될 수 있어 wrapper 단위로 매번 다시 시도한다 —
-        //     dataset 가드가 같은 input에 두 번 붙는 것은 막아준다.
+        //   - input별 binding으로 중복 hook을 막는다. 복제된 dataset은 리스너 소유 증거가 아니다.
+        //   - wrapper가 교체되면 이전 리스너를 해제하고 새 binding만 현재 선택을 승인한다.
         function hookCommentFileInput(wrapper, config) {
             if (!(wrapper instanceof HTMLElement)) {
                 return false;
