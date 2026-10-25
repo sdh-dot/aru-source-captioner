@@ -8,15 +8,67 @@ permissions:
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+      - name: 소스 조회
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Node.js 24 및 npm 캐시
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: '24'
           cache: npm
-      - run: npm ci --ignore-scripts
-      - run: npm run build
-      - run: git diff --exit-code -- firefox whale
-      - run: npm run verify
-      - run: npm test
-      - run: npm run lint:firefox
+      # 생성물을 공유하는 검증은 이 job에서 직렬 실행한다.
+      - name: 의존성 설치
+        run: node tools/ci/run-command.mjs install -- npm ci --ignore-scripts
+      - name: WXT 타입 준비
+        run: node tools/ci/run-command.mjs prepare-wxt -- npm run prepare:wxt
+      - name: TypeScript 타입 검사
+        run: node tools/ci/run-command.mjs typecheck -- npm run typecheck
+      - name: Lint
+        run: node tools/ci/run-command.mjs lint -- npm run lint
+      - name: 포맷 검사
+        run: node tools/ci/run-command.mjs format -- npm run format:check
+      - name: CI Gate 실패 정책 검사
+        run: node tools/ci/run-command.mjs ci-tests -- node --test tools/ci/quality-gates.test.mjs
+      - name: TypeScript 직접 테스트
+        run: node tools/ci/run-command.mjs typescript -- npm run test:typescript
+      - name: ESM 동등성
+        run: node tools/ci/run-command.mjs esm -- npm run test:esm
+      - name: 통합 계약
+        run: node tools/ci/run-command.mjs integration -- npm run test:integration
+      - name: 전체 회귀
+        run: node tools/ci/run-command.mjs regression -- npm test
+      - name: RC3 회귀
+        run: node tools/ci/run-command.mjs rc3 -- node --test tests/publication.test.cjs tests/filename.test.cjs docs/tests/phase2b3/engine.test.cjs docs/tests/generator-r2/search.test.cjs docs/tests/bundle-generator/model.test.cjs
+      - name: Firefox·Chromium·Whale 빌드
+        run: node tools/ci/run-command.mjs build -- npm run build
+      - name: classic Manifest 및 문법
+        run: node tools/ci/run-command.mjs verify -- npm run verify
+      - name: WXT Manifest·권한·World·리소스
+        run: node tools/ci/run-command.mjs verify-wxt -- npm run verify:wxt
+      - name: TypeScript 생성물 일치
+        run: node tools/ci/run-command.mjs verify-typescript -- npm run verify:typescript
+      - name: ESM 생성물 일치
+        run: node tools/ci/run-command.mjs verify-esm -- npm run verify:esm
+      - name: 원본 IIFE·순환 의존
+        run: node tools/ci/run-command.mjs audit-esm -- npm run audit:esm
+      - name: 추적·미추적 생성물 drift
+        run: node tools/ci/run-command.mjs generated -- node tools/ci/check-generated.mjs
+      - name: Historical 기준선 비교 (기존 실패는 별도 표시)
+        run: node tools/ci/run-command.mjs historical -- node tools/ci/baseline-gates.mjs historical
+      - name: Firefox Lint 기준선 비교 (기존 9경고)
+        run: node tools/ci/run-command.mjs firefox-lint -- node tools/ci/baseline-gates.mjs firefox-lint
+      - name: 결과 집계 (미실행 구분)
+        if: always()
+        run: node tools/ci/report.mjs
+      - name: 검증 로그·요약 보존
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: quality-gates-${{ github.run_id }}-${{ github.run_attempt }}
+          path: docs/results/ci-quality/
+          retention-days: 7
+          if-no-files-found: warn
