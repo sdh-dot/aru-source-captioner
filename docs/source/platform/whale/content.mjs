@@ -4,6 +4,7 @@ import { createSessionEnvironment } from "../../runtime/session-resources.mjs";
 import { contextEffectGate } from "../../runtime/context-effect-gate.mjs";
 import { readSettings } from "../../runtime/settings-read.mjs";
 import { parsePixivFilenameUrl } from "../../source-caption/pixiv-filename.mjs";
+import { formatSourceLinkText } from "../../source-caption/link-display.mjs";
 import { hasPngSignature, parsePngItxtChunks, parseItxtChunk, } from "../../source-caption/png-chunks.mjs";
 import { defaultEnvironment, } from "../../runtime/contracts.mjs";
 // 브라우저별 기존 초기화·저장 키·사용자 설정과 이벤트 계약을 유지한다.
@@ -856,7 +857,7 @@ export function installWhaleContent({ environment = defaultEnvironment, dependen
             a.href = url;
             a.target = "_blank";
             a.rel = "noopener noreferrer";
-            a.textContent = url;
+            a.textContent = formatSourceLinkText(url);
             p.appendChild(a);
             return p;
         }
