@@ -1806,6 +1806,115 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
   }
   __name(createIconsUiPreferences, "createIconsUiPreferences");
 
+  // docs/source/runtime/context-effect-gate.mjs
+  var gates = /* @__PURE__ */ new WeakMap();
+  var sharedGateKey = /* @__PURE__ */ Symbol.for("aru.context-effect-gate.v1");
+  function contextEffectGate(environment) {
+    const root = environment;
+    const key = root.window ?? environment;
+    let shared;
+    if (root.window) {
+      try {
+        shared = Reflect.get(key, sharedGateKey);
+      } catch {
+      }
+    }
+    const existing = shared ?? gates.get(key);
+    if (existing) {
+      return existing;
+    }
+    let state = "active";
+    let runtimeId;
+    const stopped = /* @__PURE__ */ new Set();
+    const terminal = /* @__PURE__ */ __name(() => state === "invalidated" || state === "disposed", "terminal");
+    const stop = /* @__PURE__ */ __name((next) => {
+      if (terminal()) {
+        return;
+      }
+      state = next;
+      root.removeEventListener?.("pagehide", dispose);
+      for (const callback of [...stopped]) {
+        try {
+          callback();
+        } catch (error) {
+          console.warn("[Aru] 컨텍스트 종료 정리 실패", error);
+        }
+      }
+      stopped.clear();
+    }, "stop");
+    const dispose = /* @__PURE__ */ __name(() => stop("disposed"), "dispose");
+    const gate = {
+      get state() {
+        return state;
+      },
+      allows() {
+        if (terminal()) {
+          return false;
+        }
+        try {
+          const runtime = root.browser?.runtime ?? root.chrome?.runtime;
+          const id = runtime?.id;
+          if (typeof id === "string" && id) {
+            if (runtimeId && runtimeId !== id) {
+              stop("invalidated");
+              return false;
+            }
+            runtimeId = id;
+          } else if (runtimeId) {
+            stop("invalidated");
+            return false;
+          }
+          state = "active";
+          return true;
+        } catch (error) {
+          gate.observeError(error);
+          if (!terminal()) {
+            state = "suspended";
+          }
+          return false;
+        }
+      },
+      assert() {
+        if (!gate.allows()) {
+          throw Object.assign(new Error("확장 컨텍스트에서 새 작업을 실행할 수 없습니다."), {
+            code: terminal() ? "CONTEXT_INVALIDATED" : "CONTEXT_SUSPENDED"
+          });
+        }
+      },
+      invalidate: /* @__PURE__ */ __name(() => stop("invalidated"), "invalidate"),
+      dispose,
+      observeError(error) {
+        if (/extension context invalidated/i.test(error instanceof Error ? error.message : String(error))) {
+          stop("invalidated");
+        }
+      },
+      onStop(callback) {
+        if (terminal()) {
+          callback();
+          return () => {
+          };
+        }
+        stopped.add(callback);
+        return () => {
+          stopped.delete(callback);
+        };
+      }
+    };
+    gates.set(key, gate);
+    if (root.window) {
+      try {
+        Object.defineProperty(key, sharedGateKey, { value: gate });
+      } catch {
+      }
+    }
+    gate.allows();
+    if (!terminal()) {
+      root.addEventListener?.("pagehide", dispose, { once: true });
+    }
+    return gate;
+  }
+  __name(contextEffectGate, "contextEffectGate");
+
   // docs/source/ruliweb-icons/picker-lifecycle.mjs
   var PickerLifecycle = class {
     static {
@@ -1987,6 +2096,8 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
       }
       __name(articleUrl, "articleUrl");
       api.createPicker = /* @__PURE__ */ __name(function createPicker(options = {}) {
+        const effectGate = contextEffectGate(global);
+        effectGate.assert();
         if (!api.SearchIndex || !api.FoldState) {
           throw new Error("아이콘 검색 모듈이 준비되지 않았습니다.");
         }
@@ -1999,6 +2110,23 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
         host.dataset.aruIconsPicker = "true";
         host.style.cssText = 'all:initial;position:fixed;inset:0;display:block;z-index:2147483200;color:#292a35;font:14px/1.5 "Malgun Gothic","Apple SD Gothic Neo",system-ui,sans-serif;';
         const root = host.attachShadow({ mode: "open" });
+        const guardEvent = /* @__PURE__ */ __name((event) => {
+          if (!effectGate.allows()) {
+            event.preventDefault();
+            event.stopImmediatePropagation();
+          }
+        }, "guardEvent");
+        for (const type of [
+          "click",
+          "input",
+          "change",
+          "keydown",
+          "submit",
+          "pointerdown",
+          "dblclick"
+        ]) {
+          root.addEventListener(type, guardEvent, true);
+        }
         const style = el("style");
         style.textContent = stylesheet + `
       .selection-tags{max-height:120px;overflow:auto}.small-tag{max-width:100%;overflow-wrap:anywhere}
@@ -2166,7 +2294,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
         let targetValid = options.targetValid !== false;
         async function chooseCatalog(action) {
           const result3 = await action();
-          if (lifecycle.isClosed) {
+          if (!effectGate.allows() || lifecycle.isClosed) {
             return result3;
           }
           if (result3?.ok === true) {
@@ -2458,7 +2586,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
     `;
         root.append(mobileStyle);
         function setCatalogOpen(open, reason = "cancel") {
-          if (!catalogView || lifecycle.isClosed) {
+          if (!catalogView || !effectGate.allows() || lifecycle.isClosed) {
             return;
           }
           if (open && !catalogOpen) {
@@ -2500,7 +2628,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
         }
         __name(setCatalogOpen, "setCatalogOpen");
         function showPackToast() {
-          if (toastShown || lifecycle.isClosed) {
+          if (toastShown || !effectGate.allows() || lifecycle.isClosed) {
             return;
           }
           toastShown = true;
@@ -2509,7 +2637,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
           dialog.classList.add("toast-visible");
           toastTimer = setTimeout2(() => {
             toastTimer = 0;
-            if (!lifecycle.isClosed) {
+            if (!(!effectGate.allows() || lifecycle.isClosed)) {
               toast.hidden = true;
               dialog.classList.remove("toast-visible");
             }
@@ -2548,6 +2676,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
         let contexts = [];
         let visibilityObserver = null;
         let resizeObserver = null;
+        let detachGate;
         const lifecycle = new PickerLifecycle(disposePicker);
         let composing = false;
         let searchTimer = 0;
@@ -2590,7 +2719,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
         };
         const hasCriteria2 = /* @__PURE__ */ __name(() => !!state.query.normalize("NFKC").trim() || state.selectedTagIds.length > 0 || state.categoryFilterIds.length > 0 || state.sourceFilterIds.length > 0, "hasCriteria");
         const announce = /* @__PURE__ */ __name((text) => {
-          if (!lifecycle.isClosed) {
+          if (!(!effectGate.allows() || lifecycle.isClosed)) {
             live.textContent = text;
           }
         }, "announce");
@@ -2736,7 +2865,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
             media.removeEventListener("error", failed);
           }, "clean");
           const ready = /* @__PURE__ */ __name(() => {
-            if (finished || !media.isConnected || lifecycle.isClosed || frameThumbnail && (frameSeeking || media.readyState < 2)) {
+            if (finished || !media.isConnected || !effectGate.allows() || lifecycle.isClosed || frameThumbnail && (frameSeeking || media.readyState < 2)) {
               return;
             }
             finished = true;
@@ -2774,7 +2903,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
             }
           }, "seekFrame");
           const showFailure = /* @__PURE__ */ __name((text, code) => {
-            if (!media.isConnected || lifecycle.isClosed) {
+            if (!media.isConnected || !effectGate.allows() || lifecycle.isClosed) {
               return;
             }
             if (finished) {
@@ -3000,19 +3129,25 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
         }
         __name(makeCard, "makeCard");
         function queueWindows() {
-          if (virtualFrame || lifecycle.isClosed) {
+          if (!effectGate.allows()) {
+            return;
+          }
+          if (virtualFrame || !effectGate.allows() || lifecycle.isClosed) {
             return;
           }
           virtualFrame = requestAnimationFrame(() => {
             virtualFrame = 0;
-            if (!lifecycle.isClosed) {
+            if (!(!effectGate.allows() || lifecycle.isClosed)) {
               renderWindows();
             }
           });
         }
         __name(queueWindows, "queueWindows");
         function renderWindows() {
-          if (lifecycle.isClosed) {
+          if (!effectGate.allows()) {
+            return;
+          }
+          if (!effectGate.allows() || lifecycle.isClosed) {
             return;
           }
           let remaining = MAX_CARDS;
@@ -3125,6 +3260,9 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
         }
         __name(renderWindows, "renderWindows");
         function renderChips(rebuild = false) {
+          if (!effectGate.allows()) {
+            return;
+          }
           if (rebuild) {
             chips.replaceChildren();
             const tags = library ? api.libraryFixedTags.map((name) => ({
@@ -3160,6 +3298,9 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
         }
         __name(renderChips, "renderChips");
         function renderSelection() {
+          if (!effectGate.allows()) {
+            return;
+          }
           const icon = byIconId(selectedIconId);
           updatePrepare();
           selectionTags.replaceChildren();
@@ -3203,6 +3344,9 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
         }
         __name(renderSelection, "renderSelection");
         function renderGroups() {
+          if (!effectGate.allows()) {
+            return;
+          }
           const started = performance.now();
           const oldActive = root.activeElement;
           const activeGroup = oldActive && oldActive.closest(".group");
@@ -3392,7 +3536,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
         }
         __name(project, "project");
         function paintProgress(info = {}) {
-          if (lifecycle.isClosed) {
+          if (!effectGate.allows() || lifecycle.isClosed) {
             return;
           }
           const status = info.status || (info.busy ? "loading" : "partial");
@@ -3487,6 +3631,9 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
         }
         __name(paintLoading, "paintLoading");
         function renderLibrary() {
+          if (!effectGate.allows()) {
+            return;
+          }
           libraryResult = library.search();
           dialog.classList.toggle("all-pack-search", scope.value === "all");
           if (scope.value === "current" && library.packs.has(library.state.currentKey)) {
@@ -3576,18 +3723,21 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
         }
         __name(renderLibrary, "renderLibrary");
         function libraryCollect(refresh2 = false) {
-          if (!library || lifecycle.isClosed) {
+          if (!effectGate.allows()) {
+            return;
+          }
+          if (!library || !effectGate.allows() || lifecycle.isClosed) {
             return;
           }
           const work = library.collect({
             refresh: refresh2,
             onProgress: /* @__PURE__ */ __name(() => {
-              if (lifecycle.isClosed || libraryFrame) {
+              if (!effectGate.allows() || lifecycle.isClosed || libraryFrame) {
                 return;
               }
               libraryFrame = requestAnimationFrame(() => {
                 libraryFrame = 0;
-                if (!lifecycle.isClosed) {
+                if (!(!effectGate.allows() || lifecycle.isClosed)) {
                   applySearch(false);
                 }
               });
@@ -3595,14 +3745,17 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
           });
           applySearch(false);
           work.catch((error) => {
-            if (!lifecycle.isClosed) {
+            if (!(!effectGate.allows() || lifecycle.isClosed)) {
               setError(error.message);
             }
           });
         }
         __name(libraryCollect, "libraryCollect");
         function applySearch(collect = true) {
-          if (lifecycle.isClosed) {
+          if (!effectGate.allows()) {
+            return;
+          }
+          if (!effectGate.allows() || lifecycle.isClosed) {
             return;
           }
           state.queryRevision++;
@@ -3717,7 +3870,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
         }
         __name(callAction, "callAction");
         function setError(message) {
-          if (lifecycle.isClosed) {
+          if (!effectGate.allows() || lifecycle.isClosed) {
             return;
           }
           errorNode.textContent = String(message || "아이콘을 읽지 못했습니다.");
@@ -3726,7 +3879,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
         }
         __name(setError, "setError");
         function close(action) {
-          if (lifecycle.isClosed) {
+          if (!effectGate.allows() || lifecycle.isClosed) {
             return;
           }
           destroy();
@@ -3743,6 +3896,18 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
         }
         __name(destroy, "destroy");
         function disposePicker() {
+          detachGate?.();
+          for (const type of [
+            "click",
+            "input",
+            "change",
+            "keydown",
+            "submit",
+            "pointerdown",
+            "dblclick"
+          ]) {
+            root.removeEventListener(type, guardEvent, true);
+          }
           clearTimeout2(toastTimer);
           cancelSearch();
           previewCleanup();
@@ -3867,7 +4032,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
             uiRevision++;
             const saved = { ...ui };
             Promise.resolve().then(() => preferences?.write?.(saved)).catch(() => {
-              if (!lifecycle.isClosed) {
+              if (!(!effectGate.allows() || lifecycle.isClosed)) {
                 announce("화면 설정을 저장하지 못했어요. 이번 창에서는 계속 사용할 수 있습니다.");
               }
             });
@@ -3886,11 +4051,11 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
           events.signal.addEventListener("abort", () => coarsePointer.removeListener?.(pointerChanged), { once: true });
         }
         const uiReady = Promise.resolve().then(() => preferences?.read?.()).then((value) => {
-          if (!lifecycle.isClosed && uiRevision === 0 && value) {
+          if (!(!effectGate.allows() || lifecycle.isClosed) && uiRevision === 0 && value) {
             applyUi(value);
           }
         }).catch(() => {
-          if (!lifecycle.isClosed) {
+          if (!(!effectGate.allows() || lifecycle.isClosed)) {
             announce("화면 설정을 복원하지 못했어요. 기본 크기로 열었습니다.");
           }
         });
@@ -4018,14 +4183,14 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
         });
         async function requestInsertion() {
           const icon = byIconId(selectedIconId);
-          if (catalogOpen || lifecycle.isClosed || !icon || prepare.disabled || preparing || !targetValid || previewState.status === "error" || typeof options.onSelect !== "function") {
+          if (catalogOpen || !effectGate.allows() || lifecycle.isClosed || !icon || prepare.disabled || preparing || !targetValid || previewState.status === "error" || typeof options.onSelect !== "function") {
             return;
           }
           preparing = true;
           updatePrepare();
           try {
             const prepared = await options.onSelect(icon);
-            if (!lifecycle.isClosed) {
+            if (!(!effectGate.allows() || lifecycle.isClosed)) {
               announce(typeof prepared === "string" ? prepared : prepared && prepared.message || "선택 정보를 준비했습니다. 실제 삽입·게시·전송은 실행하지 않았습니다.");
             }
           } catch (caught) {
@@ -4034,7 +4199,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
             setError((error?.code ? "[" + error.code + "] " : "") + (error?.message || "선택 정보를 준비하지 못했습니다."));
           } finally {
             preparing = false;
-            if (!lifecycle.isClosed) {
+            if (!(!effectGate.allows() || lifecycle.isClosed)) {
               renderSelection();
             }
           }
@@ -4089,12 +4254,15 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
         }
         initialFocusFrame = requestAnimationFrame(() => {
           initialFocusFrame = 0;
-          if (!lifecycle.isClosed && !root.activeElement) {
+          if (!(!effectGate.allows() || lifecycle.isClosed) && !root.activeElement) {
             (mobileInput() ? catalogOpen ? catalogView.node : dialog : catalogOpen ? catalogView.input : input).focus({ preventScroll: true });
           }
         });
         const apiPicker = {
           setCurrentSource(key) {
+            if (!effectGate.allows() || lifecycle.isClosed) {
+              return;
+            }
             if (!library) {
               return;
             }
@@ -4102,16 +4270,28 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
             collectionKey = "";
           },
           completeCatalogSelection() {
+            if (!effectGate.allows() || lifecycle.isClosed) {
+              return;
+            }
             setCatalogOpen(false, "selected");
             showPackToast();
           },
           openCatalog() {
+            if (!effectGate.allows() || lifecycle.isClosed) {
+              return;
+            }
             setCatalogOpen(true);
           },
           closeCatalog() {
+            if (!effectGate.allows() || lifecycle.isClosed) {
+              return;
+            }
             setCatalogOpen(false, "cancel");
           },
           refreshLibrary() {
+            if (!effectGate.allows() || lifecycle.isClosed) {
+              return;
+            }
             if (library) {
               if (scope.value === "all") {
                 libraryCollect();
@@ -4120,6 +4300,9 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
             }
           },
           setMetadataDiagnostics(value) {
+            if (!effectGate.allows() || lifecycle.isClosed) {
+              return;
+            }
             collectionDiagnostics = options.debug === true ? value : null;
             reportMetadata();
           },
@@ -4127,24 +4310,39 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
             return options.debug === true ? metadataDetails() : null;
           },
           setCatalog(entries, message) {
+            if (!effectGate.allows() || lifecycle.isClosed) {
+              return;
+            }
             catalogView?.setEntries(entries, message, library?.packs);
           },
           setCatalogPack(ref, next) {
+            if (!effectGate.allows() || lifecycle.isClosed) {
+              return;
+            }
             catalogView?.setPack(ref, next);
           },
           setQuery(value) {
+            if (!effectGate.allows() || lifecycle.isClosed) {
+              return;
+            }
             cancelSearch();
             input.value = String(value || "");
             state.query = input.value;
             applySearch();
           },
           setTargetState(valid, error) {
+            if (!effectGate.allows() || lifecycle.isClosed) {
+              return;
+            }
             targetValid = valid;
             targetError.hidden = valid;
             targetError.textContent = valid ? "" : "[" + (error?.code || "SESSION_UNAVAILABLE") + "] " + (error?.message || "삽입 대상 세션이 없습니다. 작성기에서 다시 열어 주세요.");
             renderSelection();
           },
           clearPack() {
+            if (!effectGate.allows() || lifecycle.isClosed) {
+              return;
+            }
             if (library && scope.value === "all") {
               applySearch(false);
               return;
@@ -4170,7 +4368,10 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
             renderSelection();
           },
           setSources(choices = []) {
-            if (!sourceSelect || lifecycle.isClosed) {
+            if (!effectGate.allows() || lifecycle.isClosed) {
+              return;
+            }
+            if (!sourceSelect || !effectGate.allows() || lifecycle.isClosed) {
               return;
             }
             const selected = sourceSelect.value;
@@ -4189,8 +4390,11 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
           element: host,
           shadowRoot: root,
           setPack(nextPack) {
+            if (!effectGate.allows() || lifecycle.isClosed) {
+              return;
+            }
             columns.hidden = false;
-            if (lifecycle.isClosed) {
+            if (!effectGate.allows() || lifecycle.isClosed) {
               return;
             }
             if (!nextPack || !Array.isArray(nextPack.icons)) {
@@ -4241,6 +4445,9 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
             applySearch();
           },
           setProgress(info = {}) {
+            if (!effectGate.allows() || lifecycle.isClosed) {
+              return;
+            }
             currentProgress = { ...info };
             if (!library || scope.value !== "all") {
               paintProgress(info);
@@ -4250,6 +4457,9 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
           },
           setError,
           clearError() {
+            if (!effectGate.allows() || lifecycle.isClosed) {
+              return;
+            }
             errorNode.hidden = true;
             errorNode.textContent = "";
           },
@@ -4257,7 +4467,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
           destroy,
           getSnapshot() {
             return {
-              destroyed: lifecycle.isClosed,
+              destroyed: !effectGate.allows() || lifecycle.isClosed,
               targetValid,
               catalog: catalogView ? { ...catalogView.snapshot(), open: catalogOpen, toastShown } : null,
               media: mediaBudget?.snapshot(),
@@ -4299,6 +4509,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
             };
           }
         };
+        detachGate = effectGate.onStop(destroy);
         return apiPicker;
       }, "createPicker");
     }, "initializeIconsPicker");
@@ -4315,7 +4526,8 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 
   // docs/source/ruliweb-icons/feature.mjs
   function createIconsFeature({ environment = defaultEnvironment, dependencies = {} } = {}) {
-    const { MutationObserver, AbortController: AbortController2, console } = environment;
+    const effectGate = contextEffectGate(environment);
+    const { MutationObserver, AbortController: AbortController2, console: console2 } = environment;
     const setTimeout2 = typeof environment.setTimeout === "function" ? (...args) => environment.setTimeout(...args) : void 0;
     let icons = createModuleScope(dependencies.icons, [
       "SiteAdapter",
@@ -4353,9 +4565,10 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
           this.destroyed = false;
           this.onClick = this.onClick.bind(this);
           this.onNavigate = () => this.stopSession(true);
+          this.detachGate = effectGate.onStop(() => this.destroy());
         }
         async start() {
-          if (this.unsubscribe || this.destroyed) {
+          if (this.unsubscribe || this.destroyed || !effectGate.allows()) {
             return;
           }
           this.unsubscribe = this.browser.onChanged((options) => this.applyOptions(options), () => {
@@ -4376,13 +4589,14 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
               aruIconsOptions: { enabled: false, autoLoad: true }
             };
           }
-          if (this.destroyed || revision !== this.optionsRevision) {
+          if (this.destroyed || revision !== this.optionsRevision || !effectGate.allows()) {
             return;
           }
           this.options = opts.aruIconsOptions;
           this.setActive(opts.active === true);
         }
         setActive(active) {
+          active = active && effectGate.allows();
           if (active === this.enabled) {
             return;
           }
@@ -4497,7 +4711,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
           }
         }
         async openComposer(entry) {
-          if (!this.enabled) {
+          if (!this.enabled || !effectGate.allows()) {
             return;
           }
           const panel = entry.kind === "post" ? this.document.querySelector("#editor_common_write_wrapper .comment_icon") : entry.root.querySelector(".comment_icon");
@@ -4605,7 +4819,8 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
           return result2;
         }
         async insertSelection(icon, context) {
-          if (!this.enabled) {
+          effectGate.assert();
+          if (!this.enabled || !effectGate.allows()) {
             throw Object.assign(new Error("아이콘 기능이 비활성화되었습니다."), {
               code: "FEATURE_DISABLED"
             });
@@ -4626,7 +4841,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
               media: API.ComposerAdapter.selectedMedia(icon),
               debug: this.options?.debug === true
             });
-            if (this.current !== context) {
+            if (!effectGate.allows() || this.current !== context) {
               return result2;
             }
             const input = context.target.root.querySelector("textarea.comment_input,textarea.reply_input,.note-editable");
@@ -4638,7 +4853,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
           }
         }
         async open(context) {
-          if (!this.enabled) {
+          if (!this.enabled || !effectGate.allows()) {
             return;
           }
           const readBudget = this.current?.readBudget || { count: 0, max: 128 };
@@ -4650,7 +4865,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
               reader: new API.LibraryPackReader({
                 browser: this.browser,
                 site: this.site,
-                isActive: /* @__PURE__ */ __name(() => this.enabled, "isActive")
+                isActive: /* @__PURE__ */ __name(() => this.enabled && effectGate.allows(), "isActive")
               })
             });
           }
@@ -4705,7 +4920,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
           this.document.body.append(this.picker.element);
           if (context.target) {
             const update = /* @__PURE__ */ __name(() => {
-              if (this.current !== context) {
+              if (!effectGate.allows() || this.current !== context) {
                 return;
               }
               if (context.catalogMode) {
@@ -4750,7 +4965,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
           }
           if (context.panel && typeof MutationObserver !== "undefined") {
             this.panelObserver = new MutationObserver(() => {
-              if (this.current !== context) {
+              if (!effectGate.allows() || this.current !== context) {
                 return;
               }
               if (!context.panel.isConnected || context.panel.style.display === "none" || context.panel.querySelector(".icon_share_data")?.style.display === "none") {
@@ -4784,7 +4999,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
           });
         }
         collect(refresh, manualNative = false, transactional = false) {
-          if (!this.enabled || !this.current || !this.picker) {
+          if (!this.enabled || !effectGate.allows() || !this.current || !this.picker) {
             return Promise.resolve();
           }
           const key = JSON.stringify([
@@ -4807,14 +5022,14 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
           return task.promise;
         }
         async runCollection(refresh, manualNative = false, transactional = false) {
-          if (!this.enabled || !this.current || !this.picker) {
+          if (!this.enabled || !effectGate.allows() || !this.current || !this.picker) {
             return;
           }
           this.controller?.abort();
           const controller = new AbortController2();
           this.controller = controller;
           const signal = controller.signal, token = ++this.generation, context = this.current, picker = this.picker;
-          const current = /* @__PURE__ */ __name(() => !signal.aborted && this.enabled && this.generation === token && this.current === context, "current");
+          const current = /* @__PURE__ */ __name(() => effectGate.allows() && !signal.aborted && this.enabled && this.generation === token && this.current === context, "current");
           const ensure = /* @__PURE__ */ __name(() => {
             if (!current()) {
               throw Object.assign(new Error("수집 중지"), { code: "ABORTED" });
@@ -5232,6 +5447,10 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
           }
         }
         destroy() {
+          if (this.destroyed) {
+            return;
+          }
+          this.detachGate?.();
           this.destroyed = true;
           this.optionsRevision++;
           this.enabled = false;
@@ -5251,7 +5470,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
       if (global.document && API.BrowserAdapter && /^(bbs|m)\.ruliweb\.com$/.test(global.location?.hostname || "")) {
         const feature = new IconFeature();
         API.feature = feature;
-        feature.start().catch((error) => console.warn("[Aru Icons] 초기화 실패:", error.message));
+        feature.start().catch((error) => console2.warn("[Aru Icons] 초기화 실패:", error.message));
       }
     }, "initializeIconsFeature");
     initializeIconsFeature(typeof environment !== "undefined" ? environment : this);
@@ -6422,6 +6641,9 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
       for (let attempt = 1; ; attempt++) {
         const result2 = await readOnce(root, keys, timer, controller.signal);
         result2.attempts = attempt;
+        if (result2.state === "invalidated") {
+          contextEffectGate(root).invalidate();
+        }
         if (controller.signal.aborted) {
           return {
             state: "cancelled",
@@ -6482,6 +6704,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 
   // docs/source/ruliweb-icons/browser-adapter.mjs
   function createBrowserAdapter(root = defaultEnvironment) {
+    const effectGate = contextEffectGate(root);
     const defaults = Object.freeze({
       enabled: false,
       autoLoad: true,
@@ -6572,37 +6795,47 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
     }
     __name(carrierBytes, "carrierBytes");
     function invoke(target, method, args) {
-      if (!api || !target || typeof target[method] !== "function") {
-        return Promise.reject(failure2("API_UNAVAILABLE", "확장 프로그램 API를 사용할 수 없습니다."));
-      }
-      if (promiseApi) {
-        try {
-          return Promise.resolve(target[method](...args));
-        } catch (error) {
-          return Promise.reject(error);
+      try {
+        effectGate.assert();
+        if (!api || !target || typeof target[method] !== "function") {
+          throw failure2("API_UNAVAILABLE", "확장 프로그램 API를 사용할 수 없습니다.");
         }
-      }
-      return new Promise((resolve, reject) => {
-        try {
+        const pending = promiseApi ? Promise.resolve(target[method](...args)) : new Promise((resolve, reject) => {
           target[method](...args, (value) => {
-            const error = api.runtime && api.runtime.lastError;
-            if (error) {
-              reject(failure2("API_ERROR", error.message || "확장 프로그램 API 요청에 실패했습니다."));
-            } else {
-              resolve(value);
+            try {
+              effectGate.assert();
+              const error = api.runtime?.lastError;
+              if (error) {
+                reject(failure2("API_ERROR", error.message || "확장 프로그램 API 요청에 실패했습니다."));
+              } else {
+                resolve(value);
+              }
+            } catch (error) {
+              effectGate.observeError(error);
+              reject(error);
             }
           });
-        } catch (error) {
-          reject(error);
-        }
-      });
+        });
+        return pending.then((value) => {
+          effectGate.assert();
+          return value;
+        }, (error) => {
+          effectGate.observeError(error);
+          throw error;
+        });
+      } catch (error) {
+        effectGate.observeError(error);
+        return Promise.reject(error);
+      }
     }
     __name(invoke, "invoke");
     async function readOptions() {
+      effectGate.assert();
       const result2 = await readSettings(root, ["enabled", "aruIconsOptions"]);
       if (result2.state !== "success") {
         throw result2.error;
       }
+      effectGate.assert();
       const items = result2.values;
       const supplied = items.aruIconsOptions;
       const iconOptions = Object.assign({}, defaults, supplied && typeof supplied === "object" && !Array.isArray(supplied) ? supplied : {});
@@ -7637,12 +7870,18 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 
   // docs/source/ruliweb-icons/composer-adapter.mjs
   function createComposerAdapter({ environment: global = defaultEnvironment, site = createSiteAdapter({ environment: global }), getDesignSystem = /* @__PURE__ */ __name(() => null, "getDesignSystem") } = {}) {
+    const effectGate = contextEffectGate(global);
     const { MutationObserver, AbortController: AbortController2, CustomEvent } = global;
     const requestAnimationFrame = /* @__PURE__ */ __name((callback) => global.requestAnimationFrame(callback), "requestAnimationFrame");
     const cancelAnimationFrame = /* @__PURE__ */ __name((frame) => global.cancelAnimationFrame(frame), "cancelAnimationFrame");
     const REQUEST = "aru-icons-composer-request-v1", RESPONSE = "aru-icons-composer-response-v1";
     const token = /* @__PURE__ */ __name(() => global.crypto.randomUUID().replaceAll("-", ""), "token");
     function request(document, op, payload = {}) {
+      try {
+        effectGate.assert();
+      } catch (error) {
+        return Promise.reject(error);
+      }
       const requestId = token();
       return new Promise((resolve, reject) => {
         let replied = false;
@@ -7661,7 +7900,11 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
           }
           replied = true;
           document.removeEventListener(RESPONSE, listener);
-          if (reply.ok) {
+          if (!effectGate.allows()) {
+            reject(Object.assign(new Error("확장 컨텍스트가 종료되었습니다."), {
+              code: "CONTEXT_INVALIDATED"
+            }));
+          } else if (reply.ok) {
             resolve(reply.result);
           } else {
             reject(Object.assign(new Error(reply.error?.message || "작성기에 반영하지 못했습니다."), { code: reply.error?.code }));
@@ -7861,6 +8104,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
           entry.pending = pending;
           try {
             const session = await pending;
+            effectGate.assert();
             if (this.stopped || !root.isConnected || this.entries.get(root) !== entry) {
               await request(this.document, "release", {
                 session: session.session

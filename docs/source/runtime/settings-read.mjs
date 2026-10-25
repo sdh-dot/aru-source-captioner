@@ -1,4 +1,5 @@
 // 자동 생성: src/runtime/settings-read.ts. tools/compile-typescript.mjs로 갱신한다.
+import { contextEffectGate } from "./context-effect-gate.mjs";
 const clock = {
     setTimeout: (callback, delay) => globalThis.setTimeout(callback, delay),
     clearTimeout: (handle) => globalThis.clearTimeout(handle),
@@ -124,6 +125,9 @@ export async function readSettings(root, keys, options = {}) {
         for (let attempt = 1;; attempt++) {
             const result = await readOnce(root, keys, timer, controller.signal);
             result.attempts = attempt;
+            if (result.state === "invalidated") {
+                contextEffectGate(root).invalidate();
+            }
             if (controller.signal.aborted) {
                 return {
                     state: "cancelled",

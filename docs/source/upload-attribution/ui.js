@@ -128,6 +128,115 @@
   }
   __name(getLegacyPerformanceMetrics, "getLegacyPerformanceMetrics");
 
+  // docs/source/runtime/context-effect-gate.mjs
+  var gates = /* @__PURE__ */ new WeakMap();
+  var sharedGateKey = /* @__PURE__ */ Symbol.for("aru.context-effect-gate.v1");
+  function contextEffectGate(environment) {
+    const root = environment;
+    const key = root.window ?? environment;
+    let shared;
+    if (root.window) {
+      try {
+        shared = Reflect.get(key, sharedGateKey);
+      } catch {
+      }
+    }
+    const existing = shared ?? gates.get(key);
+    if (existing) {
+      return existing;
+    }
+    let state = "active";
+    let runtimeId;
+    const stopped = /* @__PURE__ */ new Set();
+    const terminal = /* @__PURE__ */ __name(() => state === "invalidated" || state === "disposed", "terminal");
+    const stop = /* @__PURE__ */ __name((next) => {
+      if (terminal()) {
+        return;
+      }
+      state = next;
+      root.removeEventListener?.("pagehide", dispose);
+      for (const callback of [...stopped]) {
+        try {
+          callback();
+        } catch (error) {
+          console.warn("[Aru] 컨텍스트 종료 정리 실패", error);
+        }
+      }
+      stopped.clear();
+    }, "stop");
+    const dispose = /* @__PURE__ */ __name(() => stop("disposed"), "dispose");
+    const gate = {
+      get state() {
+        return state;
+      },
+      allows() {
+        if (terminal()) {
+          return false;
+        }
+        try {
+          const runtime = root.browser?.runtime ?? root.chrome?.runtime;
+          const id = runtime?.id;
+          if (typeof id === "string" && id) {
+            if (runtimeId && runtimeId !== id) {
+              stop("invalidated");
+              return false;
+            }
+            runtimeId = id;
+          } else if (runtimeId) {
+            stop("invalidated");
+            return false;
+          }
+          state = "active";
+          return true;
+        } catch (error) {
+          gate.observeError(error);
+          if (!terminal()) {
+            state = "suspended";
+          }
+          return false;
+        }
+      },
+      assert() {
+        if (!gate.allows()) {
+          throw Object.assign(new Error("확장 컨텍스트에서 새 작업을 실행할 수 없습니다."), {
+            code: terminal() ? "CONTEXT_INVALIDATED" : "CONTEXT_SUSPENDED"
+          });
+        }
+      },
+      invalidate: /* @__PURE__ */ __name(() => stop("invalidated"), "invalidate"),
+      dispose,
+      observeError(error) {
+        if (/extension context invalidated/i.test(error instanceof Error ? error.message : String(error))) {
+          stop("invalidated");
+        }
+      },
+      onStop(callback) {
+        if (terminal()) {
+          callback();
+          return () => {
+          };
+        }
+        stopped.add(callback);
+        return () => {
+          stopped.delete(callback);
+        };
+      }
+    };
+    gates.set(key, gate);
+    if (root.window) {
+      try {
+        Object.defineProperty(key, sharedGateKey, { value: gate });
+      } catch {
+      }
+    }
+    gate.allows();
+    if (!terminal()) {
+      root.addEventListener?.("pagehide", dispose, { once: true });
+    }
+    return gate;
+  }
+  __name(contextEffectGate, "contextEffectGate");
+
   // docs/source/runtime/settings-read.mjs
   var clock = {
     setTimeout: /* @__PURE__ */ __name((callback, delay) => globalThis.setTimeout(callback, delay), "setTimeout"),
@@ -246,6 +355,9 @@
       for (let attempt = 1; ; attempt++) {
         const result2 = await readOnce(root, keys, timer, controller.signal);
         result2.attempts = attempt;
+        if (result2.state === "invalidated") {
+          contextEffectGate(root).invalidate();
+        }
         if (controller.signal.aborted) {
           return {
             state: "cancelled",
@@ -513,12 +625,17 @@
       }
       uploadUI2 = UploadUI;
       if (!g.__aruUploadNoAutoStart && g.document && /^\/community\/board\/[^/]+\/(write|modify)(?:\/|$)/.test(g.location.pathname)) {
+        const effectGate = contextEffectGate(g);
         activeUi.get(g.document)?.();
+        if (!effectGate.allows()) {
+          return;
+        }
         let ui;
         let revision = 0;
         let disposed = false;
         let request;
         let unsubscribe;
+        let detachGate;
         const pause = /* @__PURE__ */ __name(() => {
           ui?.destroy();
           ui = void 0;
@@ -529,6 +646,9 @@
           }
         }, "changed");
         const refresh = /* @__PURE__ */ __name(async () => {
+          if (!effectGate.allows()) {
+            return;
+          }
           const current = ++revision;
           request?.abort();
           request = new g.AbortController();
@@ -537,7 +657,7 @@
           const result2 = await readSettings(g, ["enabled"], {
             signal: request.signal
           });
-          if (disposed || current !== revision || result2.state !== "success") {
+          if (disposed || current !== revision || result2.state !== "success" || !effectGate.allows()) {
             return;
           }
           unsubscribe ??= subscribeSettings(g, changed);
@@ -551,12 +671,14 @@
           request?.abort();
           pause();
           unsubscribe?.();
+          detachGate?.();
           g.removeEventListener("pagehide", dispose);
           if (activeUi.get(g.document) === dispose) {
             activeUi.delete(g.document);
           }
         }, "dispose");
         activeUi.set(g.document, dispose);
+        detachGate = effectGate.onStop(dispose);
         g.addEventListener("pagehide", dispose, { once: true });
         void refresh();
       }

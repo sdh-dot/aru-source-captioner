@@ -458,8 +458,118 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
   }
   __name(createIconsDesignSystem, "createIconsDesignSystem");
 
+  // docs/source/runtime/context-effect-gate.mjs
+  var gates = /* @__PURE__ */ new WeakMap();
+  var sharedGateKey = /* @__PURE__ */ Symbol.for("aru.context-effect-gate.v1");
+  function contextEffectGate(environment) {
+    const root = environment;
+    const key = root.window ?? environment;
+    let shared;
+    if (root.window) {
+      try {
+        shared = Reflect.get(key, sharedGateKey);
+      } catch {
+      }
+    }
+    const existing = shared ?? gates.get(key);
+    if (existing) {
+      return existing;
+    }
+    let state = "active";
+    let runtimeId;
+    const stopped = /* @__PURE__ */ new Set();
+    const terminal = /* @__PURE__ */ __name(() => state === "invalidated" || state === "disposed", "terminal");
+    const stop = /* @__PURE__ */ __name((next) => {
+      if (terminal()) {
+        return;
+      }
+      state = next;
+      root.removeEventListener?.("pagehide", dispose);
+      for (const callback of [...stopped]) {
+        try {
+          callback();
+        } catch (error) {
+          console.warn("[Aru] 컨텍스트 종료 정리 실패", error);
+        }
+      }
+      stopped.clear();
+    }, "stop");
+    const dispose = /* @__PURE__ */ __name(() => stop("disposed"), "dispose");
+    const gate = {
+      get state() {
+        return state;
+      },
+      allows() {
+        if (terminal()) {
+          return false;
+        }
+        try {
+          const runtime = root.browser?.runtime ?? root.chrome?.runtime;
+          const id = runtime?.id;
+          if (typeof id === "string" && id) {
+            if (runtimeId && runtimeId !== id) {
+              stop("invalidated");
+              return false;
+            }
+            runtimeId = id;
+          } else if (runtimeId) {
+            stop("invalidated");
+            return false;
+          }
+          state = "active";
+          return true;
+        } catch (error) {
+          gate.observeError(error);
+          if (!terminal()) {
+            state = "suspended";
+          }
+          return false;
+        }
+      },
+      assert() {
+        if (!gate.allows()) {
+          throw Object.assign(new Error("확장 컨텍스트에서 새 작업을 실행할 수 없습니다."), {
+            code: terminal() ? "CONTEXT_INVALIDATED" : "CONTEXT_SUSPENDED"
+          });
+        }
+      },
+      invalidate: /* @__PURE__ */ __name(() => stop("invalidated"), "invalidate"),
+      dispose,
+      observeError(error) {
+        if (/extension context invalidated/i.test(error instanceof Error ? error.message : String(error))) {
+          stop("invalidated");
+        }
+      },
+      onStop(callback) {
+        if (terminal()) {
+          callback();
+          return () => {
+          };
+        }
+        stopped.add(callback);
+        return () => {
+          stopped.delete(callback);
+        };
+      }
+    };
+    gates.set(key, gate);
+    if (root.window) {
+      try {
+        Object.defineProperty(key, sharedGateKey, { value: gate });
+      } catch {
+      }
+    }
+    gate.allows();
+    if (!terminal()) {
+      root.addEventListener?.("pagehide", dispose, { once: true });
+    }
+    return gate;
+  }
+  __name(contextEffectGate, "contextEffectGate");
+
   // docs/source/icon-metadata/interface.mjs
   function createMetadataInterface({ environment = defaultEnvironment, dependencies = {} } = {}) {
+    const effectGate = contextEffectGate(environment);
     const { URL: URL2 } = environment;
     let metadata = createModuleScope(dependencies.metadata, ["Selection", "FIXED", "normalize", "Panel", "Browser", "Client"], ["Client", "Browser", "Panel", "Controller", "countLabel"]);
     let icons = createModuleScope(dependencies.icons, ["DesignSystem"], []);
@@ -490,7 +600,11 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
             }
             g.clearTimeout(item.timer);
             this.pending.delete(p.requestId);
-            if (p.ok) {
+            if (!effectGate.allows()) {
+              item.reject(Object.assign(new Error("확장 컨텍스트가 종료되었습니다."), {
+                code: "CONTEXT_INVALIDATED"
+              }));
+            } else if (p.ok) {
               item.resolve(p.result);
             } else {
               item.reject(Object.assign(new Error(p.error?.message || "메타데이터 오류"), {
@@ -499,8 +613,14 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
             }
           };
           doc.addEventListener("aru-metadata-response-v1", this.receive);
+          this.detachGate = effectGate.onStop(() => this.destroy());
         }
         request(op, body = {}) {
+          try {
+            effectGate.assert();
+          } catch (error) {
+            return Promise.reject(error);
+          }
           if (this.closed) {
             return Promise.reject(new Error("편집기가 종료되었습니다."));
           }
@@ -520,6 +640,10 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
           });
         }
         destroy() {
+          if (this.closed) {
+            return;
+          }
+          this.detachGate?.();
           this.closed = true;
           this.doc.removeEventListener("aru-metadata-response-v1", this.receive);
           for (const p of this.pending.values()) {
@@ -532,16 +656,35 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
       const api = g.browser || g.chrome;
       const Browser = {
         async active() {
-          if (!api?.storage?.sync) {
-            return false;
+          try {
+            if (!effectGate.allows()) {
+              return false;
+            }
+            if (!api?.storage?.sync) {
+              return false;
+            }
+            let values;
+            if (g.browser) {
+              values = await api.storage.sync.get(["enabled", "aruIconsOptions"]);
+            } else {
+              values = await new Promise((resolve) => api.storage.sync.get(["enabled", "aruIconsOptions"], (v) => {
+                try {
+                  const error = api.runtime?.lastError;
+                  if (error) {
+                    effectGate.observeError(error.message);
+                  }
+                  resolve(error ? {} : v);
+                } catch (error) {
+                  effectGate.observeError(error);
+                  resolve({});
+                }
+              }));
+            }
+            return effectGate.allows() && values?.enabled !== false && values?.aruIconsOptions?.enabled === true;
+          } catch (error) {
+            effectGate.observeError(error);
+            throw error;
           }
-          let values;
-          if (g.browser) {
-            values = await api.storage.sync.get(["enabled", "aruIconsOptions"]);
-          } else {
-            values = await new Promise((resolve) => api.storage.sync.get(["enabled", "aruIconsOptions"], (v) => resolve(api.runtime?.lastError ? {} : v)));
-          }
-          return values?.enabled !== false && values?.aruIconsOptions?.enabled === true;
         },
         subscribe(fn) {
           const listener = /* @__PURE__ */ __name((changes, area) => {
@@ -565,6 +708,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
           __name(this, "Panel");
         }
         constructor({ document, client, token, onClose }) {
+          effectGate.assert();
           this.doc = document;
           this.client = client;
           this.token = token;
@@ -580,6 +724,13 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
           this.host = document.createElement("div");
           this.host.dataset.aruMetadataPanel = "";
           this.shadow = this.host.attachShadow({ mode: "open" });
+          for (const type of ["click", "input", "change", "keydown", "submit"]) {
+            this.shadow.addEventListener(type, (event) => {
+              if (!effectGate.allows()) {
+                event.stopImmediatePropagation();
+              }
+            }, true);
+          }
           this.shadow.innerHTML = `<style>${CSS}</style><div class="overlay"><section class="dialog" role="dialog" aria-modal="true" aria-labelledby="title"><header class="header"><h2 id="title">아이콘 태그</h2><button type="button" data-action="close">닫기</button></header><div class="body"><div class="controls"><input class="search" type="search" placeholder="번호·이름·태그 검색" aria-label="이미지 필터"><button type="button" data-action="filtered">검색 결과 선택</button><button type="button" data-action="all">전체 선택</button><button type="button" data-action="clear">선택 해제</button><label><input type="checkbox" class="checkbox"> 체크박스 선택</label></div><div class="note summary" aria-live="polite"></div><div class="viewport" tabindex="0" aria-label="이미지 다중 선택 목록"><div class="space"></div></div><p class="note">Ctrl로 추가 선택 · Shift로 범위 선택 · Ctrl+A로 검색 결과 선택</p><div class="fixed" aria-label="고정 태그"></div><div class="controls"><input class="free" aria-label="자유 태그" placeholder="자유 태그 입력"><button type="button" data-action="tag">태그 추가</button><select class="operation" aria-label="태그 작업"><option value="add">추가 · 기존 태그 보존</option><option value="remove">제거 · 지정한 태그만</option><option value="replace">교체 · 기존 태그 덮어쓰기</option></select></div><div class="chips" aria-label="이번 작업의 태그"></div><p class="note operation-note"></p><div class="status" role="status" aria-live="polite"></div></div><footer class="footer"><span class="change-count">이미지를 선택해 주세요.</span><button type="button" data-action="refresh">목록 갱신</button><button type="button" data-action="undo" disabled>실행 취소</button><button type="button" data-action="redo" disabled>다시 실행</button><button type="button" class="apply" data-action="apply" disabled>편집기에 적용</button></footer></section></div>`;
           this.uiCleanup = icons?.DesignSystem?.attach(this.shadow);
           icons?.DesignSystem?.modalHeader(this.shadow.querySelector("header"), {
@@ -661,7 +812,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
               token: this.token,
               session: this.session
             });
-            if (!this.closed) {
+            if (!this.closed && effectGate.allows()) {
               this.accept(data);
               this.status(data.collisions ? `중복 ID ${data.collisions}개: 적용할 때 선택한 이미지의 충돌만 정리합니다.` : "이미지 선택만으로 본문은 바뀌지 않습니다.");
             }
@@ -669,7 +820,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
             this.status(`[${e.code || "ERROR"}] ${e.message}`, true);
           } finally {
             this.setBusy(false);
-            if (!this.closed) {
+            if (!this.closed && effectGate.allows()) {
               this.q(".search").focus();
             }
           }
@@ -701,7 +852,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
           }
           this.frame = g.requestAnimationFrame(() => {
             this.frame = null;
-            if (!this.closed) {
+            if (!this.closed && effectGate.allows()) {
               this.render();
             }
           });
@@ -744,7 +895,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
               } catch (_) {
               }
               img.addEventListener("error", () => {
-                if (!this.closed) {
+                if (!this.closed && effectGate.allows()) {
                   img.removeAttribute("src");
                   img.alt = "썸네일 로딩 실패 · 다시 누르면 재시도";
                   b.dataset.failed = "true";
@@ -943,7 +1094,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
               token: this.token,
               session: this.session
             });
-            if (!this.closed) {
+            if (!this.closed && effectGate.allows()) {
               this.space.replaceChildren();
               this.accept(data);
               this.status(`적용 완료: 선택 ${r.selected}개 · 변경 ${r.changed}개 (ID ${r.ids} · 태그 ${r.tagChanges})
@@ -953,7 +1104,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
             this.status(`[${e.code || "ERROR"}] ${e.message}`, true);
           } finally {
             this.setBusy(false);
-            if (!this.closed) {
+            if (!this.closed && effectGate.allows()) {
               this.q("[data-action=apply]").focus();
             }
           }
@@ -966,7 +1117,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
           this.selection.clear();
           try {
             const data = await this.client.request(op, { session: this.session });
-            if (!this.closed) {
+            if (!this.closed && effectGate.allows()) {
               this.space.replaceChildren();
               this.accept(data);
               this.status(op === "undo" ? "메타데이터 작업을 실행 취소했습니다." : "메타데이터 작업을 다시 실행했습니다.");
@@ -976,7 +1127,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
             this.status(`[${e.code || "ERROR"}] ${e.message}`, true);
           } finally {
             this.setBusy(false);
-            if (!this.closed) {
+            if (!this.closed && effectGate.allows()) {
               this.q(".search").focus();
             }
           }
@@ -1042,9 +1193,13 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
           let active = false;
           try {
             active = await this.browser.active();
-          } catch (_) {
+          } catch (error) {
+            effectGate.observeError(error);
           }
           if (this.disposed || generation !== this.generation || active === this.active) {
+            return;
+          }
+          if (!effectGate.allows()) {
             return;
           }
           this.active = active;
@@ -1055,7 +1210,13 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
           }
         }
         enable() {
+          if (!effectGate.allows()) {
+            return;
+          }
           this.countListener = (e) => {
+            if (!effectGate.allows()) {
+              return;
+            }
             if (typeof e.detail !== "string") {
               return;
             }
@@ -1089,7 +1250,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
           this.timer = g.setTimeout(() => this.discover(), 160);
         }
         discover() {
-          if (!this.active) {
+          if (!this.active || !effectGate.allows()) {
             return;
           }
           for (const [root, r] of this.entries) {

@@ -1,4 +1,5 @@
 // 자동 생성: src/ruliweb-icons/picker.ts. tools/compile-typescript.mjs로 갱신한다.
+import { contextEffectGate } from "../runtime/context-effect-gate.mjs";
 import { PickerLifecycle } from "./picker-lifecycle.mjs";
 import { defaultEnvironment, } from "../runtime/contracts.mjs";
 // 가상 목록과 미디어 수명을 관리하며 검색 결과·선택 대상·삽입 URL의 대응을 보존한다.
@@ -206,6 +207,8 @@ export function createIconsPicker({ environment = defaultEnvironment, dependenci
                 : null;
         }
         api.createPicker = function createPicker(options = {}) {
+            const effectGate = contextEffectGate(global);
+            effectGate.assert();
             if (!api.SearchIndex || !api.FoldState) {
                 throw new Error("아이콘 검색 모듈이 준비되지 않았습니다.");
             }
@@ -223,6 +226,23 @@ export function createIconsPicker({ environment = defaultEnvironment, dependenci
             host.style.cssText =
                 'all:initial;position:fixed;inset:0;display:block;z-index:2147483200;color:#292a35;font:14px/1.5 "Malgun Gothic","Apple SD Gothic Neo",system-ui,sans-serif;';
             const root = host.attachShadow({ mode: "open" });
+            const guardEvent = (event) => {
+                if (!effectGate.allows()) {
+                    event.preventDefault();
+                    event.stopImmediatePropagation();
+                }
+            };
+            for (const type of [
+                "click",
+                "input",
+                "change",
+                "keydown",
+                "submit",
+                "pointerdown",
+                "dblclick",
+            ]) {
+                root.addEventListener(type, guardEvent, true);
+            }
             const style = el("style");
             style.textContent =
                 stylesheet +
@@ -394,7 +414,7 @@ export function createIconsPicker({ environment = defaultEnvironment, dependenci
             let targetValid = options.targetValid !== false;
             async function chooseCatalog(action) {
                 const result = await action();
-                if (lifecycle.isClosed) {
+                if (!effectGate.allows() || lifecycle.isClosed) {
                     return result;
                 }
                 if (result?.ok === true) {
@@ -698,7 +718,7 @@ export function createIconsPicker({ environment = defaultEnvironment, dependenci
     `;
             root.append(mobileStyle);
             function setCatalogOpen(open, reason = "cancel") {
-                if (!catalogView || lifecycle.isClosed) {
+                if (!catalogView || !effectGate.allows() || lifecycle.isClosed) {
                     return;
                 }
                 if (open && !catalogOpen) {
@@ -747,7 +767,7 @@ export function createIconsPicker({ environment = defaultEnvironment, dependenci
                 }
             }
             function showPackToast() {
-                if (toastShown || lifecycle.isClosed) {
+                if (toastShown || !effectGate.allows() || lifecycle.isClosed) {
                     return;
                 }
                 toastShown = true;
@@ -757,7 +777,7 @@ export function createIconsPicker({ environment = defaultEnvironment, dependenci
                 dialog.classList.add("toast-visible");
                 toastTimer = setTimeout(() => {
                     toastTimer = 0;
-                    if (!lifecycle.isClosed) {
+                    if (!(!effectGate.allows() || lifecycle.isClosed)) {
                         toast.hidden = true;
                         dialog.classList.remove("toast-visible");
                     }
@@ -796,6 +816,7 @@ export function createIconsPicker({ environment = defaultEnvironment, dependenci
             let contexts = [];
             let visibilityObserver = null;
             let resizeObserver = null;
+            let detachGate;
             const lifecycle = new PickerLifecycle(disposePicker);
             let composing = false;
             let searchTimer = 0;
@@ -840,7 +861,7 @@ export function createIconsPicker({ environment = defaultEnvironment, dependenci
                 state.categoryFilterIds.length > 0 ||
                 state.sourceFilterIds.length > 0;
             const announce = (text) => {
-                if (!lifecycle.isClosed) {
+                if (!(!effectGate.allows() || lifecycle.isClosed)) {
                     live.textContent = text;
                 }
             };
@@ -1019,6 +1040,7 @@ export function createIconsPicker({ environment = defaultEnvironment, dependenci
                 const ready = () => {
                     if (finished ||
                         !media.isConnected ||
+                        !effectGate.allows() ||
                         lifecycle.isClosed ||
                         (frameThumbnail &&
                             (frameSeeking || media.readyState < 2))) {
@@ -1062,7 +1084,9 @@ export function createIconsPicker({ environment = defaultEnvironment, dependenci
                     }
                 };
                 const showFailure = (text, code) => {
-                    if (!media.isConnected || lifecycle.isClosed) {
+                    if (!media.isConnected ||
+                        !effectGate.allows() ||
+                        lifecycle.isClosed) {
                         return;
                     }
                     if (finished) {
@@ -1338,18 +1362,24 @@ export function createIconsPicker({ environment = defaultEnvironment, dependenci
                 return card;
             }
             function queueWindows() {
-                if (virtualFrame || lifecycle.isClosed) {
+                if (!effectGate.allows()) {
+                    return;
+                }
+                if (virtualFrame || !effectGate.allows() || lifecycle.isClosed) {
                     return;
                 }
                 virtualFrame = requestAnimationFrame(() => {
                     virtualFrame = 0;
-                    if (!lifecycle.isClosed) {
+                    if (!(!effectGate.allows() || lifecycle.isClosed)) {
                         renderWindows();
                     }
                 });
             }
             function renderWindows() {
-                if (lifecycle.isClosed) {
+                if (!effectGate.allows()) {
+                    return;
+                }
+                if (!effectGate.allows() || lifecycle.isClosed) {
                     return;
                 }
                 let remaining = MAX_CARDS;
@@ -1512,6 +1542,9 @@ export function createIconsPicker({ environment = defaultEnvironment, dependenci
                 updateMetrics();
             }
             function renderChips(rebuild = false) {
+                if (!effectGate.allows()) {
+                    return;
+                }
                 if (rebuild) {
                     chips.replaceChildren();
                     const tags = library
@@ -1560,6 +1593,9 @@ export function createIconsPicker({ environment = defaultEnvironment, dependenci
                     : !state.selectedTagIds.length)));
             }
             function renderSelection() {
+                if (!effectGate.allows()) {
+                    return;
+                }
                 const icon = byIconId(selectedIconId);
                 updatePrepare();
                 selectionTags.replaceChildren();
@@ -1613,6 +1649,9 @@ export function createIconsPicker({ environment = defaultEnvironment, dependenci
                 updatePrepare();
             }
             function renderGroups() {
+                if (!effectGate.allows()) {
+                    return;
+                }
                 const started = performance.now();
                 const oldActive = root.activeElement;
                 const activeGroup = oldActive && oldActive.closest(".group");
@@ -1819,7 +1858,7 @@ export function createIconsPicker({ environment = defaultEnvironment, dependenci
                 return icon;
             }
             function paintProgress(info = {}) {
-                if (lifecycle.isClosed) {
+                if (!effectGate.allows() || lifecycle.isClosed) {
                     return;
                 }
                 const status = info.status || (info.busy ? "loading" : "partial");
@@ -1939,6 +1978,9 @@ export function createIconsPicker({ environment = defaultEnvironment, dependenci
                 });
             }
             function renderLibrary() {
+                if (!effectGate.allows()) {
+                    return;
+                }
                 libraryResult = library.search();
                 dialog.classList.toggle("all-pack-search", scope.value === "all");
                 if (scope.value === "current" &&
@@ -2048,18 +2090,21 @@ export function createIconsPicker({ environment = defaultEnvironment, dependenci
                 }
             }
             function libraryCollect(refresh = false) {
-                if (!library || lifecycle.isClosed) {
+                if (!effectGate.allows()) {
+                    return;
+                }
+                if (!library || !effectGate.allows() || lifecycle.isClosed) {
                     return;
                 }
                 const work = library.collect({
                     refresh,
                     onProgress: () => {
-                        if (lifecycle.isClosed || libraryFrame) {
+                        if (!effectGate.allows() || lifecycle.isClosed || libraryFrame) {
                             return;
                         }
                         libraryFrame = requestAnimationFrame(() => {
                             libraryFrame = 0;
-                            if (!lifecycle.isClosed) {
+                            if (!(!effectGate.allows() || lifecycle.isClosed)) {
                                 applySearch(false);
                             }
                         });
@@ -2067,13 +2112,16 @@ export function createIconsPicker({ environment = defaultEnvironment, dependenci
                 });
                 applySearch(false);
                 work.catch((error) => {
-                    if (!lifecycle.isClosed) {
+                    if (!(!effectGate.allows() || lifecycle.isClosed)) {
                         setError(error.message);
                     }
                 });
             }
             function applySearch(collect = true) {
-                if (lifecycle.isClosed) {
+                if (!effectGate.allows()) {
+                    return;
+                }
+                if (!effectGate.allows() || lifecycle.isClosed) {
                     return;
                 }
                 state.queryRevision++;
@@ -2190,7 +2238,7 @@ export function createIconsPicker({ environment = defaultEnvironment, dependenci
                 }
             }
             function setError(message) {
-                if (lifecycle.isClosed) {
+                if (!effectGate.allows() || lifecycle.isClosed) {
                     return;
                 }
                 errorNode.textContent = String(message || "아이콘을 읽지 못했습니다.");
@@ -2198,7 +2246,7 @@ export function createIconsPicker({ environment = defaultEnvironment, dependenci
                 retry.disabled = typeof options.onRetry !== "function";
             }
             function close(action) {
-                if (lifecycle.isClosed) {
+                if (!effectGate.allows() || lifecycle.isClosed) {
                     return;
                 }
                 destroy();
@@ -2215,6 +2263,18 @@ export function createIconsPicker({ environment = defaultEnvironment, dependenci
                 lifecycle.destroy();
             }
             function disposePicker() {
+                detachGate?.();
+                for (const type of [
+                    "click",
+                    "input",
+                    "change",
+                    "keydown",
+                    "submit",
+                    "pointerdown",
+                    "dblclick",
+                ]) {
+                    root.removeEventListener(type, guardEvent, true);
+                }
                 clearTimeout(toastTimer);
                 cancelSearch();
                 previewCleanup();
@@ -2359,7 +2419,7 @@ export function createIconsPicker({ environment = defaultEnvironment, dependenci
                     Promise.resolve()
                         .then(() => preferences?.write?.(saved))
                         .catch(() => {
-                        if (!lifecycle.isClosed) {
+                        if (!(!effectGate.allows() || lifecycle.isClosed)) {
                             announce("화면 설정을 저장하지 못했어요. 이번 창에서는 계속 사용할 수 있습니다.");
                         }
                     });
@@ -2380,12 +2440,14 @@ export function createIconsPicker({ environment = defaultEnvironment, dependenci
             const uiReady = Promise.resolve()
                 .then(() => preferences?.read?.())
                 .then((value) => {
-                if (!lifecycle.isClosed && uiRevision === 0 && value) {
+                if (!(!effectGate.allows() || lifecycle.isClosed) &&
+                    uiRevision === 0 &&
+                    value) {
                     applyUi(value);
                 }
             })
                 .catch(() => {
-                if (!lifecycle.isClosed) {
+                if (!(!effectGate.allows() || lifecycle.isClosed)) {
                     announce("화면 설정을 복원하지 못했어요. 기본 크기로 열었습니다.");
                 }
             });
@@ -2519,6 +2581,7 @@ export function createIconsPicker({ environment = defaultEnvironment, dependenci
             async function requestInsertion() {
                 const icon = byIconId(selectedIconId);
                 if (catalogOpen ||
+                    !effectGate.allows() ||
                     lifecycle.isClosed ||
                     !icon ||
                     prepare.disabled ||
@@ -2532,7 +2595,7 @@ export function createIconsPicker({ environment = defaultEnvironment, dependenci
                 updatePrepare();
                 try {
                     const prepared = await options.onSelect(icon);
-                    if (!lifecycle.isClosed) {
+                    if (!(!effectGate.allows() || lifecycle.isClosed)) {
                         announce(typeof prepared === "string"
                             ? prepared
                             : (prepared && prepared.message) ||
@@ -2547,7 +2610,7 @@ export function createIconsPicker({ environment = defaultEnvironment, dependenci
                 }
                 finally {
                     preparing = false;
-                    if (!lifecycle.isClosed) {
+                    if (!(!effectGate.allows() || lifecycle.isClosed)) {
                         renderSelection();
                     }
                 }
@@ -2613,7 +2676,8 @@ export function createIconsPicker({ environment = defaultEnvironment, dependenci
                 initialFocusFrame = 0;
                 // 첫 프레임 전에 사용자가 정한 포커스를 가져오지 않는다.
                 // 캐시된 BUNDLE이 이미 목록을 숨긴 경우 그 목록에 포커스를 주지 않는다.
-                if (!lifecycle.isClosed && !root.activeElement) {
+                if (!(!effectGate.allows() || lifecycle.isClosed) &&
+                    !root.activeElement) {
                     (mobileInput()
                         ? catalogOpen
                             ? catalogView.node
@@ -2625,6 +2689,9 @@ export function createIconsPicker({ environment = defaultEnvironment, dependenci
             });
             const apiPicker = {
                 setCurrentSource(key) {
+                    if (!effectGate.allows() || lifecycle.isClosed) {
+                        return;
+                    }
                     if (!library) {
                         return;
                     }
@@ -2632,16 +2699,28 @@ export function createIconsPicker({ environment = defaultEnvironment, dependenci
                     collectionKey = "";
                 },
                 completeCatalogSelection() {
+                    if (!effectGate.allows() || lifecycle.isClosed) {
+                        return;
+                    }
                     setCatalogOpen(false, "selected");
                     showPackToast();
                 },
                 openCatalog() {
+                    if (!effectGate.allows() || lifecycle.isClosed) {
+                        return;
+                    }
                     setCatalogOpen(true);
                 },
                 closeCatalog() {
+                    if (!effectGate.allows() || lifecycle.isClosed) {
+                        return;
+                    }
                     setCatalogOpen(false, "cancel");
                 },
                 refreshLibrary() {
+                    if (!effectGate.allows() || lifecycle.isClosed) {
+                        return;
+                    }
                     if (library) {
                         if (scope.value === "all") {
                             libraryCollect();
@@ -2650,6 +2729,9 @@ export function createIconsPicker({ environment = defaultEnvironment, dependenci
                     }
                 },
                 setMetadataDiagnostics(value) {
+                    if (!effectGate.allows() || lifecycle.isClosed) {
+                        return;
+                    }
                     collectionDiagnostics = options.debug === true ? value : null;
                     reportMetadata();
                 },
@@ -2657,18 +2739,30 @@ export function createIconsPicker({ environment = defaultEnvironment, dependenci
                     return options.debug === true ? metadataDetails() : null;
                 },
                 setCatalog(entries, message) {
+                    if (!effectGate.allows() || lifecycle.isClosed) {
+                        return;
+                    }
                     catalogView?.setEntries(entries, message, library?.packs);
                 },
                 setCatalogPack(ref, next) {
+                    if (!effectGate.allows() || lifecycle.isClosed) {
+                        return;
+                    }
                     catalogView?.setPack(ref, next);
                 },
                 setQuery(value) {
+                    if (!effectGate.allows() || lifecycle.isClosed) {
+                        return;
+                    }
                     cancelSearch();
                     input.value = String(value || "");
                     state.query = input.value;
                     applySearch();
                 },
                 setTargetState(valid, error) {
+                    if (!effectGate.allows() || lifecycle.isClosed) {
+                        return;
+                    }
                     targetValid = valid;
                     targetError.hidden = valid;
                     targetError.textContent = valid
@@ -2681,6 +2775,9 @@ export function createIconsPicker({ environment = defaultEnvironment, dependenci
                     renderSelection();
                 },
                 clearPack() {
+                    if (!effectGate.allows() || lifecycle.isClosed) {
+                        return;
+                    }
                     if (library && scope.value === "all") {
                         applySearch(false);
                         return;
@@ -2706,7 +2803,10 @@ export function createIconsPicker({ environment = defaultEnvironment, dependenci
                     renderSelection();
                 },
                 setSources(choices = []) {
-                    if (!sourceSelect || lifecycle.isClosed) {
+                    if (!effectGate.allows() || lifecycle.isClosed) {
+                        return;
+                    }
+                    if (!sourceSelect || !effectGate.allows() || lifecycle.isClosed) {
                         return;
                     }
                     const selected = sourceSelect.value;
@@ -2725,8 +2825,11 @@ export function createIconsPicker({ environment = defaultEnvironment, dependenci
                 element: host,
                 shadowRoot: root,
                 setPack(nextPack) {
+                    if (!effectGate.allows() || lifecycle.isClosed) {
+                        return;
+                    }
                     columns.hidden = false;
-                    if (lifecycle.isClosed) {
+                    if (!effectGate.allows() || lifecycle.isClosed) {
                         return;
                     }
                     if (!nextPack || !Array.isArray(nextPack.icons)) {
@@ -2788,6 +2891,9 @@ export function createIconsPicker({ environment = defaultEnvironment, dependenci
                     applySearch();
                 },
                 setProgress(info = {}) {
+                    if (!effectGate.allows() || lifecycle.isClosed) {
+                        return;
+                    }
                     currentProgress = { ...info };
                     if (!library || scope.value !== "all") {
                         paintProgress(info);
@@ -2798,6 +2904,9 @@ export function createIconsPicker({ environment = defaultEnvironment, dependenci
                 },
                 setError,
                 clearError() {
+                    if (!effectGate.allows() || lifecycle.isClosed) {
+                        return;
+                    }
                     errorNode.hidden = true;
                     errorNode.textContent = "";
                 },
@@ -2805,7 +2914,7 @@ export function createIconsPicker({ environment = defaultEnvironment, dependenci
                 destroy,
                 getSnapshot() {
                     return {
-                        destroyed: lifecycle.isClosed,
+                        destroyed: !effectGate.allows() || lifecycle.isClosed,
                         targetValid,
                         catalog: catalogView
                             ? { ...catalogView.snapshot(), open: catalogOpen, toastShown }
@@ -2851,6 +2960,7 @@ export function createIconsPicker({ environment = defaultEnvironment, dependenci
                     };
                 },
             };
+            detachGate = effectGate.onStop(destroy);
             return apiPicker;
         };
     };

@@ -1,3 +1,4 @@
+import { contextEffectGate } from "../runtime/context-effect-gate.ts";
 import {
   defaultEnvironment,
   type RuntimeEnvironment,
@@ -10,6 +11,7 @@ export function createDownloadContent({
   environment = defaultEnvironment,
   dependencies = {},
 }: FactoryOptions = {}) {
+  const effectGate = contextEffectGate(environment);
   let downloads = createModuleScope(
     dependencies.downloads,
     ["api", "error", "options", "article", "extract"],
@@ -36,6 +38,7 @@ export function createDownloadContent({
           return;
         }
         const collectBodyImages = async () => {
+          effectGate.assert();
           if (sender.id !== D.api.runtime.id) {
             throw D.error("SENDER", "확장 내부 요청만 허용합니다.");
           }
@@ -45,6 +48,7 @@ export function createDownloadContent({
               "전체 확장과 게시글 다운로드 옵션을 켜 주세요.",
             );
           }
+          effectGate.assert();
           const current = D.article(root.location.href);
           if (current.url !== message.url) {
             throw D.error(
@@ -55,8 +59,13 @@ export function createDownloadContent({
           return D.extract(root.document, root.location.href);
         };
         collectBodyImages().then(
-          (result) => reply({ ok: true, result }),
+          (result) => {
+            if (effectGate.allows()) {
+              reply({ ok: true, result });
+            }
+          },
           (err) =>
+            effectGate.allows() &&
             reply({
               ok: false,
               error: { code: err.code || "COLLECT", message: err.message },

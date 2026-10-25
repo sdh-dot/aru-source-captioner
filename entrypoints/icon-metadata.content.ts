@@ -1,3 +1,4 @@
+import { bindContextEffectGate } from "../src/runtime/context-effect-gate.ts";
 import { defaultEnvironment } from "../src/runtime/contracts.ts";
 import { isolatedState } from "../runtime/world-state";
 import { defineContentScript } from "wxt/utils/define-content-script";
@@ -7,7 +8,10 @@ export default defineContentScript({
   matches: contentMatches(4),
   runAt: "document_idle",
   world: "ISOLATED",
-  main() {
+  main(ctx) {
+    if (!bindContextEffectGate(defaultEnvironment, ctx).allows()) {
+      return;
+    }
     const state = isolatedState();
     const result = createMetadataUi({
       environment: defaultEnvironment,

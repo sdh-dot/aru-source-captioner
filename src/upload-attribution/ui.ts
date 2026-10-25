@@ -1,3 +1,4 @@
+import { contextEffectGate } from "../runtime/context-effect-gate.ts";
 import { readSettings, subscribeSettings } from "../runtime/settings-read.ts";
 import {
   defaultEnvironment,
@@ -282,12 +283,17 @@ export function createAttributionUi({
         g.location.pathname,
       )
     ) {
+      const effectGate = contextEffectGate(g);
       activeUi.get(g.document)?.();
+      if (!effectGate.allows()) {
+        return;
+      }
       let ui: UploadUI | undefined;
       let revision = 0;
       let disposed = false;
       let request: AbortController | undefined;
       let unsubscribe: (() => void) | undefined;
+      let detachGate: (() => void) | undefined;
       const pause = () => {
         ui?.destroy();
         ui = undefined;
@@ -298,6 +304,9 @@ export function createAttributionUi({
         }
       };
       const refresh = async () => {
+        if (!effectGate.allows()) {
+          return;
+        }
         const current = ++revision;
         request?.abort();
         request = new g.AbortController();
@@ -307,7 +316,12 @@ export function createAttributionUi({
         const result = await readSettings(g, ["enabled"], {
           signal: request.signal,
         });
-        if (disposed || current !== revision || result.state !== "success") {
+        if (
+          disposed ||
+          current !== revision ||
+          result.state !== "success" ||
+          !effectGate.allows()
+        ) {
           return;
         }
         unsubscribe ??= subscribeSettings(g, changed);
@@ -321,12 +335,14 @@ export function createAttributionUi({
         request?.abort();
         pause();
         unsubscribe?.();
+        detachGate?.();
         g.removeEventListener("pagehide", dispose);
         if (activeUi.get(g.document) === dispose) {
           activeUi.delete(g.document);
         }
       };
       activeUi.set(g.document, dispose);
+      detachGate = effectGate.onStop(dispose);
       g.addEventListener("pagehide", dispose, { once: true });
       void refresh();
     }

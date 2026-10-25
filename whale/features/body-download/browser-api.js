@@ -3,6 +3,115 @@
   var __defProp = Object.defineProperty;
   var __name = (target, value) => __defProp(target, "name", { value, configurable: true });
 
+  // docs/source/runtime/context-effect-gate.mjs
+  var gates = /* @__PURE__ */ new WeakMap();
+  var sharedGateKey = /* @__PURE__ */ Symbol.for("aru.context-effect-gate.v1");
+  function contextEffectGate(environment) {
+    const root = environment;
+    const key = root.window ?? environment;
+    let shared;
+    if (root.window) {
+      try {
+        shared = Reflect.get(key, sharedGateKey);
+      } catch {
+      }
+    }
+    const existing = shared ?? gates.get(key);
+    if (existing) {
+      return existing;
+    }
+    let state = "active";
+    let runtimeId;
+    const stopped = /* @__PURE__ */ new Set();
+    const terminal = /* @__PURE__ */ __name(() => state === "invalidated" || state === "disposed", "terminal");
+    const stop = /* @__PURE__ */ __name((next) => {
+      if (terminal()) {
+        return;
+      }
+      state = next;
+      root.removeEventListener?.("pagehide", dispose);
+      for (const callback of [...stopped]) {
+        try {
+          callback();
+        } catch (error) {
+          console.warn("[Aru] 컨텍스트 종료 정리 실패", error);
+        }
+      }
+      stopped.clear();
+    }, "stop");
+    const dispose = /* @__PURE__ */ __name(() => stop("disposed"), "dispose");
+    const gate = {
+      get state() {
+        return state;
+      },
+      allows() {
+        if (terminal()) {
+          return false;
+        }
+        try {
+          const runtime = root.browser?.runtime ?? root.chrome?.runtime;
+          const id = runtime?.id;
+          if (typeof id === "string" && id) {
+            if (runtimeId && runtimeId !== id) {
+              stop("invalidated");
+              return false;
+            }
+            runtimeId = id;
+          } else if (runtimeId) {
+            stop("invalidated");
+            return false;
+          }
+          state = "active";
+          return true;
+        } catch (error) {
+          gate.observeError(error);
+          if (!terminal()) {
+            state = "suspended";
+          }
+          return false;
+        }
+      },
+      assert() {
+        if (!gate.allows()) {
+          throw Object.assign(new Error("확장 컨텍스트에서 새 작업을 실행할 수 없습니다."), {
+            code: terminal() ? "CONTEXT_INVALIDATED" : "CONTEXT_SUSPENDED"
+          });
+        }
+      },
+      invalidate: /* @__PURE__ */ __name(() => stop("invalidated"), "invalidate"),
+      dispose,
+      observeError(error) {
+        if (/extension context invalidated/i.test(error instanceof Error ? error.message : String(error))) {
+          stop("invalidated");
+        }
+      },
+      onStop(callback) {
+        if (terminal()) {
+          callback();
+          return () => {
+          };
+        }
+        stopped.add(callback);
+        return () => {
+          stopped.delete(callback);
+        };
+      }
+    };
+    gates.set(key, gate);
+    if (root.window) {
+      try {
+        Object.defineProperty(key, sharedGateKey, { value: gate });
+      } catch {
+      }
+    }
+    gate.allows();
+    if (!terminal()) {
+      root.addEventListener?.("pagehide", dispose, { once: true });
+    }
+    return gate;
+  }
+  __name(contextEffectGate, "contextEffectGate");
+
   // docs/source/runtime/contracts.mjs
   var defaultEnvironment = globalThis;
 
@@ -29,11 +138,12 @@
 
   // docs/source/body-download/browser-api.mjs
   function createDownloadBrowserApi({ environment = defaultEnvironment, dependencies = {} } = {}) {
+    const effectGate = contextEffectGate(environment);
     let downloads2 = createModuleScope(dependencies.downloads, ["error", "JOB_KEY"], ["api", "call", "options", "readJob", "writeJob", "ownsDownload"]);
     const initializeDownloadBrowserApi = /* @__PURE__ */ __name(function(root) {
       "use strict";
       const D = downloads2, promise = !!root.browser?.runtime, api = promise ? root.browser : root.chrome;
-      function call(target, method, ...args) {
+      function invoke(target, method, ...args) {
         if (!target || typeof target[method] !== "function") {
           return Promise.reject(D.error("API_UNAVAILABLE", "브라우저 기능을 사용할 수 없습니다: " + method));
         }
@@ -47,17 +157,39 @@
         return new Promise((resolve, reject) => {
           try {
             target[method](...args, (value) => {
-              const err = api.runtime.lastError;
-              if (err) {
-                reject(D.error("BROWSER_API", err.message));
-              } else {
-                resolve(value);
+              try {
+                effectGate.assert();
+                const err = api.runtime.lastError;
+                if (err) {
+                  reject(D.error("BROWSER_API", err.message));
+                } else {
+                  resolve(value);
+                }
+              } catch (error) {
+                effectGate.observeError(error);
+                reject(error);
               }
             });
           } catch (err) {
             reject(err);
           }
         });
+      }
+      __name(invoke, "invoke");
+      function call(target, method, ...args) {
+        try {
+          effectGate.assert();
+          return invoke(target, method, ...args).then((value) => {
+            effectGate.assert();
+            return value;
+          }, (error) => {
+            effectGate.observeError(error);
+            throw error;
+          });
+        } catch (error) {
+          effectGate.observeError(error);
+          return Promise.reject(error);
+        }
       }
       __name(call, "call");
       async function options() {

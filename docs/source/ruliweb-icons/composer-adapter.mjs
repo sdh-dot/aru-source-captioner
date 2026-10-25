@@ -1,14 +1,22 @@
 // 자동 생성: src/ruliweb-icons/composer-adapter.ts. tools/compile-typescript.mjs로 갱신한다.
+import { contextEffectGate } from "../runtime/context-effect-gate.mjs";
 import { defaultEnvironment, } from "../runtime/contracts.mjs";
 // 동기 문자열 요청·응답과 작성기별 세션 수명주기를 유지한다.
 import { createSiteAdapter } from "./site-adapter.mjs";
 export function createComposerAdapter({ environment: global = defaultEnvironment, site = createSiteAdapter({ environment: global }), getDesignSystem = () => null, } = {}) {
+    const effectGate = contextEffectGate(global);
     const { MutationObserver, AbortController, CustomEvent } = global;
     const requestAnimationFrame = (callback) => global.requestAnimationFrame(callback);
     const cancelAnimationFrame = (frame) => global.cancelAnimationFrame(frame);
     const REQUEST = "aru-icons-composer-request-v1", RESPONSE = "aru-icons-composer-response-v1";
     const token = () => global.crypto.randomUUID().replaceAll("-", "");
     function request(document, op, payload = {}) {
+        try {
+            effectGate.assert();
+        }
+        catch (error) {
+            return Promise.reject(error);
+        }
         const requestId = token();
         return new Promise((resolve, reject) => {
             let replied = false;
@@ -28,7 +36,12 @@ export function createComposerAdapter({ environment: global = defaultEnvironment
                 }
                 replied = true;
                 document.removeEventListener(RESPONSE, listener);
-                if (reply.ok) {
+                if (!effectGate.allows()) {
+                    reject(Object.assign(new Error("확장 컨텍스트가 종료되었습니다."), {
+                        code: "CONTEXT_INVALIDATED",
+                    }));
+                }
+                else if (reply.ok) {
                     resolve(reply.result);
                 }
                 else {
@@ -245,6 +258,7 @@ export function createComposerAdapter({ environment: global = defaultEnvironment
                 entry.pending = pending;
                 try {
                     const session = await pending;
+                    effectGate.assert();
                     if (this.stopped ||
                         !root.isConnected ||
                         this.entries.get(root) !== entry) {

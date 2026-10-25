@@ -1,13 +1,15 @@
 // 자동 생성: src/body-download/browser-api.ts. tools/compile-typescript.mjs로 갱신한다.
+import { contextEffectGate } from "../runtime/context-effect-gate.mjs";
 import { defaultEnvironment, } from "../runtime/contracts.mjs";
 // 다운로드 설정과 로컬 원장에 대한 Promise·callback 브라우저 API 차이를 흡수한다.
 import { createModuleScope, selectModuleExports, } from "../runtime/module-scope.mjs";
 export function createDownloadBrowserApi({ environment = defaultEnvironment, dependencies = {}, } = {}) {
+    const effectGate = contextEffectGate(environment);
     let downloads = createModuleScope(dependencies.downloads, ["error", "JOB_KEY"], ["api", "call", "options", "readJob", "writeJob", "ownsDownload"]);
     const initializeDownloadBrowserApi = function (root) {
         "use strict";
         const D = downloads, promise = !!root.browser?.runtime, api = promise ? root.browser : root.chrome;
-        function call(target, method, ...args) {
+        function invoke(target, method, ...args) {
             if (!target || typeof target[method] !== "function") {
                 return Promise.reject(D.error("API_UNAVAILABLE", "브라우저 기능을 사용할 수 없습니다: " + method));
             }
@@ -22,12 +24,19 @@ export function createDownloadBrowserApi({ environment = defaultEnvironment, dep
             return new Promise((resolve, reject) => {
                 try {
                     target[method](...args, (value) => {
-                        const err = api.runtime.lastError;
-                        if (err) {
-                            reject(D.error("BROWSER_API", err.message));
+                        try {
+                            effectGate.assert();
+                            const err = api.runtime.lastError;
+                            if (err) {
+                                reject(D.error("BROWSER_API", err.message));
+                            }
+                            else {
+                                resolve(value);
+                            }
                         }
-                        else {
-                            resolve(value);
+                        catch (error) {
+                            effectGate.observeError(error);
+                            reject(error);
                         }
                     });
                 }
@@ -35,6 +44,22 @@ export function createDownloadBrowserApi({ environment = defaultEnvironment, dep
                     reject(err);
                 }
             });
+        }
+        function call(target, method, ...args) {
+            try {
+                effectGate.assert();
+                return invoke(target, method, ...args).then((value) => {
+                    effectGate.assert();
+                    return value;
+                }, (error) => {
+                    effectGate.observeError(error);
+                    throw error;
+                });
+            }
+            catch (error) {
+                effectGate.observeError(error);
+                return Promise.reject(error);
+            }
         }
         async function options() {
             const value = await call(api.storage.sync, "get", [

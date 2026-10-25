@@ -1,3 +1,4 @@
+import { contextEffectGate } from "../runtime/context-effect-gate.ts";
 import { readSettings, subscribeSettings } from "../runtime/settings-read.ts";
 import type { DynamicApi, CodedError } from "../runtime/contracts.ts";
 
@@ -9,6 +10,7 @@ import {
 export function createBrowserAdapter(
   root: RuntimeEnvironment = defaultEnvironment,
 ) {
+  const effectGate = contextEffectGate(root);
   const defaults = Object.freeze({
     enabled: false as boolean,
     autoLoad: true,
@@ -130,44 +132,60 @@ export function createBrowserAdapter(
     method: string,
     args: unknown[],
   ): Promise<DynamicApi> {
-    if (!api || !target || typeof target[method] !== "function") {
-      return Promise.reject(
-        failure("API_UNAVAILABLE", "확장 프로그램 API를 사용할 수 없습니다."),
+    try {
+      effectGate.assert();
+      if (!api || !target || typeof target[method] !== "function") {
+        throw failure(
+          "API_UNAVAILABLE",
+          "확장 프로그램 API를 사용할 수 없습니다.",
+        );
+      }
+      const pending = promiseApi
+        ? Promise.resolve(target[method](...args))
+        : new Promise<DynamicApi>((resolve, reject) => {
+            target[method](...args, (value: DynamicApi) => {
+              try {
+                effectGate.assert();
+                const error = api.runtime?.lastError;
+                if (error) {
+                  reject(
+                    failure(
+                      "API_ERROR",
+                      error.message || "확장 프로그램 API 요청에 실패했습니다.",
+                    ),
+                  );
+                } else {
+                  resolve(value);
+                }
+              } catch (error) {
+                effectGate.observeError(error);
+                reject(error);
+              }
+            });
+          });
+      return pending.then(
+        (value) => {
+          effectGate.assert();
+          return value;
+        },
+        (error) => {
+          effectGate.observeError(error);
+          throw error;
+        },
       );
+    } catch (error) {
+      effectGate.observeError(error);
+      return Promise.reject(error);
     }
-    if (promiseApi) {
-      try {
-        return Promise.resolve(target[method](...args));
-      } catch (error) {
-        return Promise.reject(error);
-      }
-    }
-    return new Promise((resolve, reject) => {
-      try {
-        target[method](...args, (value: unknown) => {
-          const error = api.runtime && api.runtime.lastError;
-          if (error) {
-            reject(
-              failure(
-                "API_ERROR",
-                error.message || "확장 프로그램 API 요청에 실패했습니다.",
-              ),
-            );
-          } else {
-            resolve(value as DynamicApi);
-          }
-        });
-      } catch (error) {
-        reject(error);
-      }
-    });
   }
 
   async function readOptions() {
+    effectGate.assert();
     const result = await readSettings(root, ["enabled", "aruIconsOptions"]);
     if (result.state !== "success") {
       throw result.error;
     }
+    effectGate.assert();
     const items = result.values;
     const supplied = items.aruIconsOptions;
     const iconOptions = Object.assign(

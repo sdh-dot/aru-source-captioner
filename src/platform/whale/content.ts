@@ -1,3 +1,4 @@
+import { contextEffectGate } from "../../runtime/context-effect-gate.ts";
 import { readSettings } from "../../runtime/settings-read.ts";
 import { parsePixivFilenameUrl } from "../../source-caption/pixiv-filename.ts";
 import type { ParsedSourceResult } from "../../upload-attribution/models.ts";
@@ -16,10 +17,17 @@ import {
 // 브라우저별 기존 초기화·저장 키·사용자 설정과 이벤트 계약을 유지한다.
 import { createModuleScope } from "../../runtime/module-scope.ts";
 
+const installedDocuments = new WeakSet<Document>();
+
 export function installWhaleContent({
   environment = defaultEnvironment,
   dependencies = {},
 }: FactoryOptions = {}) {
+  const effectGate = contextEffectGate(environment);
+  if (!effectGate.allows() || installedDocuments.has(environment.document)) {
+    return {};
+  }
+  installedDocuments.add(environment.document);
   const window = environment.window ?? environment;
   const {
     document,
@@ -130,6 +138,9 @@ export function installWhaleContent({
       state: string;
       selected: number;
     }) {
+      if (!effectGate.allows()) {
+        return;
+      }
       const value = JSON.stringify(snapshot);
       if (document.documentElement.dataset.aruUploadDiagnostic !== value) {
         document.documentElement.dataset.aruUploadDiagnostic = value;
@@ -137,6 +148,9 @@ export function installWhaleContent({
     }
 
     function attachFileInputListeners(config: Options) {
+      if (!effectGate.allows()) {
+        return;
+      }
       document.addEventListener(
         "change",
         async (ev) => {
@@ -179,6 +193,9 @@ export function installWhaleContent({
       files: string | any[],
       input: HTMLInputElement,
     ) {
+      if (!effectGate.allows()) {
+        return;
+      }
       if (uploadAttribution) {
         await uploadAttribution.select(files, input);
       } else {
@@ -868,6 +885,9 @@ export function installWhaleContent({
       sourceUrl: any,
       fileName: any,
     ) {
+      if (!effectGate.allows()) {
+        return;
+      }
       const wrapper = document.createElement("p");
       wrapper.style.textAlign = "center";
       wrapper.dataset.aruPixelTableWrapper = "1";
@@ -889,6 +909,9 @@ export function installWhaleContent({
       config: Options,
       _isMobile: boolean,
     ) {
+      if (!effectGate.allows()) {
+        return;
+      }
       const editor = findEditorRoot();
       if (!editor) {
         console.warn(
@@ -970,22 +993,31 @@ export function installWhaleContent({
     }
 
     function startEditorObserver(config: Options) {
+      if (!effectGate.allows()) {
+        return;
+      }
       const Controller = attribution?.Controller;
       if (!Controller) {
         return null;
       } // 대응 모듈이 없으면 파일 선택 순서만으로 출처를 추정하지 않는다.
       uploadAttribution = new Controller({
         document,
-        parse: (file: File) =>
-          parseSourceFromFile(file, {
+        parse: async (file: File) => {
+          if (!effectGate.allows()) {
+            return { status: "cancelled" };
+          }
+          const result = await parseSourceFromFile(file, {
             allowLooseFilenameFallback: !isMobileAutoInsertEnvironment(),
-          }),
+          });
+          return effectGate.allows() ? result : { status: "cancelled" };
+        },
         sanitize: (url: string) => sanitizeSourceUrl(url, config),
         caption: createSourceCaption,
         anchor: findImageParagraph,
         existing: hasExistingSourceCaption,
         onStatus: publishUploadStatus,
       });
+      effectGate.onStop(() => uploadAttribution?.destroy());
       window.addEventListener("pagehide", () => uploadAttribution?.destroy(), {
         once: true,
       });
@@ -1019,6 +1051,7 @@ export function installWhaleContent({
     }
 
     function createSourceCaption(url: string | null) {
+      effectGate.assert();
       const p = document.createElement("p");
       p.className = "aru-source-caption";
       p.style.textAlign = "center";
@@ -1386,6 +1419,9 @@ export function installWhaleContent({
       textarea: Node | null,
       sourceText: string,
     ) {
+      if (!effectGate.allows()) {
+        return "context-inactive";
+      }
       if (!(textarea instanceof HTMLTextAreaElement)) {
         console.warn("[Aru Source Captioner] insert: not a textarea element");
         return "not-textarea";
@@ -1538,6 +1574,9 @@ export function installWhaleContent({
       fileInput.dataset[COMMENT_FILE_BOUND_DATASET_KEY] = "1";
 
       fileInput.addEventListener("change", async (event) => {
+        if (!effectGate.allows()) {
+          return;
+        }
         const target = event.target;
         const files = target instanceof HTMLInputElement ? target.files : null;
         if (!files || files.length === 0) {
@@ -1573,7 +1612,11 @@ export function installWhaleContent({
           return;
         }
 
-        if (sourceInfo?.status !== "ok" || !sourceInfo.url) {
+        if (
+          !effectGate.allows() ||
+          sourceInfo?.status !== "ok" ||
+          !sourceInfo.url
+        ) {
           console.log(
             "[Aru Source Captioner] file: no Aru source metadata found in image",
             { reason: sourceInfo?.reason },
@@ -1619,6 +1662,9 @@ export function installWhaleContent({
     function setupCommentSourceCaptioner(
       config: Options | undefined = undefined,
     ) {
+      if (!effectGate.allows()) {
+        return;
+      }
       if (!isReadPage()) {
         return;
       }
@@ -1681,6 +1727,9 @@ export function installWhaleContent({
     }
 
     function startCommentObserver() {
+      if (!effectGate.allows()) {
+        return;
+      }
       if (!isReadPage()) {
         return null;
       }
@@ -2100,6 +2149,9 @@ export function installWhaleContent({
       });
 
       const config = await loadConfig();
+      if (!effectGate.allows()) {
+        return;
+      }
 
       if (!config.enabled) {
         console.info(

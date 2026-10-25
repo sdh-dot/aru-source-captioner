@@ -1,3 +1,4 @@
+import { contextEffectGate } from "./context-effect-gate.ts";
 // 조회 실패는 최초 설치의 키 부재와 구분한다. 저장값은 쓰지 않으며 이전 ON을 재사용하지 않는다.
 import type { CodedError } from "./contracts.ts";
 
@@ -193,6 +194,9 @@ export async function readSettings(
     for (let attempt = 1; ; attempt++) {
       const result = await readOnce(root, keys, timer, controller.signal);
       result.attempts = attempt;
+      if (result.state === "invalidated") {
+        contextEffectGate(root).invalidate();
+      }
       if (controller.signal.aborted) {
         return {
           state: "cancelled",

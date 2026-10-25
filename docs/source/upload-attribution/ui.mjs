@@ -1,4 +1,5 @@
 // 자동 생성: src/upload-attribution/ui.ts. tools/compile-typescript.mjs로 갱신한다.
+import { contextEffectGate } from "../runtime/context-effect-gate.mjs";
 import { readSettings, subscribeSettings } from "../runtime/settings-read.mjs";
 import { defaultEnvironment, } from "../runtime/contracts.mjs";
 // 업로드 출처 매칭 결과를 작성기 수명에 맞춰 연결하며 기존 이벤트 계약을 보존한다.
@@ -227,12 +228,17 @@ export function createAttributionUi({ environment = defaultEnvironment, dependen
         if (!g.__aruUploadNoAutoStart &&
             g.document &&
             /^\/community\/board\/[^/]+\/(write|modify)(?:\/|$)/.test(g.location.pathname)) {
+            const effectGate = contextEffectGate(g);
             activeUi.get(g.document)?.();
+            if (!effectGate.allows()) {
+                return;
+            }
             let ui;
             let revision = 0;
             let disposed = false;
             let request;
             let unsubscribe;
+            let detachGate;
             const pause = () => {
                 ui?.destroy();
                 ui = undefined;
@@ -243,6 +249,9 @@ export function createAttributionUi({ environment = defaultEnvironment, dependen
                 }
             };
             const refresh = async () => {
+                if (!effectGate.allows()) {
+                    return;
+                }
                 const current = ++revision;
                 request?.abort();
                 request = new g.AbortController();
@@ -252,7 +261,10 @@ export function createAttributionUi({ environment = defaultEnvironment, dependen
                 const result = await readSettings(g, ["enabled"], {
                     signal: request.signal,
                 });
-                if (disposed || current !== revision || result.state !== "success") {
+                if (disposed ||
+                    current !== revision ||
+                    result.state !== "success" ||
+                    !effectGate.allows()) {
                     return;
                 }
                 unsubscribe ??= subscribeSettings(g, changed);
@@ -266,12 +278,14 @@ export function createAttributionUi({ environment = defaultEnvironment, dependen
                 request?.abort();
                 pause();
                 unsubscribe?.();
+                detachGate?.();
                 g.removeEventListener("pagehide", dispose);
                 if (activeUi.get(g.document) === dispose) {
                     activeUi.delete(g.document);
                 }
             };
             activeUi.set(g.document, dispose);
+            detachGate = effectGate.onStop(dispose);
             g.addEventListener("pagehide", dispose, { once: true });
             void refresh();
         }

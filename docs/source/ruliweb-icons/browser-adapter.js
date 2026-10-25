@@ -3,6 +3,115 @@
   var __defProp = Object.defineProperty;
   var __name = (target, value) => __defProp(target, "name", { value, configurable: true });
 
+  // docs/source/runtime/context-effect-gate.mjs
+  var gates = /* @__PURE__ */ new WeakMap();
+  var sharedGateKey = /* @__PURE__ */ Symbol.for("aru.context-effect-gate.v1");
+  function contextEffectGate(environment) {
+    const root = environment;
+    const key = root.window ?? environment;
+    let shared;
+    if (root.window) {
+      try {
+        shared = Reflect.get(key, sharedGateKey);
+      } catch {
+      }
+    }
+    const existing = shared ?? gates.get(key);
+    if (existing) {
+      return existing;
+    }
+    let state = "active";
+    let runtimeId;
+    const stopped = /* @__PURE__ */ new Set();
+    const terminal = /* @__PURE__ */ __name(() => state === "invalidated" || state === "disposed", "terminal");
+    const stop = /* @__PURE__ */ __name((next) => {
+      if (terminal()) {
+        return;
+      }
+      state = next;
+      root.removeEventListener?.("pagehide", dispose);
+      for (const callback of [...stopped]) {
+        try {
+          callback();
+        } catch (error) {
+          console.warn("[Aru] 컨텍스트 종료 정리 실패", error);
+        }
+      }
+      stopped.clear();
+    }, "stop");
+    const dispose = /* @__PURE__ */ __name(() => stop("disposed"), "dispose");
+    const gate = {
+      get state() {
+        return state;
+      },
+      allows() {
+        if (terminal()) {
+          return false;
+        }
+        try {
+          const runtime = root.browser?.runtime ?? root.chrome?.runtime;
+          const id = runtime?.id;
+          if (typeof id === "string" && id) {
+            if (runtimeId && runtimeId !== id) {
+              stop("invalidated");
+              return false;
+            }
+            runtimeId = id;
+          } else if (runtimeId) {
+            stop("invalidated");
+            return false;
+          }
+          state = "active";
+          return true;
+        } catch (error) {
+          gate.observeError(error);
+          if (!terminal()) {
+            state = "suspended";
+          }
+          return false;
+        }
+      },
+      assert() {
+        if (!gate.allows()) {
+          throw Object.assign(new Error("확장 컨텍스트에서 새 작업을 실행할 수 없습니다."), {
+            code: terminal() ? "CONTEXT_INVALIDATED" : "CONTEXT_SUSPENDED"
+          });
+        }
+      },
+      invalidate: /* @__PURE__ */ __name(() => stop("invalidated"), "invalidate"),
+      dispose,
+      observeError(error) {
+        if (/extension context invalidated/i.test(error instanceof Error ? error.message : String(error))) {
+          stop("invalidated");
+        }
+      },
+      onStop(callback) {
+        if (terminal()) {
+          callback();
+          return () => {
+          };
+        }
+        stopped.add(callback);
+        return () => {
+          stopped.delete(callback);
+        };
+      }
+    };
+    gates.set(key, gate);
+    if (root.window) {
+      try {
+        Object.defineProperty(key, sharedGateKey, { value: gate });
+      } catch {
+      }
+    }
+    gate.allows();
+    if (!terminal()) {
+      root.addEventListener?.("pagehide", dispose, { once: true });
+    }
+    return gate;
+  }
+  __name(contextEffectGate, "contextEffectGate");
+
   // docs/source/runtime/settings-read.mjs
   var clock = {
     setTimeout: /* @__PURE__ */ __name((callback, delay) => globalThis.setTimeout(callback, delay), "setTimeout"),
@@ -121,6 +230,9 @@
       for (let attempt = 1; ; attempt++) {
         const result = await readOnce(root, keys, timer, controller.signal);
         result.attempts = attempt;
+        if (result.state === "invalidated") {
+          contextEffectGate(root).invalidate();
+        }
         if (controller.signal.aborted) {
           return {
             state: "cancelled",
@@ -184,6 +296,7 @@
 
   // docs/source/ruliweb-icons/browser-adapter.mjs
   function createBrowserAdapter(root = defaultEnvironment) {
+    const effectGate = contextEffectGate(root);
     const defaults = Object.freeze({
       enabled: false,
       autoLoad: true,
@@ -274,37 +387,47 @@
     }
     __name(carrierBytes, "carrierBytes");
     function invoke(target, method, args) {
-      if (!api || !target || typeof target[method] !== "function") {
-        return Promise.reject(failure2("API_UNAVAILABLE", "확장 프로그램 API를 사용할 수 없습니다."));
-      }
-      if (promiseApi) {
-        try {
-          return Promise.resolve(target[method](...args));
-        } catch (error) {
-          return Promise.reject(error);
+      try {
+        effectGate.assert();
+        if (!api || !target || typeof target[method] !== "function") {
+          throw failure2("API_UNAVAILABLE", "확장 프로그램 API를 사용할 수 없습니다.");
         }
-      }
-      return new Promise((resolve, reject) => {
-        try {
+        const pending = promiseApi ? Promise.resolve(target[method](...args)) : new Promise((resolve, reject) => {
           target[method](...args, (value) => {
-            const error = api.runtime && api.runtime.lastError;
-            if (error) {
-              reject(failure2("API_ERROR", error.message || "확장 프로그램 API 요청에 실패했습니다."));
-            } else {
-              resolve(value);
+            try {
+              effectGate.assert();
+              const error = api.runtime?.lastError;
+              if (error) {
+                reject(failure2("API_ERROR", error.message || "확장 프로그램 API 요청에 실패했습니다."));
+              } else {
+                resolve(value);
+              }
+            } catch (error) {
+              effectGate.observeError(error);
+              reject(error);
             }
           });
-        } catch (error) {
-          reject(error);
-        }
-      });
+        });
+        return pending.then((value) => {
+          effectGate.assert();
+          return value;
+        }, (error) => {
+          effectGate.observeError(error);
+          throw error;
+        });
+      } catch (error) {
+        effectGate.observeError(error);
+        return Promise.reject(error);
+      }
     }
     __name(invoke, "invoke");
     async function readOptions() {
+      effectGate.assert();
       const result = await readSettings(root, ["enabled", "aruIconsOptions"]);
       if (result.state !== "success") {
         throw result.error;
       }
+      effectGate.assert();
       const items = result.values;
       const supplied = items.aruIconsOptions;
       const iconOptions = Object.assign({}, defaults, supplied && typeof supplied === "object" && !Array.isArray(supplied) ? supplied : {});

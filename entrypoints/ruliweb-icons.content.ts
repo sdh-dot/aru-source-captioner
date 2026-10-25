@@ -1,3 +1,4 @@
+import { bindContextEffectGate } from "../src/runtime/context-effect-gate.ts";
 import { isolatedState } from "../runtime/world-state";
 import { defineContentScript } from "wxt/utils/define-content-script";
 import { contentMatches } from "../config/manifests";
@@ -14,8 +15,11 @@ export default defineContentScript({
   matches: contentMatches(1),
   runAt: "document_idle",
   world: "ISOLATED",
-  main() {
+  main(ctx) {
     const environment = createEnvironment(parser);
+    if (!bindContextEffectGate(environment, ctx).allows()) {
+      return;
+    }
     const metrics = createPerformanceMetrics({ environment });
     const { attribution } = createAttributionCore({ environment, metrics });
     const install = import.meta.env.FIREFOX

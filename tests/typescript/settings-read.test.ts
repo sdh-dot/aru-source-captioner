@@ -195,12 +195,12 @@ for (const [name, values, expected] of [["ON", { enabled: true }, 1], ["OFF", { 
     } finally { h.close(); }
   });
 }
-test("공통 UI: 대기·무효화는 활성화하지 않으며 재조회 후 복구한다", async () => {
+test("공통 UI: 대기·일시 조회 실패는 활성화하지 않으며 재조회 후 복구한다", async () => {
   const h = uiHarness(); h.defer();
   try {
     h.start(); assert.equal(h.count(), 0);
     h.callbacks[0]({ enabled: true }); await flush(); assert.equal(h.count(), 1);
-    h.use(() => { throw Error("Extension context invalidated."); }); h.change(true);
+    h.use(() => { throw Error("temporary storage read failure"); }); h.change(true);
     assert.equal(h.count(), 0); await flush(); assert.equal(h.count(), 0);
     h.use((_, cb) => cb!({ enabled: true })); h.change(true); await flush(); assert.equal(h.count(), 1);
   } finally { h.close(); }
