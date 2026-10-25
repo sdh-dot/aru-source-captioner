@@ -73,22 +73,51 @@ export function createIconsPicker({ environment = defaultEnvironment, dependenci
             }
             lock.count++;
             lock.styles.forEach(({ node }) => node.style.setProperty("overflow", "hidden", "important"));
+            let released = false;
             return () => {
+                if (released) {
+                    return;
+                }
+                released = true;
                 if (--lock.count) {
                     return;
                 }
-                for (const { node, value, priority } of lock.styles) {
-                    if (node.style.getPropertyValue("overflow") !== "hidden") {
-                        continue;
-                    }
-                    if (value) {
-                        node.style.setProperty("overflow", value, priority);
-                    }
-                    else {
-                        node.style.removeProperty("overflow");
+                let failed = false;
+                let firstError;
+                try {
+                    for (const { node, value, priority } of lock.styles) {
+                        // 복원 중 새 Picker가 잠금을 얻었다면 그 소유자의 hidden을 건드리지 않는다.
+                        if (lock.count > 0) {
+                            break;
+                        }
+                        try {
+                            if (node.style.getPropertyValue("overflow") !== "hidden") {
+                                continue;
+                            }
+                            if (value) {
+                                node.style.setProperty("overflow", value, priority);
+                            }
+                            else {
+                                node.style.removeProperty("overflow");
+                            }
+                        }
+                        catch (error) {
+                            if (!failed) {
+                                failed = true;
+                                firstError = error;
+                            }
+                        }
                     }
                 }
-                scrollLocks.delete(doc);
+                finally {
+                    // 한 노드의 복원 실패가 다른 노드나 다음 Picker의 잠금 소유권을 막지 않게 한다.
+                    if (lock.count === 0 && scrollLocks.get(doc) === lock) {
+                        scrollLocks.delete(doc);
+                    }
+                }
+                if (failed) {
+                    throw firstError;
+                }
             };
         }
         // 이미지 공개 태그와 사전 태그 ID는 구분한다.
@@ -854,17 +883,18 @@ export function createIconsPicker({ environment = defaultEnvironment, dependenci
             const tagsFor = (icon) => displayTags.get(icon.id) || [];
             const sourceOf = (icon) => icon.librarySource ||
                 ((pack && pack.sources) || []).find((source) => source.sourceId === icon.sourceId || source.id === icon.sourceId);
-            function pauseMedia(node) {
+            function pauseMedia(node, cleanup) {
+                const run = cleanup || ((_stage, action) => action());
                 node.querySelectorAll("video").forEach((video) => {
-                    mediaCleanups.get(video)?.();
+                    run("MEDIA_LISTENERS", () => mediaCleanups.get(video)?.());
                     mediaCleanups.delete(video);
                     try {
-                        video.pause();
-                        video.removeAttribute("src");
-                        video
+                        run("MEDIA_PAUSE", () => video.pause());
+                        run("MEDIA_SOURCE", () => video.removeAttribute("src"));
+                        run("MEDIA_SOURCES", () => video
                             .querySelectorAll("source")
-                            .forEach((s) => s.removeAttribute("src"));
-                        video.load();
+                            .forEach((source) => run("MEDIA_SOURCE", () => source.removeAttribute("src"))));
+                        run("MEDIA_LOAD", () => video.load());
                     }
                     catch (_) {
                         /* 분리된 미디어의 정리 실패로 나머지 목록 해제를 중단하지 않는다. */
@@ -877,23 +907,24 @@ export function createIconsPicker({ environment = defaultEnvironment, dependenci
                     searchTimer = 0;
                 }
             }
-            function teardownGroups() {
-                mediaBudget?.reset();
+            function teardownGroups(cleanup) {
+                const run = cleanup || ((_stage, action) => action());
+                run("GROUP_BUDGET", () => mediaBudget?.reset());
                 if (virtualFrame) {
-                    cancelAnimationFrame(virtualFrame);
+                    run("VIRTUAL_FRAME", () => cancelAnimationFrame(virtualFrame));
                     virtualFrame = 0;
                 }
                 if (visibilityObserver) {
-                    visibilityObserver.disconnect();
+                    run("VISIBILITY_OBSERVER", () => visibilityObserver.disconnect());
                     visibilityObserver = null;
                 }
                 if (resizeObserver) {
-                    resizeObserver.disconnect();
+                    run("RESIZE_OBSERVER", () => resizeObserver.disconnect());
                     resizeObserver = null;
                 }
                 contexts.forEach((context) => {
-                    context.viewport.removeEventListener("scroll", context.scrollHandler);
-                    pauseMedia(context.content);
+                    run("GROUP_LISTENER", () => context.viewport.removeEventListener("scroll", context.scrollHandler));
+                    run("GROUP_MEDIA", () => pauseMedia(context.content, cleanup));
                 });
                 contexts = [];
             }
@@ -2214,46 +2245,91 @@ export function createIconsPicker({ environment = defaultEnvironment, dependenci
             function destroy() {
                 lifecycle.destroy();
             }
+            // Lifecycle이 먼저 terminal을 확정하며 반복 종료·정리 중 재진입은 같은 자원을 다시 해제하지 않는다.
+            // timer→작업/미디어→listener/observer→상태/DOM→잠금→focus 순서를 보존한다.
+            // 독립 정리는 계속 시도한 뒤 최초 예외를 그대로 전파하고, 늦은 완료는 기존 isClosed 경계를 따른다.
+            // 공유 잠금은 이 Picker의 몫만 반납하며 다른 Picker가 소유한 focus는 빼앗지 않는다.
             function disposePicker() {
-                clearTimeout(toastTimer);
-                cancelSearch();
-                previewCleanup();
-                library?.cancel();
-                uiCleanup?.();
+                const failures = [];
+                let firstError;
+                const cleanup = (stage, action) => {
+                    try {
+                        action();
+                    }
+                    catch (error) {
+                        if (!failures.length) {
+                            firstError = error;
+                        }
+                        failures.push(stage);
+                    }
+                };
+                cleanup("TOAST_TIMER", () => clearTimeout(toastTimer));
+                cleanup("SEARCH_TIMER", cancelSearch);
+                cleanup("PREVIEW", previewCleanup);
+                cleanup("LIBRARY", () => library?.cancel());
+                cleanup("UI", () => uiCleanup?.());
                 if (libraryFrame) {
-                    cancelAnimationFrame(libraryFrame);
+                    cleanup("LIBRARY_FRAME", () => cancelAnimationFrame(libraryFrame));
                 }
                 if (initialFocusFrame) {
-                    cancelAnimationFrame(initialFocusFrame);
+                    cleanup("INITIAL_FOCUS_FRAME", () => cancelAnimationFrame(initialFocusFrame));
                 }
-                events.abort();
-                teardownGroups();
-                pauseMedia(root);
-                mediaBudget?.destroy();
-                catalogView?.destroy();
-                root
+                cleanup("EVENTS", () => events.abort());
+                cleanup("GROUPS", () => teardownGroups(cleanup));
+                cleanup("MEDIA", () => pauseMedia(root, cleanup));
+                cleanup("MEDIA_BUDGET", () => mediaBudget?.destroy());
+                cleanup("CATALOG", () => catalogView?.destroy());
+                cleanup("IMAGE_SOURCES", () => root
                     .querySelectorAll("img,source")
-                    .forEach((n) => n.removeAttribute("src"));
+                    .forEach((node) => cleanup("IMAGE_SOURCE", () => node.removeAttribute("src"))));
                 pack = null;
                 index = null;
-                displayTags.clear();
+                cleanup("DISPLAY_TAGS", () => displayTags.clear());
                 collectionDiagnostics = null;
                 selectedIconId = null;
                 result = { groups: [], uniqueCount: 0, membershipCount: 0 };
-                folds.forEach((item) => item.dispose());
+                folds.forEach((item) => cleanup("FOLD", () => item.dispose()));
                 if (!folds.size) {
-                    fold.dispose();
+                    cleanup("FOLD", () => fold.dispose());
                 }
                 folds.clear();
-                root.replaceChildren();
-                host.remove();
-                unlockPage();
-                if (opener &&
-                    opener.isConnected &&
-                    typeof opener.focus === "function" &&
-                    !(mobileInput() &&
-                        opener.matches?.('input,textarea,[contenteditable="true"]'))) {
-                    opener.focus({ preventScroll: true });
+                cleanup("SHADOW_DOM", () => root.replaceChildren());
+                cleanup("HOST", () => host.remove());
+                if (host.parentNode) {
+                    // remove가 실패해도 이 Picker의 host만 분리한다. 다른 Picker나 사이트 DOM은 건드리지 않는다.
+                    cleanup("HOST_FALLBACK", () => host.parentNode?.removeChild(host));
+                }
+                cleanup("SCROLL_LOCK", unlockPage);
+                cleanup("FOCUS", () => {
+                    const openerHost = opener?.getRootNode?.()
+                        ?.host;
+                    const focusedPicker = document.activeElement?.closest('[data-aru-icons-picker="true"]');
+                    if (scrollLocks.has(document) &&
+                        (!openerHost?.matches('[data-aru-icons-picker="true"]') ||
+                            (focusedPicker && focusedPicker !== openerHost))) {
+                        return;
+                    }
+                    if (opener &&
+                        opener.isConnected &&
+                        typeof opener.focus === "function" &&
+                        !(mobileInput() &&
+                            opener.matches?.('input,textarea,[contenteditable="true"]'))) {
+                        opener.focus({ preventScroll: true });
+                    }
+                });
+                if (failures.length) {
+                    try {
+                        // 고정 단계 코드·건수만 기록한다. 예외 message/stack/cause·DOM·사용자 값은 전달하지 않는다.
+                        global.console?.warn?.("[Aru Icons] Picker cleanup failed", {
+                            code: "PICKER_CLEANUP_FAILED",
+                            stages: failures,
+                            count: failures.length,
+                        });
+                    }
+                    catch (_) {
+                        // 콘솔 장애가 이미 보존한 최초 정리 오류를 덮어쓰지 않게 한다.
+                    }
+                    throw firstError;
                 }
             }
             function availableViewport() {
