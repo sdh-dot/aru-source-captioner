@@ -412,11 +412,11 @@
     "{\"code\":\"UNSAFE_VAR_ASSIGNMENT\",\"message\":\"Unsafe assignment to innerHTML\",\"file\":\"features/bundle-generator/bridge.bundle.js\",\"line\":305,\"column\":11}",
     "{\"code\":\"UNSAFE_VAR_ASSIGNMENT\",\"message\":\"Unsafe assignment to innerHTML\",\"file\":\"features/bundle-generator/bridge.bundle.js\",\"line\":605,\"column\":9}",
     "{\"code\":\"UNSAFE_VAR_ASSIGNMENT\",\"message\":\"Unsafe assignment to innerHTML\",\"file\":\"features/bundle-generator/bridge.bundle.js\",\"line\":653,\"column\":11}",
-    "{\"code\":\"UNSAFE_VAR_ASSIGNMENT\",\"message\":\"Unsafe assignment to innerHTML\",\"file\":\"features/bundle-generator/content.bundle.js\",\"line\":1203,\"column\":11}",
-    "{\"code\":\"UNSAFE_VAR_ASSIGNMENT\",\"message\":\"Unsafe assignment to innerHTML\",\"file\":\"features/bundle-generator/content.bundle.js\",\"line\":1685,\"column\":11}",
-    "{\"code\":\"UNSAFE_VAR_ASSIGNMENT\",\"message\":\"Unsafe assignment to innerHTML\",\"file\":\"features/bundle-generator/content.bundle.js\",\"line\":736,\"column\":11}",
+    "{\"code\":\"UNSAFE_VAR_ASSIGNMENT\",\"message\":\"Unsafe assignment to innerHTML\",\"file\":\"features/bundle-generator/content.bundle.js\",\"line\":1349,\"column\":11}",
+    "{\"code\":\"UNSAFE_VAR_ASSIGNMENT\",\"message\":\"Unsafe assignment to innerHTML\",\"file\":\"features/bundle-generator/content.bundle.js\",\"line\":1840,\"column\":11}",
+    "{\"code\":\"UNSAFE_VAR_ASSIGNMENT\",\"message\":\"Unsafe assignment to innerHTML\",\"file\":\"features/bundle-generator/content.bundle.js\",\"line\":868,\"column\":11}",
     "{\"code\":\"UNSAFE_VAR_ASSIGNMENT\",\"message\":\"Unsafe assignment to innerHTML\",\"file\":\"features/icon-metadata/bridge.bundle.js\",\"line\":403,\"column\":9}",
-    "{\"code\":\"UNSAFE_VAR_ASSIGNMENT\",\"message\":\"Unsafe assignment to innerHTML\",\"file\":\"features/icon-metadata/content.bundle.js\",\"line\":583,\"column\":11}",
-    "{\"code\":\"UNSAFE_VAR_ASSIGNMENT\",\"message\":\"Unsafe assignment to innerHTML\",\"file\":\"features/ruliweb-icons/composer-bridge.js\",\"line\":257,\"column\":11}"
+    "{\"code\":\"UNSAFE_VAR_ASSIGNMENT\",\"message\":\"Unsafe assignment to innerHTML\",\"file\":\"features/icon-metadata/content.bundle.js\",\"line\":758,\"column\":11}",
+    "{\"code\":\"UNSAFE_VAR_ASSIGNMENT\",\"message\":\"Unsafe assignment to innerHTML\",\"file\":\"features/ruliweb-icons/composer-bridge.js\",\"line\":271,\"column\":11}"
   ]
 }
