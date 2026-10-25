@@ -1250,6 +1250,10 @@ export function installWhaleContent({
     // 파일 input이 다시 변경되면 갱신된다. Map이 아니라 WeakMap이라 wrapper가
     // DOM에서 사라지면 자동으로 GC된다.
     const wrapperSourceMap = new WeakMap();
+    const commentFileSelections = new WeakMap<
+      HTMLInputElement,
+      { revision: number; wrapper: HTMLElement; listener: EventListener }
+    >();
 
     // read 페이지에서 init() 이후 setup/observer/poll/click handler가 모두 같은
     // config를 사용해야 한다. 매 호출마다 config를 다시 로드하지 않도록 모듈 스코프에
@@ -1606,14 +1610,65 @@ export function installWhaleContent({
         // common_img_input이 아닌 다른 input이 잡힌 경우 (예: 검색 input).
         return false;
       }
-      if (fileInput.dataset[COMMENT_FILE_BOUND_DATASET_KEY] === "1") {
+      // 공통 Gate가 없는 기준 형상에서는 이 입력이 설치된 native 컨텍스트의 ID를 보존한다.
+      let contextId: string;
+      try {
+        const id = chrome?.runtime?.id;
+        if (typeof id !== "string" || !id) {
+          return false;
+        }
+        contextId = id;
+      } catch {
         return false;
       }
+      let isContextInvalidated = false;
+      const canApplyInContext = () => {
+        if (!isContextInvalidated) {
+          try {
+            isContextInvalidated = chrome?.runtime?.id !== contextId;
+          } catch {
+            isContextInvalidated = true;
+          }
+        }
+        return !isContextInvalidated;
+      };
+
+      const previous = commentFileSelections.get(fileInput);
+      if (previous?.wrapper === wrapper) {
+        return false;
+      }
+      // DOM 교체로 같은 input이 다른 wrapper에 연결돼도 이전 작업과 리스너를 넘기지 않는다.
+      if (previous) {
+        fileInput.removeEventListener("change", previous.listener);
+        const replacement = previous.wrapper.querySelector(
+          COMMENT_FILE_INPUT_SELECTOR,
+        );
+        if (!replacement || replacement === fileInput) {
+          wrapperSourceMap.delete(previous.wrapper);
+        }
+      }
+      const selection = { revision: 0, wrapper, listener: onFileChange };
+      commentFileSelections.set(fileInput, selection);
+      wrapperSourceMap.delete(wrapper);
       fileInput.dataset[COMMENT_FILE_BOUND_DATASET_KEY] = "1";
 
-      fileInput.addEventListener("change", async (event) => {
+      const targetInput = fileInput;
+      const targetWrapper = wrapper;
+      async function onFileChange(event: Event) {
+        if (commentFileSelections.get(targetInput) !== selection) {
+          return;
+        }
+        // 빈 선택·비이미지·출처 없음도 이전 선택을 무효화한다. 기존 본문은 지우지 않는다.
+        const revision = ++selection.revision;
+        if (
+          targetWrapper.querySelector(COMMENT_FILE_INPUT_SELECTOR) !==
+          targetInput
+        ) {
+          return;
+        }
+        wrapperSourceMap.delete(targetWrapper);
         const target = event.target;
-        const files = target instanceof HTMLInputElement ? target.files : null;
+        const files = target === targetInput ? targetInput.files : null;
         if (!files || files.length === 0) {
           return;
         }
@@ -1628,6 +1683,26 @@ export function installWhaleContent({
         }
         if (!imageFile) {
           console.log("[Aru Source Captioner] file: no image in selection");
+          return;
+        }
+
+        const textarea = targetWrapper.querySelector(COMMENT_TEXTAREA_SELECTOR);
+        const isCurrentSelection = () =>
+          canApplyInContext() &&
+          commentFileSelections.get(targetInput) === selection &&
+          revision === selection.revision &&
+          targetInput.isConnected &&
+          targetWrapper.isConnected &&
+          targetInput.ownerDocument === document &&
+          targetWrapper.ownerDocument === document &&
+          targetWrapper.querySelector(COMMENT_FILE_INPUT_SELECTOR) ===
+            targetInput &&
+          targetWrapper.querySelector(COMMENT_TEXTAREA_SELECTOR) === textarea &&
+          (!textarea || textarea.isConnected) &&
+          Array.from(targetInput.files ?? []).find((file) =>
+            file.type.startsWith("image/"),
+          ) === imageFile;
+        if (!isCurrentSelection()) {
           return;
         }
 
@@ -1647,6 +1722,9 @@ export function installWhaleContent({
           return;
         }
 
+        if (!isCurrentSelection()) {
+          return;
+        }
         if (sourceInfo?.status !== "ok" || !sourceInfo.url) {
           console.log(
             "[Aru Source Captioner] file: no Aru source metadata found in image",
@@ -1656,6 +1734,9 @@ export function installWhaleContent({
         }
 
         const safeUrl = sanitizeSourceUrl(sourceInfo.url, config);
+        if (!isCurrentSelection()) {
+          return;
+        }
         if (!safeUrl) {
           console.log(
             "[Aru Source Captioner] file: extracted source rejected by sanitizer",
@@ -1665,9 +1746,8 @@ export function installWhaleContent({
         }
 
         console.log("[Aru Source Captioner] file: extracted source =", safeUrl);
-        wrapperSourceMap.set(wrapper, safeUrl);
+        wrapperSourceMap.set(targetWrapper, safeUrl);
 
-        const textarea = wrapper.querySelector(COMMENT_TEXTAREA_SELECTOR);
         if (textarea instanceof HTMLTextAreaElement) {
           const sourceText = buildCommentSourceText(safeUrl);
           const result = insertSourceIntoCommentTextarea(textarea, sourceText);
@@ -1678,10 +1758,11 @@ export function installWhaleContent({
         } else {
           console.log(
             "[Aru Source Captioner] file: source stored, but no textarea found for auto insert",
-            wrapper,
+            targetWrapper,
           );
         }
-      });
+      }
+      fileInput.addEventListener("change", onFileChange);
 
       console.log("[Aru Source Captioner] file: hooked file input change", {
         wrapper,
