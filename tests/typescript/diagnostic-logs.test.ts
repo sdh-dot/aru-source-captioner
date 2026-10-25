@@ -15,6 +15,7 @@ import { createDownloadBackground } from "../../src/body-download/background.ts"
 import { createIconsComposerBridge } from "../../src/ruliweb-icons/composer-bridge.ts";
 import { contextEffectGate } from "../../src/runtime/context-effect-gate.ts";
 import { sessionResources } from "../../src/runtime/session-resources.ts";
+import { readSettings, type SettingsReadResult } from "../../src/runtime/settings-read.ts";
 
 const secret = "SYNTHETIC_PRIVATE_R02";
 const sourceUrl = "https://www.pixiv.net/artworks/88442211";
@@ -101,15 +102,30 @@ for (const browser of ["firefox", "whale"]) {
     assert.equal(reads, 0, "진단을 위해 오류 필드를 평가하지 않는다");
     log.safe();
   });
-  test(browser + " Storage 실패·컨텍스트 예외에서 오류 원문 없이 기존 결과를 유지한다", async () => {
-    for (const failure of ["callback", "throw", "missing", "getter"]) {
+  test(browser + " Storage 실패·취소·무효화는 Fail-Closed이며 오류 원문을 출력하지 않는다", async () => {
+    for (const failure of ["callback", "throw", "missing", "getter", "invalidated", "cancelled"]) {
       const log = recorder();
-      const chrome = { runtime: { lastError: sensitiveError() }, storage: failure === "missing" ? undefined : { sync: { get(_keys: unknown, callback: (items: object) => void) { if (failure === "throw") throw sensitiveError(); callback({}); } } } };
+      const controller = new AbortController();
+      if (failure === "cancelled") controller.abort();
+      const chrome = { runtime: { id: "storage-policy-test-extension", lastError: failure === "invalidated" ? Error("Extension context invalidated. " + secret) : sensitiveError() }, storage: failure === "missing" ? undefined : { sync: { get(_keys: unknown, callback: (items: object) => void) { if (failure === "throw") throw sensitiveError(); callback({}); } } } };
       if (failure === "getter") Object.defineProperty(chrome, "storage", { get() { throw sensitiveError(); } });
-      const p = functions(browser, ["isChromeStorageSyncAvailable", "loadConfig"], ["DEFAULT_OPTIONS"], { chrome, console: log.console });
-      const result = await p.loadConfig();
-      assert.equal(result.enabled, true, "R02는 기준 형상의 기본값 정책을 변경하지 않는다");
-      assert.ok(log.calls.length);
+      const environment = {chrome, console: log.console};
+      let observed: SettingsReadResult | undefined;
+      const p = functions(browser, ["loadConfig"], ["DEFAULT_OPTIONS"], {
+        environment, console: log.console,
+        readSettings: async (root: Parameters<typeof readSettings>[0], keys: null) => (observed = await readSettings(root, keys, {signal: controller.signal})),
+      });
+      await assert.rejects(p.loadConfig(), error => observed?.state !== "success" && error === observed?.error);
+      assert.equal(observed?.state, failure === "invalidated" ? "invalidated" : failure === "cancelled" ? "cancelled" : "failed");
+      assert.equal(observed?.attempts, ["invalidated", "cancelled"].includes(failure) ? 1 : 3);
+      assert.equal(log.calls.length, 0, "조회 경계는 외부 오류를 콘솔에 넘기지 않는다");
+      log.safe();
+    }
+    for (const [values, enabled] of [[{}, true], [{enabled: true}, true], [{enabled: false}, false]] as const) {
+      const log = recorder();
+      const environment = {chrome: {runtime: {id: "storage-success-test-extension"}, storage: {sync: {get(_keys: unknown, callback: (items: object) => void) {callback(values);}}}}, console: log.console};
+      const p = functions(browser, ["loadConfig"], ["DEFAULT_OPTIONS"], {environment, readSettings, console: log.console});
+      assert.equal((await p.loadConfig()).enabled, enabled, "정상 키 부재/ON/OFF는 기존 기본값·저장값을 보존한다");
       log.safe();
     }
   });
