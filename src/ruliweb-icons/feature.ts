@@ -742,10 +742,25 @@ export function createIconsFeature(
             return;
           }
           diagnostics.set(stage, key);
+          // 외부 팩·검색 데이터는 펼쳐 쓰지 않고 고정 단계·팩 종류·건수만 콘솔에 전달한다.
           global.console?.info?.("[Aru Icons]", {
-            stage,
-            articleId: context.articleId,
-            ...data,
+            stage: [
+              "picker-delivery",
+              "cache",
+              "pack-type",
+              "body-collect",
+              "cache-write",
+            ].includes(stage)
+              ? stage
+              : "icons",
+            kind:
+              data.kind === "NORMAL" || data.kind === "BUNDLE"
+                ? data.kind
+                : "unknown",
+            icons:
+              Number.isSafeInteger(data.icons) && data.icons >= 0
+                ? data.icons
+                : null,
           });
         };
         let pendingPack: null | any = null,
@@ -1333,8 +1348,8 @@ export function createIconsFeature(
       API.feature = feature;
       feature
         .start()
-        .catch((error) =>
-          console.warn("[Aru Icons] 초기화 실패:", error.message),
+        .catch((_error) =>
+          console.warn("[Aru Icons] 초기화 실패:", "ICONS_INIT_FAILED"),
         );
     }
   };

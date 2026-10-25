@@ -539,9 +539,15 @@
             }
             diagnostics.set(stage, key);
             global.console?.info?.("[Aru Icons]", {
-              stage,
-              articleId: context.articleId,
-              ...data
+              stage: [
+                "picker-delivery",
+                "cache",
+                "pack-type",
+                "body-collect",
+                "cache-write"
+              ].includes(stage) ? stage : "icons",
+              kind: data.kind === "NORMAL" || data.kind === "BUNDLE" ? data.kind : "unknown",
+              icons: Number.isSafeInteger(data.icons) && data.icons >= 0 ? data.icons : null
             });
           }, "log");
           let pendingPack = null, pendingData = null, latestProgress = null;
@@ -959,7 +965,7 @@
       if (global.document && API.BrowserAdapter && /^(bbs|m)\.ruliweb\.com$/.test(global.location?.hostname || "")) {
         const feature = new IconFeature();
         API.feature = feature;
-        feature.start().catch((error) => console.warn("[Aru Icons] 초기화 실패:", error.message));
+        feature.start().catch((_error) => console.warn("[Aru Icons] 초기화 실패:", "ICONS_INIT_FAILED"));
       }
     }, "initializeIconsFeature");
     initializeIconsFeature(typeof environment !== "undefined" ? environment : this);

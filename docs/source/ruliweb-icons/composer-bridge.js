@@ -20,7 +20,20 @@
       let debug = false;
       const trace = /* @__PURE__ */ __name((stage, fields = {}) => {
         if (debug) {
-          global.console?.info?.("[Aru Icons Composer]", { stage, ...fields });
+          global.console?.info?.("[Aru Icons Composer]", {
+            stage: [
+              "target",
+              "native-composer-data",
+              "capture",
+              "session",
+              "identity",
+              "native-insert",
+              "insert",
+              "release"
+            ].includes(stage) ? stage : "request",
+            status: fields.status === "failed" ? "failed" : "observed",
+            code: fields.status === "failed" ? "COMPOSER_FAILED" : "COMPOSER_OBSERVED"
+          });
         }
       }, "trace");
       const fail = /* @__PURE__ */ __name((code, message) => {

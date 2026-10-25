@@ -2037,8 +2037,7 @@
               global.console?.info?.("[Aru Icons Composer]", {
                 stage: "capture",
                 status: "failed",
-                code: error.code || "CAPTURE_FAILED",
-                kind,
+                code: "CAPTURE_FAILED",
                 connected: root.isConnected
               });
             }

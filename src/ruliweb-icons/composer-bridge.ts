@@ -27,9 +27,28 @@ export function createIconsComposerBridge({
     const sessions = new Map(),
       TTL = 10 * 60 * 1000;
     let debug = false;
-    const trace = (stage: string, fields = {}) => {
+    // 요청·예외 원문은 이벤트 응답 계약에만 남기고 콘솔에는 고정 단계와 상태만 기록한다.
+    const trace = (stage: string, fields: Record<string, unknown> = {}) => {
       if (debug) {
-        global.console?.info?.("[Aru Icons Composer]", { stage, ...fields });
+        global.console?.info?.("[Aru Icons Composer]", {
+          stage: [
+            "target",
+            "native-composer-data",
+            "capture",
+            "session",
+            "identity",
+            "native-insert",
+            "insert",
+            "release",
+          ].includes(stage)
+            ? stage
+            : "request",
+          status: fields.status === "failed" ? "failed" : "observed",
+          code:
+            fields.status === "failed"
+              ? "COMPOSER_FAILED"
+              : "COMPOSER_OBSERVED",
+        });
       }
     };
     const fail = (code: string, message?: string | undefined): never => {

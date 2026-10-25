@@ -178,7 +178,8 @@ export function createDownloadBackground({ environment = defaultEnvironment, dep
         }
         api.contextMenus.onClicked.addListener((info, tab) => {
             serialize(() => clicked(info, tab)).catch(async (err) => {
-                console.warn("[Aru body download]", err.code || "ERROR", err.message);
+                // 원문 오류는 기존 관리 화면·원장 계약으로만 전달하고 콘솔에는 단계 코드만 남긴다.
+                console.warn("[Aru body download]", "DOWNLOAD_REQUEST_FAILED");
                 // 실패는 관리 화면에 표시하며 페이지 전체 수집이나 다운로드로 대체하지 않는다.
                 const id = root.crypto.randomUUID();
                 const job = {
@@ -196,19 +197,19 @@ export function createDownloadBackground({ environment = defaultEnvironment, dep
                     await open(job);
                 }
                 catch (openError) {
-                    console.warn("[Aru body download] 오류 화면 열기 실패", openError.message);
+                    console.warn("[Aru body download] 오류 화면 열기 실패", "DOWNLOAD_ERROR_UI_FAILED");
                 }
             });
         });
-        api.runtime.onInstalled.addListener(() => serialize(menu).catch((err) => console.warn("[Aru body download] 메뉴 등록 실패", err.message)));
-        api.runtime.onStartup?.addListener(() => serialize(menu).catch((err) => console.warn("[Aru body download]", err.message)));
+        api.runtime.onInstalled.addListener(() => serialize(menu).catch((_err) => console.warn("[Aru body download] 메뉴 등록 실패", "DOWNLOAD_MENU_INSTALL_FAILED")));
+        api.runtime.onStartup?.addListener(() => serialize(menu).catch((_err) => console.warn("[Aru body download]", "DOWNLOAD_MENU_STARTUP_FAILED")));
         api.storage.onChanged.addListener((changes, area) => {
             if (area === "sync" &&
                 (changes.enabled || changes.aruBodyDownloadOptions)) {
-                serialize(menu).catch((err) => console.warn("[Aru body download]", err.message));
+                serialize(menu).catch((_err) => console.warn("[Aru body download]", "DOWNLOAD_MENU_UPDATE_FAILED"));
             }
         });
-        serialize(menu).catch((err) => console.warn("[Aru body download] 메뉴 준비 실패", err.message));
+        serialize(menu).catch((_err) => console.warn("[Aru body download] 메뉴 준비 실패", "DOWNLOAD_MENU_PREPARE_FAILED"));
     };
     initializeDownloadBackground(environment);
     return {};

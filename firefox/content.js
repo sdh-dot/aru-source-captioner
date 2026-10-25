@@ -147,9 +147,7 @@
     let attribution2 = createModuleScope(dependencies.attribution, ["Controller"], []);
     const runBootstrap1 = /* @__PURE__ */ __name(function bootstrap() {
       "use strict";
-      console.log("[Aru Source Captioner] content script loaded", {
-        href: location.href
-      });
+      console.log("[Aru Source Captioner] content script loaded");
       const DEFAULT_OPTIONS = Object.freeze({
         enabled: true,
         allowHttp: false,
@@ -212,7 +210,7 @@
             chrome.storage.sync.get(null, (items) => {
               try {
                 if (typeof chrome !== "undefined" && chrome && chrome.runtime && chrome.runtime.lastError) {
-                  console.warn("[Aru Source Captioner] storage.get failed, falling back to defaults:", chrome.runtime.lastError.message);
+                  console.warn("[Aru Source Captioner] storage.get failed, falling back to defaults:", "STORAGE_READ_FAILED");
                   resolve({ ...DEFAULT_OPTIONS });
                   return;
                 }
@@ -227,12 +225,12 @@
                 }
                 resolve(merged);
               } catch (callbackErr) {
-                console.warn("[Aru Source Captioner] storage.get callback threw, falling back to defaults:", callbackErr);
+                console.warn("[Aru Source Captioner] storage.get callback threw, falling back to defaults:", "STORAGE_CALLBACK_FAILED");
                 resolve({ ...DEFAULT_OPTIONS });
               }
             });
           } catch (err) {
-            console.warn("[Aru Source Captioner] loadConfig threw, falling back to defaults:", err);
+            console.warn("[Aru Source Captioner] loadConfig threw, falling back to defaults:", "CONFIG_READ_FAILED");
             resolve({ ...DEFAULT_OPTIONS });
           }
         });
@@ -374,16 +372,13 @@
             return aruResult;
           }
           if (aruResult.status === "error") {
-            console.debug("[Aru Source Captioner] png itxt fallback to exifr:", file.name, aruResult.reason);
+            console.debug("[Aru Source Captioner] png itxt fallback to exifr:", "PNG_METADATA_FALLBACK");
           }
         }
         {
           const filenameUrl = parsePixivFilenameUrl(file.name);
           if (filenameUrl) {
-            console.info("[Aru Source Captioner] filename parsed (priority 2)", {
-              fileName: file.name,
-              url: filenameUrl
-            });
+            console.info("[Aru Source Captioner] filename parsed (priority 2)", "FILENAME_SOURCE_FOUND");
             return { status: "ok", url: filenameUrl, reason: "filename_parsed" };
           }
         }
@@ -391,8 +386,6 @@
           const filenameUrl = allowLooseFilenameFallback ? parsePixivFilenameUrl(file.name) : null;
           if (filenameUrl) {
             console.info("[Aru Source Captioner] filename fallback", {
-              fileName: file.name,
-              url: filenameUrl,
               reason: "exifr_unavailable"
             });
             return {
@@ -414,12 +407,10 @@
             userComment: true
           });
         } catch (err) {
-          console.warn("[Aru Source Captioner] exifr.parse failed —", `name=${file.name} type=${file.type || "unknown"} size=${file.size}B isWebp=${isWebp}`, err.message || err);
+          console.warn("[Aru Source Captioner] exifr.parse failed —", "METADATA_PARSE_FAILED");
           const filenameUrl = allowLooseFilenameFallback ? parsePixivFilenameUrl(file.name) : null;
           if (filenameUrl) {
             console.info("[Aru Source Captioner] filename fallback", {
-              fileName: file.name,
-              url: filenameUrl,
               reason: "exifr_parse_failed"
             });
             return {
@@ -437,8 +428,6 @@
           const filenameUrl = allowLooseFilenameFallback ? parsePixivFilenameUrl(file.name) : null;
           if (filenameUrl) {
             console.info("[Aru Source Captioner] filename fallback", {
-              fileName: file.name,
-              url: filenameUrl,
               reason: "no_metadata"
             });
             return {
@@ -454,8 +443,6 @@
           const filenameUrl = allowLooseFilenameFallback ? parsePixivFilenameUrl(file.name) : null;
           if (filenameUrl) {
             console.info("[Aru Source Captioner] filename fallback", {
-              fileName: file.name,
-              url: filenameUrl,
               reason: "no_url_candidates"
             });
             return {
@@ -542,7 +529,7 @@
             if (urlVal && /^https?:\/\//.test(urlVal) && !isPixivUserUrl(urlVal)) {
               candidates.push(urlVal);
             } else if (urlVal && isPixivUserUrl(urlVal)) {
-              console.debug("[Aru Source Captioner] source candidate skipped (artist url):", { key, urlVal });
+              console.debug("[Aru Source Captioner] source candidate skipped (artist url):", "ARTIST_URL_SKIPPED");
             }
           }
           const artworkId = (obj.artwork_id || "").trim();
@@ -609,11 +596,7 @@
         try {
           return JSON.parse(trimmed);
         } catch (err) {
-          console.warn("[Aru Source Captioner] JSON parse failed; fallback continues", {
-            parser: "aru_json",
-            error: String(err),
-            sample: String(text).slice(0, 160)
-          });
+          console.warn("[Aru Source Captioner] JSON parse failed; fallback continues", { parser: "aru_json", code: "JSON_PARSE_FAILED" });
           return null;
         }
       }
@@ -810,15 +793,10 @@
         }
         const imgButton = wrapper.querySelector(COMMENT_IMG_BUTTON_SELECTOR);
         result2.push(wrapper);
-        const textareaInfo = {
-          name: textarea.name,
-          id: textarea.id,
-          className: textarea.className
-        };
         if (imgButton) {
-          console.log("[Aru Source Captioner] scan: wrapper OK (has textarea + .common_img_button)", { wrapper, textarea: textareaInfo });
+          console.log("[Aru Source Captioner] scan: wrapper OK (has textarea + .common_img_button)");
         } else {
-          console.log("[Aru Source Captioner] scan: wrapper has textarea but no .common_img_button — will use textarea position", { wrapper, textarea: textareaInfo });
+          console.log("[Aru Source Captioner] scan: wrapper has textarea but no .common_img_button — will use textarea position");
         }
       }
       __name(classifyAndPushWrapper, "classifyAndPushWrapper");
@@ -848,8 +826,12 @@
 `;
       }
       __name(buildCommentSourceText, "buildCommentSourceText");
-      function logCommentInsertSkip(reason, detail) {
-        console.debug("[Aru Source Captioner] comment insert skipped:", reason, detail || "");
+      function logCommentInsertSkip(reason, _detail) {
+        console.debug("[Aru Source Captioner] comment insert skipped:", [
+          "duplicate_source_line",
+          "other_source_present",
+          "maxlength_exceeded"
+        ].includes(reason) ? reason : "COMMENT_INSERT_SKIPPED");
       }
       __name(logCommentInsertSkip, "logCommentInsertSkip");
       function focusTextareaSafe(textarea) {
@@ -897,7 +879,6 @@
       function applyTextareaValue(textarea, newValue) {
         textarea.value = newValue;
         console.log("[Aru Source Captioner] insert: value set", {
-          actualValue: typeof textarea.value === "string" ? textarea.value.slice(0, 50) : null,
           valueMatches: textarea.value === newValue,
           valueLength: typeof textarea.value === "string" ? textarea.value.length : -1
         });
@@ -911,7 +892,7 @@
           textarea.dispatchEvent(new Event("input", { bubbles: true }));
           textarea.dispatchEvent(new Event("change", { bubbles: true }));
         } catch (err) {
-          console.debug("[Aru Source Captioner] event dispatch failed:", err);
+          console.debug("[Aru Source Captioner] event dispatch failed:", "COMMENT_EVENT_FAILED");
         }
       }
       __name(applyTextareaValue, "applyTextareaValue");
@@ -925,7 +906,6 @@
         console.log("[Aru Source Captioner] insert: called", {
           textareaExists: true,
           inDOM: document.contains(textarea),
-          currentValue: existing.slice(0, 50),
           maxLength: textarea.maxLength
         });
         const newValue = buildMergedTextareaValue(existing, sourceText);
@@ -944,7 +924,7 @@
         }
         const fileInput = wrapper.querySelector(COMMENT_FILE_INPUT_SELECTOR);
         if (!(fileInput instanceof HTMLInputElement)) {
-          console.log("[Aru Source Captioner] file: no file input in wrapper", wrapper);
+          console.log("[Aru Source Captioner] file: no file input in wrapper");
           return false;
         }
         if (fileInput.type !== "file") {
@@ -971,24 +951,24 @@
             console.log("[Aru Source Captioner] file: no image in selection");
             return;
           }
-          console.log("[Aru Source Captioner] file: extracting metadata from", imageFile.name);
+          console.log("[Aru Source Captioner] file: metadata parsing started");
           let sourceInfo;
           try {
             sourceInfo = await parseSourceFromFile(imageFile);
           } catch (err) {
-            console.warn("[Aru Source Captioner] file: metadata extraction threw", err);
+            console.warn("[Aru Source Captioner] file: metadata extraction threw", "COMMENT_METADATA_FAILED");
             return;
           }
           if (sourceInfo?.status !== "ok" || !sourceInfo.url) {
-            console.log("[Aru Source Captioner] file: no Aru source metadata found in image", { reason: sourceInfo?.reason });
+            console.log("[Aru Source Captioner] file: no Aru source metadata found in image");
             return;
           }
           const safeUrl = sanitizeSourceUrl(sourceInfo.url, config);
           if (!safeUrl) {
-            console.log("[Aru Source Captioner] file: extracted source rejected by sanitizer", { rawUrl: sourceInfo.url });
+            console.log("[Aru Source Captioner] file: extracted source rejected by sanitizer");
             return;
           }
-          console.log("[Aru Source Captioner] file: extracted source =", safeUrl);
+          console.log("[Aru Source Captioner] file: source validated");
           wrapperSourceMap.set(wrapper, safeUrl);
           const textarea = wrapper.querySelector(COMMENT_TEXTAREA_SELECTOR);
           if (textarea instanceof HTMLTextAreaElement) {
@@ -996,13 +976,10 @@
             const result2 = insertSourceIntoCommentTextarea(textarea, sourceText);
             console.log("[Aru Source Captioner] file: auto insertion result =", result2);
           } else {
-            console.log("[Aru Source Captioner] file: source stored, but no textarea found for auto insert", wrapper);
+            console.log("[Aru Source Captioner] file: source stored, but no textarea found for auto insert");
           }
         });
-        console.log("[Aru Source Captioner] file: hooked file input change", {
-          wrapper,
-          fileInput
-        });
+        console.log("[Aru Source Captioner] file: hooked file input change");
         return true;
       }
       __name(hookCommentFileInput, "hookCommentFileInput");
@@ -1037,7 +1014,7 @@
           try {
             setupCommentSourceCaptioner();
           } catch (err) {
-            console.debug("[Aru Source Captioner] comment setup failed:", err);
+            console.debug("[Aru Source Captioner] comment setup failed:", "COMMENT_SETUP_FAILED");
           }
         });
       }
@@ -1073,7 +1050,7 @@
           try {
             setupCommentSourceCaptioner();
           } catch (err) {
-            console.debug("[Aru Source Captioner] poll setup failed:", err);
+            console.debug("[Aru Source Captioner] poll setup failed:", "COMMENT_POLL_FAILED");
           }
           if (attempts >= maxAttempts) {
             clearInterval(pollIntervalId);
@@ -1204,12 +1181,9 @@
         }
         const overlayText = getRuliwebRevealOverlayText();
         const { shouldOpen, allowed, blocked } = shouldOpenRuliwebOverlayByKeywords(overlayText, config);
-        const allowKeywords = config && config.ruliwebAiRevealAllowKeywords || DEFAULT_OPTIONS.ruliwebAiRevealAllowKeywords;
-        const blockKeywords = config && config.ruliwebAiRevealBlockKeywords || DEFAULT_OPTIONS.ruliwebAiRevealBlockKeywords;
+        const _allowKeywords = config && config.ruliwebAiRevealAllowKeywords || DEFAULT_OPTIONS.ruliwebAiRevealAllowKeywords;
+        const _blockKeywords = config && config.ruliwebAiRevealBlockKeywords || DEFAULT_OPTIONS.ruliwebAiRevealBlockKeywords;
         console.info("[Aru][reveal] overlay keyword decision", {
-          overlayText: overlayText.slice(0, 200),
-          allowKeywords,
-          blockKeywords,
           allowed,
           blocked,
           shouldOpen
@@ -1235,29 +1209,15 @@
         }
         const unsafe = pointEl.closest(RULIWEB_UNSAFE_CLICK_SELECTOR);
         if (unsafe) {
-          console.warn("[Aru][reveal] click aborted — unsafe element at overlay center", {
-            pointTag: pointEl.tagName,
-            unsafeTag: unsafe.tagName,
-            unsafeHref: unsafe.href || "(none)"
-          });
+          console.warn("[Aru][reveal] click aborted — unsafe element at overlay center");
           return false;
         }
-        console.log("[Aru][reveal] overlay click target", {
-          x: cx,
-          y: cy,
-          tag: pointEl.tagName,
-          id: pointEl.id || "(none)",
-          className: (pointEl.className || "").toString().slice(0, 60),
-          href: pointEl.href || "(none)"
-        });
+        console.log("[Aru][reveal] overlay click target");
         const hrefBefore = location.href;
         _dispatchPointerMouseSequence(pointEl, cx, cy);
         setTimeout(() => {
           if (location.href !== hrefBefore) {
-            console.error("[Aru][reveal] URL changed after overlay click", {
-              beforeUrl: hrefBefore,
-              afterUrl: location.href
-            });
+            console.error("[Aru][reveal] URL changed after overlay click", "REVEAL_NAVIGATION_CHANGED");
           }
           const hasAiBlind = hasRuliwebAiBlind();
           const imgCount = document.querySelectorAll(".view_content img").length;
@@ -1337,8 +1297,6 @@
       function setupRuliwebAiReveal(config) {
         const mode = config.ruliwebAiRevealMode ?? "off";
         console.log("[Aru][reveal] setup", {
-          mode,
-          href: location.href,
           isRead: isRuliwebReadPage(),
           hasBoardRead: !!document.querySelector("#board_read"),
           hasAiBlind: hasRuliwebAiBlind(),
@@ -1362,8 +1320,6 @@
       __name(setupRuliwebAiReveal, "setupRuliwebAiReveal");
       async function init() {
         console.info("[Aru Source Captioner] content loaded", {
-          href: location.href,
-          userAgent: navigator.userAgent,
           exifrAvailable: typeof exifr !== "undefined"
         });
         const config = await loadConfig();
@@ -1377,8 +1333,8 @@
           startCommentObserver();
           setupRuliwebAiReveal(config);
           console.info("[Aru Source Captioner] read page active — comment source button enabled", {
-            strictAllowlist: config.strictAllowlist,
-            allowHttp: config.allowHttp
+            strictAllowlist: config.strictAllowlist === true,
+            allowHttp: config.allowHttp === true
           });
           return;
         }
@@ -1388,14 +1344,14 @@
         attachFileInputListeners(config);
         startEditorObserver(config);
         console.info("[Aru Source Captioner] auto-insert mode active — file selection triggers caption insertion", {
-          strictAllowlist: config.strictAllowlist,
-          allowHttp: config.allowHttp,
+          strictAllowlist: config.strictAllowlist === true,
+          allowHttp: config.allowHttp === true,
           mobile: isMobileAutoInsertEnvironment()
         });
       }
       __name(init, "init");
-      init().catch((err) => {
-        console.warn("[Aru Source Captioner] init failed:", err);
+      init().catch((_err) => {
+        console.warn("[Aru Source Captioner] init failed:", "CONTENT_INIT_FAILED");
       });
     }, "bootstrap");
     runBootstrap1();

@@ -49,7 +49,7 @@
     function seedMissingOptions() {
       chrome.storage.sync.get(null, (items) => {
         if (chrome.runtime.lastError) {
-          console.warn("[Aru Source Captioner] storage.get failed:", chrome.runtime.lastError.message);
+          console.warn("[Aru Source Captioner] storage.get failed:", "STORAGE_READ_FAILED");
           return;
         }
         const updates = {};
@@ -63,10 +63,12 @@
         }
         chrome.storage.sync.set(updates, () => {
           if (chrome.runtime.lastError) {
-            console.warn("[Aru Source Captioner] storage.set failed:", chrome.runtime.lastError.message);
+            console.warn("[Aru Source Captioner] storage.set failed:", "STORAGE_WRITE_FAILED");
             return;
           }
-          console.info("[Aru Source Captioner] seeded missing default options:", Object.keys(updates));
+          console.info("[Aru Source Captioner] seeded missing default options:", {
+            count: Object.keys(updates).length
+          });
         });
       });
     }
@@ -119,13 +121,13 @@
         }
       }, (response) => {
         if (chrome.runtime?.lastError) {
-          console.warn("[Aru] embed native message failed:", chrome.runtime.lastError.message);
+          console.warn("[Aru] embed native message failed:", "NATIVE_MESSAGE_FAILED");
           return;
         }
         if (response?.success) {
-          console.info("[Aru] metadata embedded:", response.data?.message);
+          console.info("[Aru] metadata embedded:", "NATIVE_EMBED_COMPLETE");
         } else {
-          console.warn("[Aru] embed failed:", response?.error);
+          console.warn("[Aru] embed failed:", "NATIVE_EMBED_FAILED");
         }
       });
     }
@@ -1397,7 +1399,7 @@
       __name(clicked, "clicked");
       api.contextMenus.onClicked.addListener((info, tab) => {
         serialize(() => clicked(info, tab)).catch(async (err) => {
-          console.warn("[Aru body download]", err.code || "ERROR", err.message);
+          console.warn("[Aru body download]", "DOWNLOAD_REQUEST_FAILED");
           const id = root.crypto.randomUUID();
           const job = {
             id,
@@ -1413,18 +1415,18 @@
             });
             await open(job);
           } catch (openError) {
-            console.warn("[Aru body download] 오류 화면 열기 실패", openError.message);
+            console.warn("[Aru body download] 오류 화면 열기 실패", "DOWNLOAD_ERROR_UI_FAILED");
           }
         });
       });
-      api.runtime.onInstalled.addListener(() => serialize(menu).catch((err) => console.warn("[Aru body download] 메뉴 등록 실패", err.message)));
-      api.runtime.onStartup?.addListener(() => serialize(menu).catch((err) => console.warn("[Aru body download]", err.message)));
+      api.runtime.onInstalled.addListener(() => serialize(menu).catch((_err) => console.warn("[Aru body download] 메뉴 등록 실패", "DOWNLOAD_MENU_INSTALL_FAILED")));
+      api.runtime.onStartup?.addListener(() => serialize(menu).catch((_err) => console.warn("[Aru body download]", "DOWNLOAD_MENU_STARTUP_FAILED")));
       api.storage.onChanged.addListener((changes, area) => {
         if (area === "sync" && (changes.enabled || changes.aruBodyDownloadOptions)) {
-          serialize(menu).catch((err) => console.warn("[Aru body download]", err.message));
+          serialize(menu).catch((_err) => console.warn("[Aru body download]", "DOWNLOAD_MENU_UPDATE_FAILED"));
         }
       });
-      serialize(menu).catch((err) => console.warn("[Aru body download] 메뉴 준비 실패", err.message));
+      serialize(menu).catch((_err) => console.warn("[Aru body download] 메뉴 준비 실패", "DOWNLOAD_MENU_PREPARE_FAILED"));
     }, "initializeDownloadBackground");
     initializeDownloadBackground(environment);
     return {};

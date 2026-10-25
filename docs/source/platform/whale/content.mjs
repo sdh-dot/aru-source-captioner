@@ -19,6 +19,7 @@ export function installWhaleContent({ environment = defaultEnvironment, dependen
     let attribution = createModuleScope(dependencies.attribution, ["Controller"], []);
     // 파일 선택의 출처와 작성기 이미지의 대응 근거가 확인된 경우에만 캡션을 삽입한다.
     // 브라우저별 판독 우선순위와 기존 설정·저장 태그 정책은 각 판독 경계에서 유지한다.
+    // 진단은 고정 단계·오류 코드와 건수만 기록하고 파일·URL·본문·예외 원문은 전달하지 않는다.
     //
     // 절대 규칙:
     //   - innerHTML / outerHTML / insertAdjacentHTML 사용 금지.
@@ -107,7 +108,7 @@ export function installWhaleContent({ environment = defaultEnvironment, dependen
                                 chrome &&
                                 chrome.runtime &&
                                 chrome.runtime.lastError) {
-                                console.warn("[Aru Source Captioner] storage.get failed, falling back to defaults:", chrome.runtime.lastError.message);
+                                console.warn("[Aru Source Captioner] storage.get failed, falling back to defaults:", "STORAGE_READ_FAILED");
                                 resolve({ ...DEFAULT_OPTIONS });
                                 return;
                             }
@@ -123,13 +124,13 @@ export function installWhaleContent({ environment = defaultEnvironment, dependen
                             resolve(merged);
                         }
                         catch (callbackErr) {
-                            console.warn("[Aru Source Captioner] storage.get callback threw, falling back to defaults:", callbackErr);
+                            console.warn("[Aru Source Captioner] storage.get callback threw, falling back to defaults:", "STORAGE_CALLBACK_FAILED");
                             resolve({ ...DEFAULT_OPTIONS });
                         }
                     });
                 }
                 catch (err) {
-                    console.warn("[Aru Source Captioner] loadConfig threw, falling back to defaults:", err);
+                    console.warn("[Aru Source Captioner] loadConfig threw, falling back to defaults:", "CONFIG_READ_FAILED");
                     resolve({ ...DEFAULT_OPTIONS });
                 }
             });
@@ -288,7 +289,7 @@ export function installWhaleContent({ environment = defaultEnvironment, dependen
                     return aruResult;
                 }
                 if (aruResult.status === "error") {
-                    console.debug("[Aru Source Captioner] png itxt fallback to exifr:", file.name, aruResult.reason);
+                    console.debug("[Aru Source Captioner] png itxt fallback to exifr:", "PNG_METADATA_FALLBACK");
                 }
             }
             if (typeof exifr === "undefined" ||
@@ -297,8 +298,6 @@ export function installWhaleContent({ environment = defaultEnvironment, dependen
                 const filenameUrl = parsePixivFilenameUrl(file.name);
                 if (filenameUrl) {
                     console.info("[Aru Source Captioner] filename fallback", {
-                        fileName: file.name,
-                        url: filenameUrl,
                         reason: "exifr_unavailable",
                     });
                     return {
@@ -322,12 +321,10 @@ export function installWhaleContent({ environment = defaultEnvironment, dependen
                 });
             }
             catch (err) {
-                console.warn("[Aru Source Captioner] exifr.parse failed —", `name=${file.name} type=${file.type || "unknown"} size=${file.size}B isWebp=${isWebp}`, err.message || err);
+                console.warn("[Aru Source Captioner] exifr.parse failed —", "METADATA_PARSE_FAILED");
                 const filenameUrl = parsePixivFilenameUrl(file.name);
                 if (filenameUrl) {
                     console.info("[Aru Source Captioner] filename fallback", {
-                        fileName: file.name,
-                        url: filenameUrl,
                         reason: "exifr_parse_failed",
                     });
                     return {
@@ -345,8 +342,6 @@ export function installWhaleContent({ environment = defaultEnvironment, dependen
                 const filenameUrl = parsePixivFilenameUrl(file.name);
                 if (filenameUrl) {
                     console.info("[Aru Source Captioner] filename fallback", {
-                        fileName: file.name,
-                        url: filenameUrl,
                         reason: "no_metadata",
                     });
                     return {
@@ -362,8 +357,6 @@ export function installWhaleContent({ environment = defaultEnvironment, dependen
                 const filenameUrl = parsePixivFilenameUrl(file.name);
                 if (filenameUrl) {
                     console.info("[Aru Source Captioner] filename fallback", {
-                        fileName: file.name,
-                        url: filenameUrl,
                         reason: "no_url_candidates",
                     });
                     return {
@@ -466,7 +459,7 @@ export function installWhaleContent({ environment = defaultEnvironment, dependen
                         candidates.push(urlVal);
                     }
                     else if (urlVal && isPixivUserUrl(urlVal)) {
-                        console.debug("[Aru Source Captioner] source candidate skipped (artist url):", { key, urlVal });
+                        console.debug("[Aru Source Captioner] source candidate skipped (artist url):", "ARTIST_URL_SKIPPED");
                     }
                 }
                 // artwork_id가 숫자 Pixiv ID → 작품 URL 생성
@@ -535,11 +528,7 @@ export function installWhaleContent({ environment = defaultEnvironment, dependen
             catch (err) {
                 // non-fatal — Python dict / trailing comma / single-quote JSON은 정상 실패.
                 // Firefox UTF-16LE 디코딩 오류도 이 경로를 탄다. filename fallback은 계속된다.
-                console.warn("[Aru Source Captioner] JSON parse failed; fallback continues", {
-                    parser: "aru_json",
-                    error: String(err),
-                    sample: String(text).slice(0, 160),
-                });
+                console.warn("[Aru Source Captioner] JSON parse failed; fallback continues", { parser: "aru_json", code: "JSON_PARSE_FAILED" });
                 return null;
             }
         }
@@ -742,7 +731,7 @@ export function installWhaleContent({ environment = defaultEnvironment, dependen
             }
             return table;
         }
-        function insertPixelTableWithCaption(editor, table, sourceUrl, fileName) {
+        function insertPixelTableWithCaption(editor, table, sourceUrl, _fileName) {
             const wrapper = document.createElement("p");
             wrapper.style.textAlign = "center";
             wrapper.dataset.aruPixelTableWrapper = "1";
@@ -752,7 +741,7 @@ export function installWhaleContent({ environment = defaultEnvironment, dependen
                 editor.appendChild(createSourceCaption(sourceUrl));
             }
             else {
-                console.log("[Aru Source Captioner] pixelTable: no source URL — caption omitted", { fileName });
+                console.log("[Aru Source Captioner] pixelTable: no source URL — caption omitted");
             }
         }
         async function handlePixelTableInsert(images, config, _isMobile) {
@@ -764,7 +753,7 @@ export function installWhaleContent({ environment = defaultEnvironment, dependen
             for (const file of images) {
                 const validation = validatePixelTableFile(file);
                 if (!validation.valid) {
-                    console.warn("[Aru Source Captioner] pixelTable: file rejected —", validation.reason, { name: file.name });
+                    console.warn("[Aru Source Captioner] pixelTable: file rejected —", "PIXEL_FILE_REJECTED");
                     continue;
                 }
                 let pixels, tableWidth, tableHeight;
@@ -772,7 +761,7 @@ export function installWhaleContent({ environment = defaultEnvironment, dependen
                     ({ pixels, tableWidth, tableHeight } = await renderPixelTableCanvas(file, config));
                 }
                 catch (err) {
-                    console.warn("[Aru Source Captioner] pixelTable: canvas render failed:", err);
+                    console.warn("[Aru Source Captioner] pixelTable: canvas render failed:", "PIXEL_RENDER_FAILED");
                     continue;
                 }
                 const table = buildPixelTable(pixels, tableWidth, tableHeight, config);
@@ -784,19 +773,18 @@ export function installWhaleContent({ environment = defaultEnvironment, dependen
                     }
                 }
                 catch (err) {
-                    console.debug("[Aru Source Captioner] pixelTable: parseSourceFromFile failed:", err);
+                    console.debug("[Aru Source Captioner] pixelTable: parseSourceFromFile failed:", "PIXEL_METADATA_FAILED");
                 }
                 try {
                     insertPixelTableWithCaption(editor, table, sourceUrl, file.name);
                     console.info("[Aru Source Captioner] pixelTable: inserted", {
-                        name: file.name,
                         tableWidth,
                         tableHeight,
                         hasCaption: !!sourceUrl,
                     });
                 }
                 catch (err) {
-                    console.warn("[Aru Source Captioner] pixelTable: insert failed:", err);
+                    console.warn("[Aru Source Captioner] pixelTable: insert failed:", "PIXEL_INSERT_FAILED");
                 }
             }
         }
@@ -954,7 +942,7 @@ export function installWhaleContent({ environment = defaultEnvironment, dependen
                     setupCommentSourceCaptioner();
                 }
                 catch (err) {
-                    console.debug("[Aru Source Captioner] click: re-scan failed:", err);
+                    console.debug("[Aru Source Captioner] click: re-scan failed:", "COMMENT_RESCAN_FAILED");
                 }
                 return;
             }
@@ -973,7 +961,7 @@ export function installWhaleContent({ environment = defaultEnvironment, dependen
                 }
                 return;
             }
-            console.log("[Aru Source Captioner] click: using stored source =", savedSource);
+            console.log("[Aru Source Captioner] click: stored source ready");
             const sourceText = buildCommentSourceText(savedSource);
             const result = insertSourceIntoCommentTextarea(textarea, sourceText);
             console.log("[Aru Source Captioner] click: insertion result =", result);
@@ -1017,9 +1005,7 @@ export function installWhaleContent({ environment = defaultEnvironment, dependen
             // 5순위: textarea 자체의 grandparent / parent.
             return (textarea.parentElement?.parentElement || textarea.parentElement || null);
         }
-        // 단일 wrapper를 검증하고 진단 로그를 남긴 뒤 result에 추가한다.
-        // textarea의 name/id/className을 함께 로그로 찍어 일반 댓글 / 대댓글 wrapper를
-        // 사용자가 콘솔에서 구분할 수 있도록 한다 (selector 적합성 검증 용도).
+        // 댓글 대상을 수집하되 DOM 객체와 입력 속성은 지원용 콘솔에 노출하지 않는다.
         function classifyAndPushWrapper(wrapper, result) {
             const textarea = wrapper.querySelector(COMMENT_TEXTAREA_SELECTOR);
             if (!(textarea instanceof HTMLTextAreaElement)) {
@@ -1027,16 +1013,11 @@ export function installWhaleContent({ environment = defaultEnvironment, dependen
             }
             const imgButton = wrapper.querySelector(COMMENT_IMG_BUTTON_SELECTOR);
             result.push(wrapper);
-            const textareaInfo = {
-                name: textarea.name,
-                id: textarea.id,
-                className: textarea.className,
-            };
             if (imgButton) {
-                console.log("[Aru Source Captioner] scan: wrapper OK (has textarea + .common_img_button)", { wrapper, textarea: textareaInfo });
+                console.log("[Aru Source Captioner] scan: wrapper OK (has textarea + .common_img_button)");
             }
             else {
-                console.log("[Aru Source Captioner] scan: wrapper has textarea but no .common_img_button — will use textarea position", { wrapper, textarea: textareaInfo });
+                console.log("[Aru Source Captioner] scan: wrapper has textarea but no .common_img_button — will use textarea position");
             }
         }
         function findCommentInputWrappers() {
@@ -1063,9 +1044,15 @@ export function installWhaleContent({ environment = defaultEnvironment, dependen
             // 출처 줄 뒤에 줄바꿈 1번만 추가 — 사용자가 빈 줄 없이 바로 다음 줄에 댓글 본문을 작성.
             return `${COMMENT_SOURCE_PREFIX} ${sourceUrl}\n`;
         }
-        function logCommentInsertSkip(reason, detail) {
-            // 사용자 페이지 콘솔 오염을 피하기 위해 console.debug만 사용한다.
-            console.debug("[Aru Source Captioner] comment insert skipped:", reason, detail || "");
+        function logCommentInsertSkip(reason, _detail) {
+            // 건너뛴 이유는 고정 코드만 남긴다. 댓글 본문·출처와 DOM 객체는 콘솔에 전달하지 않는다.
+            console.debug("[Aru Source Captioner] comment insert skipped:", [
+                "duplicate_source_line",
+                "other_source_present",
+                "maxlength_exceeded",
+            ].includes(reason)
+                ? reason
+                : "COMMENT_INSERT_SKIPPED");
         }
         function focusTextareaSafe(textarea) {
             try {
@@ -1114,9 +1101,6 @@ export function installWhaleContent({ environment = defaultEnvironment, dependen
             textarea.value = newValue;
             // 사이트가 textarea setter를 가로채는지(예: framework state 동기화) 검증한다.
             console.log("[Aru Source Captioner] insert: value set", {
-                actualValue: typeof textarea.value === "string"
-                    ? textarea.value.slice(0, 50)
-                    : null,
                 valueMatches: textarea.value === newValue,
                 valueLength: typeof textarea.value === "string" ? textarea.value.length : -1,
             });
@@ -1133,7 +1117,7 @@ export function installWhaleContent({ environment = defaultEnvironment, dependen
                 textarea.dispatchEvent(new Event("change", { bubbles: true }));
             }
             catch (err) {
-                console.debug("[Aru Source Captioner] event dispatch failed:", err);
+                console.debug("[Aru Source Captioner] event dispatch failed:", "COMMENT_EVENT_FAILED");
             }
         }
         function insertSourceIntoCommentTextarea(textarea, sourceText) {
@@ -1146,7 +1130,6 @@ export function installWhaleContent({ environment = defaultEnvironment, dependen
             console.log("[Aru Source Captioner] insert: called", {
                 textareaExists: true,
                 inDOM: document.contains(textarea),
-                currentValue: existing.slice(0, 50),
                 maxLength: textarea.maxLength,
             });
             const newValue = buildMergedTextareaValue(existing, sourceText);
@@ -1163,12 +1146,12 @@ export function installWhaleContent({ environment = defaultEnvironment, dependen
                 return false;
             }
             if (wrapper.dataset[COMMENT_BOUND_DATASET_KEY] === "1") {
-                console.log("[Aru Source Captioner] inject: skipped (already bound)", wrapper);
+                console.log("[Aru Source Captioner] inject: skipped (already bound)");
                 return false;
             }
             const textarea = wrapper.querySelector(COMMENT_TEXTAREA_SELECTOR);
             if (!(textarea instanceof HTMLTextAreaElement)) {
-                console.log("[Aru Source Captioner] inject: skipped (no textarea)", wrapper);
+                console.log("[Aru Source Captioner] inject: skipped (no textarea)");
                 return false;
             }
             // 이미 동일 wrapper에 주입된 적이 있으면 (DOM 재구성 등) 추가 주입 방지.
@@ -1177,7 +1160,7 @@ export function installWhaleContent({ environment = defaultEnvironment, dependen
             // skip되는 사고를 막기 위함이다. wrapper-level guard만 유지한다.
             if (wrapper.querySelector("." + COMMENT_BUTTON_CLASS)) {
                 wrapper.dataset[COMMENT_BOUND_DATASET_KEY] = "1";
-                console.log("[Aru Source Captioner] inject: skipped (button already in this wrapper)", wrapper);
+                console.log("[Aru Source Captioner] inject: skipped (button already in this wrapper)");
                 return false;
             }
             const imgButton = wrapper.querySelector(COMMENT_IMG_BUTTON_SELECTOR);
@@ -1211,14 +1194,14 @@ export function installWhaleContent({ environment = defaultEnvironment, dependen
                 }
                 else {
                     textarea.after(button);
-                    console.log("[Aru Source Captioner] inject: used textarea fallback (no .common_img_button)", { wrapper, textarea });
+                    console.log("[Aru Source Captioner] inject: used textarea fallback (no .common_img_button)");
                 }
             }
             catch (err) {
-                console.debug("[Aru Source Captioner] comment button insert failed:", err);
+                console.debug("[Aru Source Captioner] comment button insert failed:", "COMMENT_BUTTON_FAILED");
                 return false;
             }
-            console.log("[Aru Source Captioner] inject: button added", { wrapper });
+            console.log("[Aru Source Captioner] inject: button added");
             return true;
         }
         // 첨부된 이미지 file input에서 첫 번째 이미지의 Aru Archive metadata를 파싱하여
@@ -1238,7 +1221,7 @@ export function installWhaleContent({ environment = defaultEnvironment, dependen
             }
             const fileInput = wrapper.querySelector(COMMENT_FILE_INPUT_SELECTOR);
             if (!(fileInput instanceof HTMLInputElement)) {
-                console.log("[Aru Source Captioner] file: no file input in wrapper", wrapper);
+                console.log("[Aru Source Captioner] file: no file input in wrapper");
                 return false;
             }
             if (fileInput.type !== "file") {
@@ -1267,25 +1250,25 @@ export function installWhaleContent({ environment = defaultEnvironment, dependen
                     console.log("[Aru Source Captioner] file: no image in selection");
                     return;
                 }
-                console.log("[Aru Source Captioner] file: extracting metadata from", imageFile.name);
+                console.log("[Aru Source Captioner] file: metadata parsing started");
                 let sourceInfo;
                 try {
                     sourceInfo = await parseSourceFromFile(imageFile);
                 }
                 catch (err) {
-                    console.warn("[Aru Source Captioner] file: metadata extraction threw", err);
+                    console.warn("[Aru Source Captioner] file: metadata extraction threw", "COMMENT_METADATA_FAILED");
                     return;
                 }
                 if (sourceInfo?.status !== "ok" || !sourceInfo.url) {
-                    console.log("[Aru Source Captioner] file: no Aru source metadata found in image", { reason: sourceInfo?.reason });
+                    console.log("[Aru Source Captioner] file: no Aru source metadata found in image");
                     return;
                 }
                 const safeUrl = sanitizeSourceUrl(sourceInfo.url, config);
                 if (!safeUrl) {
-                    console.log("[Aru Source Captioner] file: extracted source rejected by sanitizer", { rawUrl: sourceInfo.url });
+                    console.log("[Aru Source Captioner] file: extracted source rejected by sanitizer");
                     return;
                 }
-                console.log("[Aru Source Captioner] file: extracted source =", safeUrl);
+                console.log("[Aru Source Captioner] file: source validated");
                 wrapperSourceMap.set(wrapper, safeUrl);
                 const textarea = wrapper.querySelector(COMMENT_TEXTAREA_SELECTOR);
                 if (textarea instanceof HTMLTextAreaElement) {
@@ -1294,13 +1277,10 @@ export function installWhaleContent({ environment = defaultEnvironment, dependen
                     console.log("[Aru Source Captioner] file: auto insertion result =", result);
                 }
                 else {
-                    console.log("[Aru Source Captioner] file: source stored, but no textarea found for auto insert", wrapper);
+                    console.log("[Aru Source Captioner] file: source stored, but no textarea found for auto insert");
                 }
             });
-            console.log("[Aru Source Captioner] file: hooked file input change", {
-                wrapper,
-                fileInput,
-            });
+            console.log("[Aru Source Captioner] file: hooked file input change");
             return true;
         }
         function setupCommentSourceCaptioner(config = undefined) {
@@ -1349,7 +1329,7 @@ export function installWhaleContent({ environment = defaultEnvironment, dependen
                     setupCommentSourceCaptioner();
                 }
                 catch (err) {
-                    console.debug("[Aru Source Captioner] comment setup failed:", err);
+                    console.debug("[Aru Source Captioner] comment setup failed:", "COMMENT_SETUP_FAILED");
                 }
             });
         }
@@ -1394,7 +1374,7 @@ export function installWhaleContent({ environment = defaultEnvironment, dependen
                     setupCommentSourceCaptioner();
                 }
                 catch (err) {
-                    console.debug("[Aru Source Captioner] poll setup failed:", err);
+                    console.debug("[Aru Source Captioner] poll setup failed:", "COMMENT_POLL_FAILED");
                 }
                 if (attempts >= maxAttempts) {
                     clearInterval(pollIntervalId);
@@ -1556,14 +1536,11 @@ export function installWhaleContent({ environment = defaultEnvironment, dependen
             // overlay 키워드 판정 — block 우선 allowlist 방식.
             const overlayText = getRuliwebRevealOverlayText();
             const { shouldOpen, allowed, blocked } = shouldOpenRuliwebOverlayByKeywords(overlayText, config);
-            const allowKeywords = (config && config.ruliwebAiRevealAllowKeywords) ||
+            const _allowKeywords = (config && config.ruliwebAiRevealAllowKeywords) ||
                 DEFAULT_OPTIONS.ruliwebAiRevealAllowKeywords;
-            const blockKeywords = (config && config.ruliwebAiRevealBlockKeywords) ||
+            const _blockKeywords = (config && config.ruliwebAiRevealBlockKeywords) ||
                 DEFAULT_OPTIONS.ruliwebAiRevealBlockKeywords;
             console.info("[Aru][reveal] overlay keyword decision", {
-                overlayText: overlayText.slice(0, 200),
-                allowKeywords,
-                blockKeywords,
                 allowed,
                 blocked,
                 shouldOpen,
@@ -1590,29 +1567,15 @@ export function installWhaleContent({ environment = defaultEnvironment, dependen
             }
             const unsafe = pointEl.closest(RULIWEB_UNSAFE_CLICK_SELECTOR);
             if (unsafe) {
-                console.warn("[Aru][reveal] click aborted — unsafe element at overlay center", {
-                    pointTag: pointEl.tagName,
-                    unsafeTag: unsafe.tagName,
-                    unsafeHref: unsafe.href || "(none)",
-                });
+                console.warn("[Aru][reveal] click aborted — unsafe element at overlay center");
                 return false;
             }
-            console.log("[Aru][reveal] overlay click target", {
-                x: cx,
-                y: cy,
-                tag: pointEl.tagName,
-                id: pointEl.id || "(none)",
-                className: (pointEl.className || "").toString().slice(0, 60),
-                href: pointEl.href || "(none)",
-            });
+            console.log("[Aru][reveal] overlay click target");
             const hrefBefore = location.href;
             _dispatchPointerMouseSequence(pointEl, cx, cy);
             setTimeout(() => {
                 if (location.href !== hrefBefore) {
-                    console.error("[Aru][reveal] URL changed after overlay click", {
-                        beforeUrl: hrefBefore,
-                        afterUrl: location.href,
-                    });
+                    console.error("[Aru][reveal] URL changed after overlay click", "REVEAL_NAVIGATION_CHANGED");
                 }
                 const hasAiBlind = hasRuliwebAiBlind();
                 const imgCount = document.querySelectorAll(".view_content img").length;
@@ -1691,8 +1654,6 @@ export function installWhaleContent({ environment = defaultEnvironment, dependen
         function setupRuliwebAiReveal(config) {
             const mode = config.ruliwebAiRevealMode ?? "off";
             console.log("[Aru][reveal] setup", {
-                mode,
-                href: location.href,
                 isRead: isRuliwebReadPage(),
                 hasBoardRead: !!document.querySelector("#board_read"),
                 hasAiBlind: hasRuliwebAiBlind(),
@@ -1718,8 +1679,6 @@ export function installWhaleContent({ environment = defaultEnvironment, dependen
             // Firefox Browser Console(Ctrl+Shift+J)에서 이 로그가 보이면 content script가 실행된 것이다.
             // Chrome/Whale: F12 Console에서 확인. 보이지 않으면 manifest의 content_scripts.matches 확인.
             console.info("[Aru Source Captioner] content loaded", {
-                href: location.href,
-                userAgent: navigator.userAgent,
                 exifrAvailable: typeof exifr !== "undefined",
             });
             const config = await loadConfig();
@@ -1738,8 +1697,8 @@ export function installWhaleContent({ environment = defaultEnvironment, dependen
                 startCommentObserver();
                 setupRuliwebAiReveal(config);
                 console.info("[Aru Source Captioner] read page active — comment source button enabled", {
-                    strictAllowlist: config.strictAllowlist,
-                    allowHttp: config.allowHttp,
+                    strictAllowlist: config.strictAllowlist === true,
+                    allowHttp: config.allowHttp === true,
                 });
                 return;
             }
@@ -1751,14 +1710,14 @@ export function installWhaleContent({ environment = defaultEnvironment, dependen
             attachFileInputListeners(config);
             startEditorObserver(config);
             console.info("[Aru Source Captioner] phase 2B active — caption insertion enabled", {
-                strictAllowlist: config.strictAllowlist,
-                allowHttp: config.allowHttp,
+                strictAllowlist: config.strictAllowlist === true,
+                allowHttp: config.allowHttp === true,
             });
         }
         // 옵션은 초기화 때 조회하므로 변경 후 페이지 새로고침이 필요하다.
         // 즉시 반영을 추가할 때는 Controller의 설정 참조와 리스너 수명을 함께 갱신해야 한다.
-        init().catch((err) => {
-            console.warn("[Aru Source Captioner] init failed:", err);
+        init().catch((_err) => {
+            console.warn("[Aru Source Captioner] init failed:", "CONTENT_INIT_FAILED");
         });
     };
     runBootstrap1();
