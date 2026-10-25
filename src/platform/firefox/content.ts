@@ -40,6 +40,7 @@ export function installFirefoxContent({
     document,
     location,
     navigator,
+    chrome,
     MutationObserver,
     HTMLElement,
     TextDecoder,
@@ -883,7 +884,7 @@ export function installFirefoxContent({
     //   - textarea.maxLength 초과 시 skip.
     //   - 커서를 마지막 빈 줄에 위치시키고 input/change 이벤트 dispatch.
     //   - 한 wrapper당 한 번만 주입 (data-aru-source-comment-bound guard).
-    //   - 한 file input당 한 번만 hook (data-aru-source-file-bound guard).
+    //   - input별 현재 binding으로 중복 hook을 막고 dataset은 설치 표식으로만 유지한다.
     //   - 기존 onclick / onchange / onkeydown / .common_img_button 이벤트는 절대 손대지 않는다.
 
     // 일반 댓글: textarea[name="comment_input"] / textarea#comment_input
@@ -921,6 +922,10 @@ export function installFirefoxContent({
     // 파일 input이 다시 변경되면 갱신된다. Map이 아니라 WeakMap이라 wrapper가
     // DOM에서 사라지면 자동으로 GC된다.
     const wrapperSourceMap = new WeakMap();
+    const commentFileSelections = new WeakMap<
+      HTMLInputElement,
+      { revision: number; wrapper: HTMLElement; listener: EventListener }
+    >();
 
     // read 페이지에서 init() 이후 setup/observer/poll/click handler가 모두 같은
     // config를 사용해야 한다. 매 호출마다 config를 다시 로드하지 않도록 모듈 스코프에
@@ -1179,10 +1184,12 @@ export function installFirefoxContent({
     // 주의:
     //   - 기존 onchange inline 핸들러(app.comment_img / app.comment_img_drop 트리거)는
     //     절대 가로채지 않는다 — addEventListener("change", ...)로만 추가한다.
-    //   - 같은 file input에 중복 hook을 막기 위해 dataset 가드를 사용한다.
-    //   - 파일 input이 동적으로 교체될 수 있어 wrapper 단위로 매번 다시 시도한다 —
-    //     dataset 가드가 같은 input에 두 번 붙는 것은 막아준다.
+    //   - input별 binding으로 중복 hook을 막는다. 복제된 dataset은 리스너 소유 증거가 아니다.
+    //   - wrapper가 교체되면 이전 리스너를 해제하고 새 binding만 현재 선택을 승인한다.
     function hookCommentFileInput(wrapper: object, config: Options) {
+      if (!effectGate.allows()) {
+        return false;
+      }
       if (!(wrapper instanceof HTMLElement)) {
         return false;
       }
@@ -1199,20 +1206,68 @@ export function installFirefoxContent({
         // common_img_input이 아닌 다른 input이 잡힌 경우 (예: 검색 input).
         return false;
       }
-      if (fileInput.dataset[COMMENT_FILE_BOUND_DATASET_KEY] === "1") {
+      // 세션 Gate와 별개로 이 입력이 설치된 native ID도 보존한다. 선택 revision은 문서 epoch와 다르다.
+      let contextId: string;
+      try {
+        const id = chrome?.runtime?.id;
+        if (typeof id !== "string" || !id) {
+          return false;
+        }
+        contextId = id;
+      } catch {
         return false;
       }
+      let isContextInvalidated = false;
+      const canApplyInContext = () => {
+        if (!isContextInvalidated) {
+          try {
+            isContextInvalidated = chrome?.runtime?.id !== contextId;
+          } catch {
+            isContextInvalidated = true;
+          }
+        }
+        return !isContextInvalidated;
+      };
+
+      const previous = commentFileSelections.get(fileInput);
+      if (previous?.wrapper === wrapper) {
+        return false;
+      }
+      // DOM 교체로 같은 input이 다른 wrapper에 연결돼도 이전 작업과 리스너를 넘기지 않는다.
+      if (previous) {
+        fileInput.removeEventListener("change", previous.listener);
+        const replacement = previous.wrapper.querySelector(
+          COMMENT_FILE_INPUT_SELECTOR,
+        );
+        if (!replacement || replacement === fileInput) {
+          wrapperSourceMap.delete(previous.wrapper);
+        }
+      }
+      const selection = { revision: 0, wrapper, listener: onFileChange };
+      commentFileSelections.set(fileInput, selection);
+      wrapperSourceMap.delete(wrapper);
       fileInput.dataset[COMMENT_FILE_BOUND_DATASET_KEY] = "1";
       resources.own(() => {
         delete fileInput.dataset[COMMENT_FILE_BOUND_DATASET_KEY];
       });
 
-      resources.listen(fileInput, "change", async (event) => {
-        if (!effectGate.allows()) {
+      const targetInput = fileInput;
+      const targetWrapper = wrapper;
+      async function onFileChange(event: Event) {
+        if (commentFileSelections.get(targetInput) !== selection) {
           return;
         }
+        // 빈 선택·비이미지·출처 없음도 이전 선택을 무효화한다. 기존 본문은 지우지 않는다.
+        const revision = ++selection.revision;
+        if (
+          targetWrapper.querySelector(COMMENT_FILE_INPUT_SELECTOR) !==
+          targetInput
+        ) {
+          return;
+        }
+        wrapperSourceMap.delete(targetWrapper);
         const target = event.target;
-        const files = target instanceof HTMLInputElement ? target.files : null;
+        const files = target === targetInput ? targetInput.files : null;
         if (!files || files.length === 0) {
           return;
         }
@@ -1227,6 +1282,27 @@ export function installFirefoxContent({
         }
         if (!imageFile) {
           console.log("[Aru Source Captioner] file: no image in selection");
+          return;
+        }
+
+        const textarea = targetWrapper.querySelector(COMMENT_TEXTAREA_SELECTOR);
+        const isCurrentSelection = () =>
+          effectGate.allows() &&
+          canApplyInContext() &&
+          commentFileSelections.get(targetInput) === selection &&
+          revision === selection.revision &&
+          targetInput.isConnected &&
+          targetWrapper.isConnected &&
+          targetInput.ownerDocument === document &&
+          targetWrapper.ownerDocument === document &&
+          targetWrapper.querySelector(COMMENT_FILE_INPUT_SELECTOR) ===
+            targetInput &&
+          targetWrapper.querySelector(COMMENT_TEXTAREA_SELECTOR) === textarea &&
+          (!textarea || textarea.isConnected) &&
+          Array.from(targetInput.files ?? []).find((file) =>
+            file.type.startsWith("image/"),
+          ) === imageFile;
+        if (!isCurrentSelection()) {
           return;
         }
 
@@ -1246,11 +1322,10 @@ export function installFirefoxContent({
           return;
         }
 
-        if (
-          !effectGate.allows() ||
-          sourceInfo?.status !== "ok" ||
-          !sourceInfo.url
-        ) {
+        if (!isCurrentSelection()) {
+          return;
+        }
+        if (sourceInfo?.status !== "ok" || !sourceInfo.url) {
           console.log(
             "[Aru Source Captioner] file: no Aru source metadata found in image",
             { reason: sourceInfo?.reason },
@@ -1259,6 +1334,9 @@ export function installFirefoxContent({
         }
 
         const safeUrl = sanitizeSourceUrl(sourceInfo.url, config);
+        if (!isCurrentSelection()) {
+          return;
+        }
         if (!safeUrl) {
           console.log(
             "[Aru Source Captioner] file: extracted source rejected by sanitizer",
@@ -1268,9 +1346,8 @@ export function installFirefoxContent({
         }
 
         console.log("[Aru Source Captioner] file: extracted source =", safeUrl);
-        wrapperSourceMap.set(wrapper, safeUrl);
+        wrapperSourceMap.set(targetWrapper, safeUrl);
 
-        const textarea = wrapper.querySelector(COMMENT_TEXTAREA_SELECTOR);
         if (textarea instanceof HTMLTextAreaElement) {
           const sourceText = buildCommentSourceText(safeUrl);
           const result = insertSourceIntoCommentTextarea(textarea, sourceText);
@@ -1281,9 +1358,14 @@ export function installFirefoxContent({
         } else {
           console.log(
             "[Aru Source Captioner] file: source stored, but no textarea found for auto insert",
-            wrapper,
+            targetWrapper,
           );
         }
+      }
+      fileInput.addEventListener("change", onFileChange);
+      resources.own(() => {
+        ++selection.revision;
+        fileInput.removeEventListener("change", onFileChange);
       });
 
       console.log("[Aru Source Captioner] file: hooked file input change", {

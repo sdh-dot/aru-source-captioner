@@ -835,7 +835,7 @@
     environment = scope.environment;
     const resources = scope.resources;
     const window = environment.window ?? environment;
-    const { document, location, navigator, MutationObserver, HTMLElement, TextDecoder, URL: URL2, exifr, console: console2 } = environment;
+    const { document, location, navigator, chrome, MutationObserver, HTMLElement, TextDecoder, URL: URL2, exifr, console: console2 } = environment;
     const setTimeout = typeof environment.setTimeout === "function" ? (...args) => environment.setTimeout(...args) : void 0;
     const setInterval = typeof environment.setInterval === "function" ? (...args) => environment.setInterval(...args) : void 0;
     const clearInterval = typeof environment.clearInterval === "function" ? (...args) => environment.clearInterval(...args) : void 0;
@@ -1462,6 +1462,7 @@
       const COMMENT_FILE_BOUND_DATASET_KEY = "aruSourceFileBound";
       const COMMENT_SOURCE_PREFIX = "출처:";
       const wrapperSourceMap = /* @__PURE__ */ new WeakMap();
+      const commentFileSelections = /* @__PURE__ */ new WeakMap();
       let readPageConfig = null;
       function resolveCommentWrapperForTextarea(textarea) {
         const outer = textarea.closest(".border_box.after_clear");
@@ -1622,6 +1623,9 @@
       }
       __name(insertSourceIntoCommentTextarea, "insertSourceIntoCommentTextarea");
       function hookCommentFileInput(wrapper, config) {
+        if (!effectGate.allows()) {
+          return false;
+        }
         if (!(wrapper instanceof HTMLElement)) {
           return false;
         }
@@ -1633,19 +1637,58 @@
         if (fileInput.type !== "file") {
           return false;
         }
-        if (fileInput.dataset[COMMENT_FILE_BOUND_DATASET_KEY] === "1") {
+        let contextId;
+        try {
+          const id = chrome?.runtime?.id;
+          if (typeof id !== "string" || !id) {
+            return false;
+          }
+          contextId = id;
+        } catch {
           return false;
         }
+        let isContextInvalidated = false;
+        const canApplyInContext = /* @__PURE__ */ __name(() => {
+          if (!isContextInvalidated) {
+            try {
+              isContextInvalidated = chrome?.runtime?.id !== contextId;
+            } catch {
+              isContextInvalidated = true;
+            }
+          }
+          return !isContextInvalidated;
+        }, "canApplyInContext");
+        const previous = commentFileSelections.get(fileInput);
+        if (previous?.wrapper === wrapper) {
+          return false;
+        }
+        if (previous) {
+          fileInput.removeEventListener("change", previous.listener);
+          const replacement = previous.wrapper.querySelector(COMMENT_FILE_INPUT_SELECTOR);
+          if (!replacement || replacement === fileInput) {
+            wrapperSourceMap.delete(previous.wrapper);
+          }
+        }
+        const selection = { revision: 0, wrapper, listener: onFileChange };
+        commentFileSelections.set(fileInput, selection);
+        wrapperSourceMap.delete(wrapper);
         fileInput.dataset[COMMENT_FILE_BOUND_DATASET_KEY] = "1";
         resources.own(() => {
           delete fileInput.dataset[COMMENT_FILE_BOUND_DATASET_KEY];
         });
-        resources.listen(fileInput, "change", async (event) => {
-          if (!effectGate.allows()) {
+        const targetInput = fileInput;
+        const targetWrapper = wrapper;
+        async function onFileChange(event) {
+          if (commentFileSelections.get(targetInput) !== selection) {
             return;
           }
+          const revision = ++selection.revision;
+          if (targetWrapper.querySelector(COMMENT_FILE_INPUT_SELECTOR) !== targetInput) {
+            return;
+          }
+          wrapperSourceMap.delete(targetWrapper);
           const target = event.target;
-          const files = target instanceof HTMLInputElement ? target.files : null;
+          const files = target === targetInput ? targetInput.files : null;
           if (!files || files.length === 0) {
             return;
           }
@@ -1660,6 +1703,11 @@
             console2.log("[Aru Source Captioner] file: no image in selection");
             return;
           }
+          const textarea = targetWrapper.querySelector(COMMENT_TEXTAREA_SELECTOR);
+          const isCurrentSelection = /* @__PURE__ */ __name(() => effectGate.allows() && canApplyInContext() && commentFileSelections.get(targetInput) === selection && revision === selection.revision && targetInput.isConnected && targetWrapper.isConnected && targetInput.ownerDocument === document && targetWrapper.ownerDocument === document && targetWrapper.querySelector(COMMENT_FILE_INPUT_SELECTOR) === targetInput && targetWrapper.querySelector(COMMENT_TEXTAREA_SELECTOR) === textarea && (!textarea || textarea.isConnected) && Array.from(targetInput.files ?? []).find((file) => file.type.startsWith("image/")) === imageFile, "isCurrentSelection");
+          if (!isCurrentSelection()) {
+            return;
+          }
           console2.log("[Aru Source Captioner] file: extracting metadata from", imageFile.name);
           let sourceInfo;
           try {
@@ -1668,25 +1716,36 @@
             console2.warn("[Aru Source Captioner] file: metadata extraction threw", err);
             return;
           }
-          if (!effectGate.allows() || sourceInfo?.status !== "ok" || !sourceInfo.url) {
+          if (!isCurrentSelection()) {
+            return;
+          }
+          if (sourceInfo?.status !== "ok" || !sourceInfo.url) {
             console2.log("[Aru Source Captioner] file: no Aru source metadata found in image", { reason: sourceInfo?.reason });
             return;
           }
           const safeUrl = sanitizeSourceUrl(sourceInfo.url, config);
+          if (!isCurrentSelection()) {
+            return;
+          }
           if (!safeUrl) {
             console2.log("[Aru Source Captioner] file: extracted source rejected by sanitizer", { rawUrl: sourceInfo.url });
             return;
           }
           console2.log("[Aru Source Captioner] file: extracted source =", safeUrl);
-          wrapperSourceMap.set(wrapper, safeUrl);
-          const textarea = wrapper.querySelector(COMMENT_TEXTAREA_SELECTOR);
+          wrapperSourceMap.set(targetWrapper, safeUrl);
           if (textarea instanceof HTMLTextAreaElement) {
             const sourceText = buildCommentSourceText(safeUrl);
             const result2 = insertSourceIntoCommentTextarea(textarea, sourceText);
             console2.log("[Aru Source Captioner] file: auto insertion result =", result2);
           } else {
-            console2.log("[Aru Source Captioner] file: source stored, but no textarea found for auto insert", wrapper);
+            console2.log("[Aru Source Captioner] file: source stored, but no textarea found for auto insert", targetWrapper);
           }
+        }
+        __name(onFileChange, "onFileChange");
+        fileInput.addEventListener("change", onFileChange);
+        resources.own(() => {
+          ++selection.revision;
+          fileInput.removeEventListener("change", onFileChange);
         });
         console2.log("[Aru Source Captioner] file: hooked file input change", {
           wrapper,
