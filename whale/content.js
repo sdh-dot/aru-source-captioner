@@ -23,6 +23,22 @@
   }
   __name(parsePixivFilenameUrl, "parsePixivFilenameUrl");
 
+  // docs/source/source-caption/link-display.mjs
+  function formatSourceLinkText(url) {
+    let parsed;
+    try {
+      parsed = new URL(url);
+    } catch {
+      return url;
+    }
+    if (!["https:", "http:"].includes(parsed.protocol) || !["www.pixiv.net", "pixiv.net"].includes(parsed.hostname) || parsed.username || parsed.password || parsed.port) {
+      return url;
+    }
+    const artwork = parsed.pathname.match(/^\/artworks\/(\d{6,12})\/?$/);
+    return artwork ? `Pixiv - /artworks/${artwork[1]}` : url;
+  }
+  __name(formatSourceLinkText, "formatSourceLinkText");
+
   // docs/source/source-caption/png-chunks.mjs
   var PNG_SIGNATURE = [137, 80, 78, 71, 13, 10, 26, 10];
   function hasPngSignature(buffer) {
@@ -140,7 +156,7 @@
   // docs/source/platform/whale/content.mjs
   function installWhaleContent({ environment = defaultEnvironment, dependencies = {} } = {}) {
     const window = environment.window ?? environment;
-    const { document, location, navigator, chrome, MutationObserver, HTMLElement, TextDecoder, Image, URL, exifr, console } = environment;
+    const { document, location, navigator, chrome, MutationObserver, HTMLElement, TextDecoder, Image, URL: URL2, exifr, console } = environment;
     const setTimeout = typeof environment.setTimeout === "function" ? (...args) => environment.setTimeout(...args) : void 0;
     const setInterval = typeof environment.setInterval === "function" ? (...args) => environment.setInterval(...args) : void 0;
     const clearInterval = typeof environment.clearInterval === "function" ? (...args) => environment.clearInterval(...args) : void 0;
@@ -472,7 +488,7 @@
           return false;
         }
         try {
-          const u = new URL(s);
+          const u = new URL2(s);
           return (u.hostname === "www.pixiv.net" || u.hostname === "pixiv.net") && /^\/users\/\d+/.test(u.pathname);
         } catch {
           return false;
@@ -638,7 +654,7 @@
         }
         let parsed;
         try {
-          parsed = new URL(trimmed);
+          parsed = new URL2(trimmed);
         } catch {
           return null;
         }
@@ -729,14 +745,14 @@
           return await createImageBitmap(file);
         }
         return await new Promise((resolve, reject) => {
-          const objectUrl = URL.createObjectURL(file);
+          const objectUrl = URL2.createObjectURL(file);
           const img = new Image();
           img.onload = () => {
-            URL.revokeObjectURL(objectUrl);
+            URL2.revokeObjectURL(objectUrl);
             resolve(img);
           };
           img.onerror = () => {
-            URL.revokeObjectURL(objectUrl);
+            URL2.revokeObjectURL(objectUrl);
             reject(new Error(`이미지 로드 실패: ${file.name}`));
           };
           img.src = objectUrl;
@@ -922,7 +938,7 @@
         a.href = url;
         a.target = "_blank";
         a.rel = "noopener noreferrer";
-        a.textContent = url;
+        a.textContent = formatSourceLinkText(url);
         p.appendChild(a);
         return p;
       }

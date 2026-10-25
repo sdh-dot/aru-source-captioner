@@ -1,4 +1,5 @@
 import { parsePixivFilenameUrl } from "../../source-caption/pixiv-filename.ts";
+import { formatSourceLinkText } from "../../source-caption/link-display.ts";
 import type { ParsedSourceResult } from "../../upload-attribution/models.ts";
 import type { DefaultValues } from "../../runtime/contracts.ts";
 import {
@@ -1104,7 +1105,7 @@ export function installWhaleContent({
       a.href = url!;
       a.target = "_blank";
       a.rel = "noopener noreferrer";
-      a.textContent = url;
+      a.textContent = formatSourceLinkText(url!);
 
       p.appendChild(a);
       return p;
