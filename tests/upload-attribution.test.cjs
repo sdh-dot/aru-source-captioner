@@ -96,7 +96,8 @@ for(const browser of ['firefox','whale'])test(browser+' actual content adapter p
     Object.defineProperty(h.input,'files',{value:files,configurable:true});h.input.dispatchEvent(new h.w.Event('change',{bubbles:true}));
     const second=h.image('second.jpg'),first=h.image('first.jpg');await tick();await tick();
     assert.equal(nativeCalls,1);assert.equal(h.input.files,files);
-    assert.equal(first.closest('p').nextElementSibling.textContent,'출처: '+url(1111111));assert.equal(second.closest('p').nextElementSibling.textContent,'출처: '+url(2222222));
+    assert.equal(first.closest('p').nextElementSibling.textContent,'출처: Pixiv - /artworks/1111111');assert.equal(second.closest('p').nextElementSibling.textContent,'출처: Pixiv - /artworks/2222222');
+    assert.equal(first.closest('p').nextElementSibling.querySelector('a').href,url(1111111));assert.equal(second.closest('p').nextElementSibling.querySelector('a').href,url(2222222));
     const diagnostic=JSON.parse(h.w.document.documentElement.dataset.aruUploadDiagnostic);assert.equal(diagnostic.captionsInserted,2);
     assert.ok(!JSON.stringify(diagnostic).includes('first.jpg'));assert.ok(!JSON.stringify(diagnostic).includes(url(1111111)));
   }finally{h.w.dispatchEvent(new h.w.Event('pagehide'));h.close();}
