@@ -2318,7 +2318,15 @@ export function createIconsPicker({ environment = defaultEnvironment, dependenci
                 };
                 // 세션 구독·root 차단 리스너도 후속 DOM/잠금 정리를 막지 않도록 독립 해제한다.
                 cleanup("CONTEXT_GATE", () => detachGate?.());
-                for (const type of ["click", "input", "change", "keydown", "submit", "pointerdown", "dblclick"]) {
+                for (const type of [
+                    "click",
+                    "input",
+                    "change",
+                    "keydown",
+                    "submit",
+                    "pointerdown",
+                    "dblclick",
+                ]) {
                     cleanup("ROOT_EVENTS", () => root.removeEventListener(type, guardEvent, true));
                 }
                 cleanup("TOAST_TIMER", () => clearTimeout(toastTimer));

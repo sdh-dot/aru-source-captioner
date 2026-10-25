@@ -91,7 +91,10 @@ export function sessionResources(
       try {
         cleanup();
       } catch (error) {
-        environment.console.warn("[Aru] 세션 자원 정리 실패", "SESSION_RESOURCE_CLEANUP_FAILED");
+        environment.console.warn(
+          "[Aru] 세션 자원 정리 실패",
+          "SESSION_RESOURCE_CLEANUP_FAILED",
+        );
       }
     }
     cleanups.clear();

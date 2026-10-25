@@ -2168,7 +2168,15 @@
             }
           }, "cleanup");
           cleanup("CONTEXT_GATE", () => detachGate?.());
-          for (const type of ["click", "input", "change", "keydown", "submit", "pointerdown", "dblclick"]) {
+          for (const type of [
+            "click",
+            "input",
+            "change",
+            "keydown",
+            "submit",
+            "pointerdown",
+            "dblclick"
+          ]) {
             cleanup("ROOT_EVENTS", () => root.removeEventListener(type, guardEvent, true));
           }
           cleanup("TOAST_TIMER", () => clearTimeout(toastTimer));

@@ -3948,7 +3948,15 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
             }
           }, "cleanup");
           cleanup("CONTEXT_GATE", () => detachGate?.());
-          for (const type of ["click", "input", "change", "keydown", "submit", "pointerdown", "dblclick"]) {
+          for (const type of [
+            "click",
+            "input",
+            "change",
+            "keydown",
+            "submit",
+            "pointerdown",
+            "dblclick"
+          ]) {
             cleanup("ROOT_EVENTS", () => root.removeEventListener(type, guardEvent, true));
           }
           cleanup("TOAST_TIMER", () => clearTimeout2(toastTimer));
