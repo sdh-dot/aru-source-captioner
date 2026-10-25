@@ -1,12 +1,27 @@
 // 자동 생성: src/platform/firefox/content.ts. tools/compile-typescript.mjs로 갱신한다.
+import { contentDispatcher } from "../../runtime/content-dispatcher.mjs";
+import { createSessionEnvironment } from "../../runtime/session-resources.mjs";
+import { contextEffectGate } from "../../runtime/context-effect-gate.mjs";
+import { readSettings } from "../../runtime/settings-read.mjs";
 import { parsePixivFilenameUrl } from "../../source-caption/pixiv-filename.mjs";
 import { hasPngSignature, parsePngItxtChunks, parseItxtChunk, } from "../../source-caption/png-chunks.mjs";
 import { defaultEnvironment, } from "../../runtime/contracts.mjs";
 // 브라우저별 기존 초기화·저장 키·사용자 설정과 이벤트 계약을 유지한다.
 import { createModuleScope } from "../../runtime/module-scope.mjs";
 export function installFirefoxContent({ environment = defaultEnvironment, dependencies = {}, } = {}) {
+    const effectGate = contextEffectGate(environment);
+    if (!effectGate.allows()) {
+        return {};
+    }
+    const dispatcher = contentDispatcher(environment, effectGate);
+    if (!dispatcher) {
+        return {};
+    }
+    const scope = createSessionEnvironment(environment, effectGate);
+    environment = scope.environment;
+    const resources = scope.resources;
     const window = environment.window ?? environment;
-    const { document, location, navigator, chrome, MutationObserver, HTMLElement, TextDecoder, URL, exifr, console, } = environment;
+    const { document, location, navigator, MutationObserver, HTMLElement, TextDecoder, URL, exifr, console, } = environment;
     const setTimeout = typeof environment.setTimeout === "function"
         ? (...args) => environment.setTimeout(...args)
         : undefined;
@@ -64,90 +79,35 @@ export function installFirefoxContent({ environment = defaultEnvironment, depend
                 return false;
             }
         }
-        // 저장소 가용성이나 callback 오류 때문에 기존 기본값의 초기화까지 중단하지 않는다.
-        // chrome.storage.sync 가용성 검증 — 모든 체인을 명시적 &&로 검증한다.
-        // optional chaining(`?.`)만으로는 일부 환경(특히 content script가 격리된
-        // realm에서 chrome 객체가 frozen / partial인 경우)에서 placement에 따라
-        // 여전히 throw할 수 있다는 보고가 있어, 한 단계씩 typeof + 명시적 &&로
-        // 검증하여 어느 한 단계라도 missing이면 false를 반환한다.
-        function isChromeStorageSyncAvailable() {
-            try {
-                if (typeof chrome === "undefined") {
-                    return false;
-                }
-                if (!chrome) {
-                    return false;
-                }
-                if (!chrome.storage) {
-                    return false;
-                }
-                if (!chrome.storage.sync) {
-                    return false;
-                }
-                if (typeof chrome.storage.sync.get !== "function") {
-                    return false;
-                }
-                return true;
+        // 성공한 빈 응답에만 기존 기본값을 적용한다. 조회 실패는 초기화를 중단한다.
+        async function loadConfig() {
+            const result = await readSettings(environment, null);
+            if (result.state !== "success") {
+                throw result.error;
             }
-            catch {
-                return false;
+            const merged = { ...DEFAULT_OPTIONS };
+            for (const key of Object.keys(DEFAULT_OPTIONS)) {
+                if (key in result.values) {
+                    merged[key] = result.values[key];
+                }
             }
-        }
-        function loadConfig() {
-            return new Promise((resolve) => {
-                // 권한 회수·확장 재로드 중에는 storage가 없을 수 있어 기본값으로 나머지 기능의 초기화를 유지한다.
-                try {
-                    if (!isChromeStorageSyncAvailable()) {
-                        console.warn("[Aru Source Captioner] chrome.storage.sync unavailable — using default options");
-                        resolve({ ...DEFAULT_OPTIONS });
-                        return;
-                    }
-                    chrome.storage.sync.get(null, (items) => {
-                        // chrome이 inject한 callback 내부에서 throw가 새어나가면 unhandled
-                        // promise/error로 page에 노출되므로 callback 전체를 try/catch로 감싼다.
-                        try {
-                            // chrome.runtime이 없는 경우(예: extension context invalidated)에도
-                            // throw하지 않도록 명시적 &&로 검증한다.
-                            if (typeof chrome !== "undefined" &&
-                                chrome &&
-                                chrome.runtime &&
-                                chrome.runtime.lastError) {
-                                console.warn("[Aru Source Captioner] storage.get failed, falling back to defaults:", chrome.runtime.lastError.message);
-                                resolve({ ...DEFAULT_OPTIONS });
-                                return;
-                            }
-                            const merged = {
-                                ...DEFAULT_OPTIONS,
-                            };
-                            const safeItems = items && typeof items === "object" ? items : {};
-                            for (const key of Object.keys(DEFAULT_OPTIONS)) {
-                                if (key in safeItems) {
-                                    merged[key] = safeItems[key];
-                                }
-                            }
-                            resolve(merged);
-                        }
-                        catch (callbackErr) {
-                            console.warn("[Aru Source Captioner] storage.get callback threw, falling back to defaults:", callbackErr);
-                            resolve({ ...DEFAULT_OPTIONS });
-                        }
-                    });
-                }
-                catch (err) {
-                    console.warn("[Aru Source Captioner] loadConfig threw, falling back to defaults:", err);
-                    resolve({ ...DEFAULT_OPTIONS });
-                }
-            });
+            return merged;
         }
         // ---------------- 파일 입력 감지 ----------------
         function publishUploadStatus(snapshot) {
+            if (!effectGate.allows()) {
+                return;
+            }
             const value = JSON.stringify(snapshot);
             if (document.documentElement.dataset.aruUploadDiagnostic !== value) {
                 document.documentElement.dataset.aruUploadDiagnostic = value;
             }
         }
         function attachFileInputListeners(_config) {
-            document.addEventListener("change", async (ev) => {
+            if (!effectGate.allows()) {
+                return;
+            }
+            dispatcher.setChange(async (ev) => {
                 const target = ev.target;
                 if (!(target instanceof HTMLInputElement) ||
                     target.type !== "file" ||
@@ -163,9 +123,12 @@ export function installFirefoxContent({ environment = defaultEnvironment, depend
                     return;
                 }
                 await handleSelectedImageFiles(images, target);
-            }, true);
+            });
         }
         async function handleSelectedImageFiles(files, input) {
+            if (!effectGate.allows()) {
+                return;
+            }
             if (uploadAttribution) {
                 await uploadAttribution.select(files, input);
             }
@@ -633,24 +596,32 @@ export function installFirefoxContent({ environment = defaultEnvironment, depend
         }
         // ---------------- DOM 감시 ----------------
         function startEditorObserver(config) {
+            if (!effectGate.allows()) {
+                return;
+            }
             const Controller = attribution?.Controller;
             if (!Controller) {
                 return null;
             } // 대응 모듈이 없으면 파일 선택 순서만으로 출처를 추정하지 않는다.
             uploadAttribution = new Controller({
                 document,
-                parse: (file) => parseSourceFromFile(file, {
-                    allowLooseFilenameFallback: !isMobileAutoInsertEnvironment(),
-                }),
+                parse: async (file) => {
+                    if (!effectGate.allows()) {
+                        return { status: "cancelled" };
+                    }
+                    const result = await parseSourceFromFile(file, {
+                        allowLooseFilenameFallback: !isMobileAutoInsertEnvironment(),
+                    });
+                    return effectGate.allows() ? result : { status: "cancelled" };
+                },
                 sanitize: (url) => sanitizeSourceUrl(url, config),
                 caption: createSourceCaption,
                 anchor: findImageParagraph,
                 existing: hasExistingSourceCaption,
                 onStatus: publishUploadStatus,
             });
-            window.addEventListener("pagehide", () => uploadAttribution?.destroy(), {
-                once: true,
-            });
+            const controller = uploadAttribution;
+            resources.own(() => controller.destroy(), "upload-controller");
             return uploadAttribution;
         }
         function findImageParagraph(img) {
@@ -676,6 +647,7 @@ export function installFirefoxContent({ environment = defaultEnvironment, depend
             return false;
         }
         function createSourceCaption(url) {
+            effectGate.assert();
             const p = document.createElement("p");
             p.className = "aru-source-caption";
             p.style.textAlign = "center";
@@ -924,6 +896,9 @@ export function installFirefoxContent({ environment = defaultEnvironment, depend
             }
         }
         function insertSourceIntoCommentTextarea(textarea, sourceText) {
+            if (!effectGate.allows()) {
+                return "context-inactive";
+            }
             if (!(textarea instanceof HTMLTextAreaElement)) {
                 console.warn("[Aru Source Captioner] insert: not a textarea element");
                 return "not-textarea";
@@ -973,7 +948,13 @@ export function installFirefoxContent({ environment = defaultEnvironment, depend
                 return false;
             }
             fileInput.dataset[COMMENT_FILE_BOUND_DATASET_KEY] = "1";
-            fileInput.addEventListener("change", async (event) => {
+            resources.own(() => {
+                delete fileInput.dataset[COMMENT_FILE_BOUND_DATASET_KEY];
+            });
+            resources.listen(fileInput, "change", async (event) => {
+                if (!effectGate.allows()) {
+                    return;
+                }
                 const target = event.target;
                 const files = target instanceof HTMLInputElement ? target.files : null;
                 if (!files || files.length === 0) {
@@ -1000,7 +981,9 @@ export function installFirefoxContent({ environment = defaultEnvironment, depend
                     console.warn("[Aru Source Captioner] file: metadata extraction threw", err);
                     return;
                 }
-                if (sourceInfo?.status !== "ok" || !sourceInfo.url) {
+                if (!effectGate.allows() ||
+                    sourceInfo?.status !== "ok" ||
+                    !sourceInfo.url) {
                     console.log("[Aru Source Captioner] file: no Aru source metadata found in image", { reason: sourceInfo?.reason });
                     return;
                 }
@@ -1028,6 +1011,9 @@ export function installFirefoxContent({ environment = defaultEnvironment, depend
             return true;
         }
         function setupCommentSourceCaptioner(config = undefined) {
+            if (!effectGate.allows()) {
+                return;
+            }
             if (!isReadPage()) {
                 return;
             }
@@ -1070,6 +1056,9 @@ export function installFirefoxContent({ environment = defaultEnvironment, depend
             });
         }
         function startCommentObserver() {
+            if (!effectGate.allows()) {
+                return;
+            }
             if (!isReadPage()) {
                 return null;
             }
@@ -1439,6 +1428,9 @@ export function installFirefoxContent({ environment = defaultEnvironment, depend
                 exifrAvailable: typeof exifr !== "undefined",
             });
             const config = await loadConfig();
+            if (!effectGate.allows()) {
+                return;
+            }
             if (!config.enabled) {
                 console.info("[Aru Source Captioner] disabled — skipping content script");
                 return;

@@ -1,17 +1,25 @@
 // 자동 생성: src/ruliweb-icons/browser-adapter.ts. tools/compile-typescript.mjs로 갱신한다.
+import { contextEffectGate } from "../runtime/context-effect-gate.mjs";
+import { readSettings, subscribeSettings } from "../runtime/settings-read.mjs";
 import { defaultEnvironment, } from "../runtime/contracts.mjs";
 // Promise/callback 차이와 Chromium JSON 바이트 포맷을 이 경계에서 보존한다.
 export function createBrowserAdapter(root = defaultEnvironment) {
+    const effectGate = contextEffectGate(root);
     const defaults = Object.freeze({
         enabled: false,
         autoLoad: true,
         preferredSort: "source",
         localOverlay: true,
     });
-    const promiseApi = typeof root.browser !== "undefined" &&
-        root.browser.runtime &&
-        root.browser.storage;
-    const api = promiseApi ? root.browser : root.chrome;
+    let promiseApi = false;
+    let api;
+    try {
+        promiseApi = !!(root.browser?.runtime && root.browser.storage);
+        api = promiseApi ? root.browser : root.chrome;
+    }
+    catch {
+        // 설정 getter의 실패는 readOptions의 유한 조회에서 판정한다.
+    }
     function failure(code, message) {
         const error = new Error(message);
         error.code = code;
@@ -100,39 +108,52 @@ export function createBrowserAdapter(root = defaultEnvironment) {
         return visit(value, 0);
     }
     function invoke(target, method, args) {
-        if (!api || !target || typeof target[method] !== "function") {
-            return Promise.reject(failure("API_UNAVAILABLE", "확장 프로그램 API를 사용할 수 없습니다."));
-        }
-        if (promiseApi) {
-            try {
-                return Promise.resolve(target[method](...args));
+        try {
+            effectGate.assert();
+            if (!api || !target || typeof target[method] !== "function") {
+                throw failure("API_UNAVAILABLE", "확장 프로그램 API를 사용할 수 없습니다.");
             }
-            catch (error) {
-                return Promise.reject(error);
-            }
-        }
-        return new Promise((resolve, reject) => {
-            try {
-                target[method](...args, (value) => {
-                    const error = api.runtime && api.runtime.lastError;
-                    if (error) {
-                        reject(failure("API_ERROR", error.message || "확장 프로그램 API 요청에 실패했습니다."));
-                    }
-                    else {
-                        resolve(value);
-                    }
+            const pending = promiseApi
+                ? Promise.resolve(target[method](...args))
+                : new Promise((resolve, reject) => {
+                    target[method](...args, (value) => {
+                        try {
+                            effectGate.assert();
+                            const error = api.runtime?.lastError;
+                            if (error) {
+                                reject(failure("API_ERROR", error.message || "확장 프로그램 API 요청에 실패했습니다."));
+                            }
+                            else {
+                                resolve(value);
+                            }
+                        }
+                        catch (error) {
+                            effectGate.observeError(error);
+                            reject(error);
+                        }
+                    });
                 });
-            }
-            catch (error) {
-                reject(error);
-            }
-        });
+            return pending.then((value) => {
+                effectGate.assert();
+                return value;
+            }, (error) => {
+                effectGate.observeError(error);
+                throw error;
+            });
+        }
+        catch (error) {
+            effectGate.observeError(error);
+            return Promise.reject(error);
+        }
     }
     async function readOptions() {
-        const stored = await invoke(api && api.storage && api.storage.sync, "get", [
-            ["enabled", "aruIconsOptions"],
-        ]);
-        const items = stored || {};
+        effectGate.assert();
+        const result = await readSettings(root, ["enabled", "aruIconsOptions"]);
+        if (result.state !== "success") {
+            throw result.error;
+        }
+        effectGate.assert();
+        const items = result.values;
         const supplied = items.aruIconsOptions;
         const iconOptions = Object.assign({}, defaults, supplied && typeof supplied === "object" && !Array.isArray(supplied)
             ? supplied
@@ -146,10 +167,7 @@ export function createBrowserAdapter(root = defaultEnvironment) {
             active: enabled && iconOptions.enabled === true,
         };
     }
-    function onChanged(callback) {
-        if (!api || !api.storage || !api.storage.onChanged) {
-            return () => { };
-        }
+    function onChanged(callback, onPending) {
         let disposed = false;
         let revision = 0;
         const listener = (changes, area) => {
@@ -157,6 +175,7 @@ export function createBrowserAdapter(root = defaultEnvironment) {
                 return;
             }
             const current = ++revision;
+            onPending?.();
             readOptions()
                 .then((options) => {
                 if (!disposed && current === revision) {
@@ -173,11 +192,11 @@ export function createBrowserAdapter(root = defaultEnvironment) {
                 }
             });
         };
-        api.storage.onChanged.addListener(listener);
+        const unsubscribe = subscribeSettings(root, listener);
         return () => {
             disposed = true;
             ++revision;
-            api.storage.onChanged.removeListener(listener);
+            unsubscribe?.();
         };
     }
     async function requestCache(action, payload) {

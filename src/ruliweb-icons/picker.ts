@@ -1,3 +1,4 @@
+import { contextEffectGate } from "../runtime/context-effect-gate.ts";
 import { PickerLifecycle } from "./picker-lifecycle.ts";
 import type {
   PickerProgress,
@@ -301,6 +302,8 @@ export function createIconsPicker({
     }
 
     api.createPicker = function createPicker(options: PickerOptions = {}) {
+      const effectGate = contextEffectGate(global);
+      effectGate.assert();
       if (!api.SearchIndex || !api.FoldState) {
         throw new Error("아이콘 검색 모듈이 준비되지 않았습니다.");
       }
@@ -319,6 +322,23 @@ export function createIconsPicker({
       host.style.cssText =
         'all:initial;position:fixed;inset:0;display:block;z-index:2147483200;color:#292a35;font:14px/1.5 "Malgun Gothic","Apple SD Gothic Neo",system-ui,sans-serif;';
       const root = host.attachShadow({ mode: "open" });
+      const guardEvent = (event: Event) => {
+        if (!effectGate.allows()) {
+          event.preventDefault();
+          event.stopImmediatePropagation();
+        }
+      };
+      for (const type of [
+        "click",
+        "input",
+        "change",
+        "keydown",
+        "submit",
+        "pointerdown",
+        "dblclick",
+      ]) {
+        root.addEventListener(type, guardEvent, true);
+      }
       const style = el("style");
       style.textContent =
         stylesheet +
@@ -515,7 +535,7 @@ export function createIconsPicker({
 
       async function chooseCatalog(action: { (): any; (): any; (): any }) {
         const result = await action();
-        if (lifecycle.isClosed) {
+        if (!effectGate.allows() || lifecycle.isClosed) {
           return result;
         }
         if (result?.ok === true) {
@@ -897,7 +917,7 @@ export function createIconsPicker({
     `;
       root.append(mobileStyle);
       function setCatalogOpen(open: boolean, reason = "cancel") {
-        if (!catalogView || lifecycle.isClosed) {
+        if (!catalogView || !effectGate.allows() || lifecycle.isClosed) {
           return;
         }
         if (open && !catalogOpen) {
@@ -945,7 +965,7 @@ export function createIconsPicker({
         }
       }
       function showPackToast() {
-        if (toastShown || lifecycle.isClosed) {
+        if (toastShown || !effectGate.allows() || lifecycle.isClosed) {
           return;
         }
         toastShown = true;
@@ -955,7 +975,7 @@ export function createIconsPicker({
         dialog.classList.add("toast-visible");
         toastTimer = setTimeout!(() => {
           toastTimer = 0;
-          if (!lifecycle.isClosed) {
+          if (!(!effectGate.allows() || lifecycle.isClosed)) {
             toast.hidden = true;
             dialog.classList.remove("toast-visible");
           }
@@ -1017,6 +1037,7 @@ export function createIconsPicker({
       let contexts: PickerGroupContext[] = [];
       let visibilityObserver: IntersectionObserver | null = null;
       let resizeObserver: ResizeObserver | null = null;
+      let detachGate: (() => void) | undefined;
       const lifecycle = new PickerLifecycle(disposePicker);
       let composing = false;
       let searchTimer = 0;
@@ -1068,7 +1089,7 @@ export function createIconsPicker({
         state.categoryFilterIds.length > 0 ||
         state.sourceFilterIds.length > 0;
       const announce = (text: string | null) => {
-        if (!lifecycle.isClosed) {
+        if (!(!effectGate.allows() || lifecycle.isClosed)) {
           live.textContent = text;
         }
       };
@@ -1290,6 +1311,7 @@ export function createIconsPicker({
           if (
             finished ||
             !media.isConnected ||
+            !effectGate.allows() ||
             lifecycle.isClosed ||
             (frameThumbnail &&
               (frameSeeking || (media as HTMLVideoElement).readyState < 2))
@@ -1337,7 +1359,11 @@ export function createIconsPicker({
           }
         };
         const showFailure = (text: string, code: string) => {
-          if (!media.isConnected || lifecycle.isClosed) {
+          if (
+            !media.isConnected ||
+            !effectGate.allows() ||
+            lifecycle.isClosed
+          ) {
             return;
           }
           if (finished) {
@@ -1667,18 +1693,24 @@ export function createIconsPicker({
         return card;
       }
       function queueWindows() {
-        if (virtualFrame || lifecycle.isClosed) {
+        if (!effectGate.allows()) {
+          return;
+        }
+        if (virtualFrame || !effectGate.allows() || lifecycle.isClosed) {
           return;
         }
         virtualFrame = requestAnimationFrame!(() => {
           virtualFrame = 0;
-          if (!lifecycle.isClosed) {
+          if (!(!effectGate.allows() || lifecycle.isClosed)) {
             renderWindows();
           }
         });
       }
       function renderWindows() {
-        if (lifecycle.isClosed) {
+        if (!effectGate.allows()) {
+          return;
+        }
+        if (!effectGate.allows() || lifecycle.isClosed) {
           return;
         }
         let remaining = MAX_CARDS;
@@ -1908,6 +1940,9 @@ export function createIconsPicker({
         updateMetrics();
       }
       function renderChips(rebuild = false) {
+        if (!effectGate.allows()) {
+          return;
+        }
         if (rebuild) {
           chips.replaceChildren();
           const tags = library
@@ -1961,6 +1996,9 @@ export function createIconsPicker({
           );
       }
       function renderSelection() {
+        if (!effectGate.allows()) {
+          return;
+        }
         const icon = byIconId(selectedIconId);
         updatePrepare();
         selectionTags.replaceChildren();
@@ -2019,6 +2057,9 @@ export function createIconsPicker({
         updatePrepare();
       }
       function renderGroups() {
+        if (!effectGate.allows()) {
+          return;
+        }
         const started = performance.now();
         const oldActive = root.activeElement;
         const activeGroup = oldActive && oldActive.closest(".group");
@@ -2295,7 +2336,7 @@ export function createIconsPicker({
         return icon as PickerIcon;
       }
       function paintProgress(info: PickerProgress = {}) {
-        if (lifecycle.isClosed) {
+        if (!effectGate.allows() || lifecycle.isClosed) {
           return;
         }
         const status = info.status || (info.busy ? "loading" : "partial");
@@ -2418,6 +2459,9 @@ export function createIconsPicker({
         });
       }
       function renderLibrary() {
+        if (!effectGate.allows()) {
+          return;
+        }
         libraryResult = library!.search();
         dialog.classList.toggle("all-pack-search", scope.value === "all");
         if (
@@ -2542,18 +2586,21 @@ export function createIconsPicker({
         }
       }
       function libraryCollect(refresh = false) {
-        if (!library || lifecycle.isClosed) {
+        if (!effectGate.allows()) {
+          return;
+        }
+        if (!library || !effectGate.allows() || lifecycle.isClosed) {
           return;
         }
         const work = library!.collect({
           refresh,
           onProgress: () => {
-            if (lifecycle.isClosed || libraryFrame) {
+            if (!effectGate.allows() || lifecycle.isClosed || libraryFrame) {
               return;
             }
             libraryFrame = requestAnimationFrame!(() => {
               libraryFrame = 0;
-              if (!lifecycle.isClosed) {
+              if (!(!effectGate.allows() || lifecycle.isClosed)) {
                 applySearch(false);
               }
             });
@@ -2561,13 +2608,16 @@ export function createIconsPicker({
         });
         applySearch(false);
         work.catch((error) => {
-          if (!lifecycle.isClosed) {
+          if (!(!effectGate.allows() || lifecycle.isClosed)) {
             setError(error.message);
           }
         });
       }
       function applySearch(collect = true) {
-        if (lifecycle.isClosed) {
+        if (!effectGate.allows()) {
+          return;
+        }
+        if (!effectGate.allows() || lifecycle.isClosed) {
           return;
         }
         state.queryRevision++;
@@ -2703,7 +2753,7 @@ export function createIconsPicker({
         }
       }
       function setError(message: string) {
-        if (lifecycle.isClosed) {
+        if (!effectGate.allows() || lifecycle.isClosed) {
           return;
         }
         errorNode.textContent = String(message || "아이콘을 읽지 못했습니다.");
@@ -2711,7 +2761,7 @@ export function createIconsPicker({
         retry.disabled = typeof options.onRetry !== "function";
       }
       function close(action: string) {
-        if (lifecycle.isClosed) {
+        if (!effectGate.allows() || lifecycle.isClosed) {
           return;
         }
         destroy();
@@ -2727,6 +2777,18 @@ export function createIconsPicker({
         lifecycle.destroy();
       }
       function disposePicker() {
+        detachGate?.();
+        for (const type of [
+          "click",
+          "input",
+          "change",
+          "keydown",
+          "submit",
+          "pointerdown",
+          "dblclick",
+        ]) {
+          root.removeEventListener(type, guardEvent, true);
+        }
         clearTimeout!(toastTimer);
         cancelSearch();
         previewCleanup();
@@ -2880,7 +2942,7 @@ export function createIconsPicker({
           Promise.resolve()
             .then(() => preferences?.write?.(saved))
             .catch(() => {
-              if (!lifecycle.isClosed) {
+              if (!(!effectGate.allows() || lifecycle.isClosed)) {
                 announce(
                   "화면 설정을 저장하지 못했어요. 이번 창에서는 계속 사용할 수 있습니다.",
                 );
@@ -2915,12 +2977,16 @@ export function createIconsPicker({
       const uiReady = Promise.resolve()
         .then(() => preferences?.read?.())
         .then((value) => {
-          if (!lifecycle.isClosed && uiRevision === 0 && value) {
+          if (
+            !(!effectGate.allows() || lifecycle.isClosed) &&
+            uiRevision === 0 &&
+            value
+          ) {
             applyUi(value);
           }
         })
         .catch(() => {
-          if (!lifecycle.isClosed) {
+          if (!(!effectGate.allows() || lifecycle.isClosed)) {
             announce("화면 설정을 복원하지 못했어요. 기본 크기로 열었습니다.");
           }
         });
@@ -3077,6 +3143,7 @@ export function createIconsPicker({
         const icon = byIconId(selectedIconId);
         if (
           catalogOpen ||
+          !effectGate.allows() ||
           lifecycle.isClosed ||
           !icon ||
           prepare.disabled ||
@@ -3091,7 +3158,7 @@ export function createIconsPicker({
         updatePrepare();
         try {
           const prepared = await options.onSelect(icon);
-          if (!lifecycle.isClosed) {
+          if (!(!effectGate.allows() || lifecycle.isClosed)) {
             announce(
               typeof prepared === "string"
                 ? prepared
@@ -3108,7 +3175,7 @@ export function createIconsPicker({
           );
         } finally {
           preparing = false;
-          if (!lifecycle.isClosed) {
+          if (!(!effectGate.allows() || lifecycle.isClosed)) {
             renderSelection();
           }
         }
@@ -3183,7 +3250,10 @@ export function createIconsPicker({
         initialFocusFrame = 0;
         // 첫 프레임 전에 사용자가 정한 포커스를 가져오지 않는다.
         // 캐시된 BUNDLE이 이미 목록을 숨긴 경우 그 목록에 포커스를 주지 않는다.
-        if (!lifecycle.isClosed && !root.activeElement) {
+        if (
+          !(!effectGate.allows() || lifecycle.isClosed) &&
+          !root.activeElement
+        ) {
           (mobileInput()
             ? catalogOpen
               ? catalogView.node
@@ -3197,6 +3267,9 @@ export function createIconsPicker({
 
       const apiPicker = {
         setCurrentSource(key: any) {
+          if (!effectGate.allows() || lifecycle.isClosed) {
+            return;
+          }
           if (!library) {
             return;
           }
@@ -3204,16 +3277,28 @@ export function createIconsPicker({
           collectionKey = "";
         },
         completeCatalogSelection() {
+          if (!effectGate.allows() || lifecycle.isClosed) {
+            return;
+          }
           setCatalogOpen(false, "selected");
           showPackToast();
         },
         openCatalog() {
+          if (!effectGate.allows() || lifecycle.isClosed) {
+            return;
+          }
           setCatalogOpen(true);
         },
         closeCatalog() {
+          if (!effectGate.allows() || lifecycle.isClosed) {
+            return;
+          }
           setCatalogOpen(false, "cancel");
         },
         refreshLibrary() {
+          if (!effectGate.allows() || lifecycle.isClosed) {
+            return;
+          }
           if (library) {
             if (scope.value === "all") {
               libraryCollect();
@@ -3222,6 +3307,9 @@ export function createIconsPicker({
           }
         },
         setMetadataDiagnostics(value: any) {
+          if (!effectGate.allows() || lifecycle.isClosed) {
+            return;
+          }
           collectionDiagnostics = options.debug === true ? value : null;
           reportMetadata();
         },
@@ -3229,18 +3317,30 @@ export function createIconsPicker({
           return options.debug === true ? metadataDetails() : null;
         },
         setCatalog(entries: any, message: any) {
+          if (!effectGate.allows() || lifecycle.isClosed) {
+            return;
+          }
           catalogView?.setEntries(entries, message, library?.packs);
         },
         setCatalogPack(ref: any, next: any) {
+          if (!effectGate.allows() || lifecycle.isClosed) {
+            return;
+          }
           catalogView?.setPack(ref, next);
         },
         setQuery(value: any) {
+          if (!effectGate.allows() || lifecycle.isClosed) {
+            return;
+          }
           cancelSearch();
           input.value = String(value || "");
           state.query = input.value;
           applySearch();
         },
         setTargetState(valid: boolean, error: CodedError | undefined) {
+          if (!effectGate.allows() || lifecycle.isClosed) {
+            return;
+          }
           targetValid = valid;
           targetError.hidden = valid;
           targetError.textContent = valid
@@ -3253,6 +3353,9 @@ export function createIconsPicker({
           renderSelection();
         },
         clearPack() {
+          if (!effectGate.allows() || lifecycle.isClosed) {
+            return;
+          }
           if (library && scope.value === "all") {
             applySearch(false);
             return;
@@ -3281,7 +3384,10 @@ export function createIconsPicker({
         setSources(
           choices: { title: string; articleId: string | number }[] = [],
         ) {
-          if (!sourceSelect || lifecycle.isClosed) {
+          if (!effectGate.allows() || lifecycle.isClosed) {
+            return;
+          }
+          if (!sourceSelect || !effectGate.allows() || lifecycle.isClosed) {
             return;
           }
           const selected = sourceSelect.value;
@@ -3300,8 +3406,11 @@ export function createIconsPicker({
         element: host,
         shadowRoot: root,
         setPack(nextPack: PickerPack) {
+          if (!effectGate.allows() || lifecycle.isClosed) {
+            return;
+          }
           columns.hidden = false;
-          if (lifecycle.isClosed) {
+          if (!effectGate.allows() || lifecycle.isClosed) {
             return;
           }
           if (!nextPack || !Array.isArray(nextPack.icons)) {
@@ -3372,6 +3481,9 @@ export function createIconsPicker({
           applySearch();
         },
         setProgress(info: PickerProgress = {}) {
+          if (!effectGate.allows() || lifecycle.isClosed) {
+            return;
+          }
           currentProgress = { ...info };
           if (!library || scope.value !== "all") {
             paintProgress(info);
@@ -3381,6 +3493,9 @@ export function createIconsPicker({
         },
         setError,
         clearError() {
+          if (!effectGate.allows() || lifecycle.isClosed) {
+            return;
+          }
           errorNode.hidden = true;
           errorNode.textContent = "";
         },
@@ -3388,7 +3503,7 @@ export function createIconsPicker({
         destroy,
         getSnapshot() {
           return {
-            destroyed: lifecycle.isClosed,
+            destroyed: !effectGate.allows() || lifecycle.isClosed,
             targetValid,
             catalog: catalogView
               ? { ...catalogView.snapshot(), open: catalogOpen, toastShown }
@@ -3437,6 +3552,7 @@ export function createIconsPicker({
           };
         },
       };
+      detachGate = effectGate.onStop(destroy);
       return apiPicker;
     };
   };

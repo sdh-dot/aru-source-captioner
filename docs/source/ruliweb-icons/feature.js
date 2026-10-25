@@ -3,6 +3,123 @@
   var __defProp = Object.defineProperty;
   var __name = (target, value) => __defProp(target, "name", { value, configurable: true });
 
+  // docs/source/runtime/context-effect-gate.mjs
+  var gates = /* @__PURE__ */ new WeakMap();
+  var sharedGateKey = /* @__PURE__ */ Symbol.for("aru.context-effect-gate.v1");
+  var sessionGateKey = /* @__PURE__ */ Symbol.for("aru.effect-session-gate.v1");
+  function contextEffectGate(environment) {
+    const scoped = Reflect.get(environment, sessionGateKey);
+    if (scoped) {
+      return scoped;
+    }
+    const root = environment;
+    const key = root.window ?? environment;
+    let shared;
+    if (root.window) {
+      try {
+        shared = Reflect.get(key, sharedGateKey);
+      } catch {
+      }
+    }
+    const existing = shared ?? gates.get(key);
+    if (existing) {
+      return existing;
+    }
+    let state = "active";
+    let runtimeId;
+    const stopped = /* @__PURE__ */ new Set();
+    const terminal = /* @__PURE__ */ __name(() => state === "invalidated" || state === "disposed", "terminal");
+    const stop = /* @__PURE__ */ __name((next) => {
+      if (terminal()) {
+        return;
+      }
+      state = next;
+      root.removeEventListener?.("pagehide", dispose);
+      for (const callback of [...stopped]) {
+        try {
+          callback();
+        } catch (error) {
+          console.warn("[Aru] 컨텍스트 종료 정리 실패", error);
+        }
+      }
+      stopped.clear();
+    }, "stop");
+    const dispose = /* @__PURE__ */ __name(() => stop("disposed"), "dispose");
+    const gate = {
+      claimPageLifecycle() {
+        root.removeEventListener?.("pagehide", dispose);
+      },
+      get state() {
+        return state;
+      },
+      allows() {
+        if (terminal()) {
+          return false;
+        }
+        try {
+          const runtime = root.browser?.runtime ?? root.chrome?.runtime;
+          const id = runtime?.id;
+          if (typeof id === "string" && id) {
+            if (runtimeId && runtimeId !== id) {
+              stop("invalidated");
+              return false;
+            }
+            runtimeId = id;
+          } else if (runtimeId) {
+            stop("invalidated");
+            return false;
+          }
+          state = "active";
+          return true;
+        } catch (error) {
+          gate.observeError(error);
+          if (!terminal()) {
+            state = "suspended";
+          }
+          return false;
+        }
+      },
+      assert() {
+        if (!gate.allows()) {
+          throw Object.assign(new Error("확장 컨텍스트에서 새 작업을 실행할 수 없습니다."), {
+            code: terminal() ? "CONTEXT_INVALIDATED" : "CONTEXT_SUSPENDED"
+          });
+        }
+      },
+      invalidate: /* @__PURE__ */ __name(() => stop("invalidated"), "invalidate"),
+      dispose,
+      observeError(error) {
+        if (/extension context invalidated/i.test(error instanceof Error ? error.message : String(error))) {
+          stop("invalidated");
+        }
+      },
+      onStop(callback) {
+        if (terminal()) {
+          callback();
+          return () => {
+          };
+        }
+        stopped.add(callback);
+        return () => {
+          stopped.delete(callback);
+        };
+      }
+    };
+    gates.set(key, gate);
+    if (root.window) {
+      try {
+        Object.defineProperty(key, sharedGateKey, { value: gate });
+      } catch {
+      }
+    }
+    gate.allows();
+    if (!terminal()) {
+      root.addEventListener?.("pagehide", dispose, { once: true });
+    }
+    return gate;
+  }
+  __name(contextEffectGate, "contextEffectGate");
+
   // docs/source/runtime/contracts.mjs
   var defaultEnvironment = globalThis;
 
@@ -29,7 +146,8 @@
 
   // docs/source/ruliweb-icons/feature.mjs
   function createIconsFeature({ environment = defaultEnvironment, dependencies = {} } = {}) {
-    const { MutationObserver, AbortController, console } = environment;
+    const effectGate = contextEffectGate(environment);
+    const { MutationObserver, AbortController, console: console2 } = environment;
     const setTimeout = typeof environment.setTimeout === "function" ? (...args) => environment.setTimeout(...args) : void 0;
     let icons2 = createModuleScope(dependencies.icons, [
       "SiteAdapter",
@@ -67,30 +185,38 @@
           this.destroyed = false;
           this.onClick = this.onClick.bind(this);
           this.onNavigate = () => this.stopSession(true);
+          this.detachGate = effectGate.onStop(() => this.destroy());
         }
         async start() {
-          if (this.unsubscribe || this.destroyed) {
+          if (this.unsubscribe || this.destroyed || !effectGate.allows()) {
             return;
           }
-          this.unsubscribe = this.browser.onChanged(() => this.applyOptions());
+          this.unsubscribe = this.browser.onChanged((options) => this.applyOptions(options), () => {
+            ++this.optionsRevision;
+            this.setActive(false);
+          });
           await this.applyOptions();
         }
-        async applyOptions() {
+        async applyOptions(confirmed) {
           const revision = ++this.optionsRevision;
+          this.setActive(false);
           let opts;
           try {
-            opts = await this.browser.readOptions();
+            opts = confirmed ?? await this.browser.readOptions();
           } catch (_) {
             opts = {
               active: false,
               aruIconsOptions: { enabled: false, autoLoad: true }
             };
           }
-          if (this.destroyed || revision !== this.optionsRevision) {
+          if (this.destroyed || revision !== this.optionsRevision || !effectGate.allows()) {
             return;
           }
-          const active = opts.active === true;
           this.options = opts.aruIconsOptions;
+          this.setActive(opts.active === true);
+        }
+        setActive(active) {
+          active = active && effectGate.allows();
           if (active === this.enabled) {
             return;
           }
@@ -205,7 +331,7 @@
           }
         }
         async openComposer(entry) {
-          if (!this.enabled) {
+          if (!this.enabled || !effectGate.allows()) {
             return;
           }
           const panel = entry.kind === "post" ? this.document.querySelector("#editor_common_write_wrapper .comment_icon") : entry.root.querySelector(".comment_icon");
@@ -313,7 +439,8 @@
           return result2;
         }
         async insertSelection(icon, context) {
-          if (!this.enabled) {
+          effectGate.assert();
+          if (!this.enabled || !effectGate.allows()) {
             throw Object.assign(new Error("아이콘 기능이 비활성화되었습니다."), {
               code: "FEATURE_DISABLED"
             });
@@ -334,7 +461,7 @@
               media: API.ComposerAdapter.selectedMedia(icon),
               debug: this.options?.debug === true
             });
-            if (this.current !== context) {
+            if (!effectGate.allows() || this.current !== context) {
               return result2;
             }
             const input = context.target.root.querySelector("textarea.comment_input,textarea.reply_input,.note-editable");
@@ -346,7 +473,7 @@
           }
         }
         async open(context) {
-          if (!this.enabled) {
+          if (!this.enabled || !effectGate.allows()) {
             return;
           }
           const readBudget = this.current?.readBudget || { count: 0, max: 128 };
@@ -358,7 +485,7 @@
               reader: new API.LibraryPackReader({
                 browser: this.browser,
                 site: this.site,
-                isActive: /* @__PURE__ */ __name(() => this.enabled, "isActive")
+                isActive: /* @__PURE__ */ __name(() => this.enabled && effectGate.allows(), "isActive")
               })
             });
           }
@@ -413,7 +540,7 @@
           this.document.body.append(this.picker.element);
           if (context.target) {
             const update = /* @__PURE__ */ __name(() => {
-              if (this.current !== context) {
+              if (!effectGate.allows() || this.current !== context) {
                 return;
               }
               if (context.catalogMode) {
@@ -458,7 +585,7 @@
           }
           if (context.panel && typeof MutationObserver !== "undefined") {
             this.panelObserver = new MutationObserver(() => {
-              if (this.current !== context) {
+              if (!effectGate.allows() || this.current !== context) {
                 return;
               }
               if (!context.panel.isConnected || context.panel.style.display === "none" || context.panel.querySelector(".icon_share_data")?.style.display === "none") {
@@ -492,7 +619,7 @@
           });
         }
         collect(refresh, manualNative = false, transactional = false) {
-          if (!this.enabled || !this.current || !this.picker) {
+          if (!this.enabled || !effectGate.allows() || !this.current || !this.picker) {
             return Promise.resolve();
           }
           const key = JSON.stringify([
@@ -515,14 +642,14 @@
           return task.promise;
         }
         async runCollection(refresh, manualNative = false, transactional = false) {
-          if (!this.enabled || !this.current || !this.picker) {
+          if (!this.enabled || !effectGate.allows() || !this.current || !this.picker) {
             return;
           }
           this.controller?.abort();
           const controller = new AbortController();
           this.controller = controller;
           const signal = controller.signal, token = ++this.generation, context = this.current, picker = this.picker;
-          const current = /* @__PURE__ */ __name(() => !signal.aborted && this.enabled && this.generation === token && this.current === context, "current");
+          const current = /* @__PURE__ */ __name(() => effectGate.allows() && !signal.aborted && this.enabled && this.generation === token && this.current === context, "current");
           const ensure = /* @__PURE__ */ __name(() => {
             if (!current()) {
               throw Object.assign(new Error("수집 중지"), { code: "ABORTED" });
@@ -940,6 +1067,10 @@
           }
         }
         destroy() {
+          if (this.destroyed) {
+            return;
+          }
+          this.detachGate?.();
           this.destroyed = true;
           this.optionsRevision++;
           this.enabled = false;
@@ -959,7 +1090,7 @@
       if (global.document && API.BrowserAdapter && /^(bbs|m)\.ruliweb\.com$/.test(global.location?.hostname || "")) {
         const feature = new IconFeature();
         API.feature = feature;
-        feature.start().catch((error) => console.warn("[Aru Icons] 초기화 실패:", error.message));
+        feature.start().catch((error) => console2.warn("[Aru Icons] 초기화 실패:", error.message));
       }
     }, "initializeIconsFeature");
     initializeIconsFeature(typeof environment !== "undefined" ? environment : this);

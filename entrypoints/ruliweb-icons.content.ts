@@ -1,3 +1,4 @@
+import { documentLifecycle } from "../src/runtime/document-lifecycle.ts";
 import { isolatedState } from "../runtime/world-state";
 import { defineContentScript } from "wxt/utils/define-content-script";
 import { contentMatches } from "../config/manifests";
@@ -14,27 +15,34 @@ export default defineContentScript({
   matches: contentMatches(1),
   runAt: "document_idle",
   world: "ISOLATED",
-  main() {
+  main(ctx) {
     const environment = createEnvironment(parser);
-    const metrics = createPerformanceMetrics({ environment });
-    const { attribution } = createAttributionCore({ environment, metrics });
-    const install = import.meta.env.FIREFOX
-      ? installFirefoxContent
-      : installWhaleContent;
-    install({
-      environment,
-      dependencies: {
-        attribution: { Controller: () => attribution.Controller },
+    documentLifecycle(environment).register(
+      "icons-and-attribution",
+      (session) => {
+        const environment = session.environment;
+        const metrics = createPerformanceMetrics({ environment });
+        const { attribution } = createAttributionCore({ environment, metrics });
+        const install = import.meta.env.FIREFOX
+          ? installFirefoxContent
+          : installWhaleContent;
+        install({
+          environment,
+          dependencies: {
+            attribution: { Controller: () => attribution.Controller },
+          },
+        });
+        const icons = createIconReader({ environment, metrics });
+        Object.assign(isolatedState().icons, icons);
+        createAttributionUi({
+          environment,
+          metrics,
+          dependencies: {
+            icons: { DesignSystem: () => Reflect.get(icons, "DesignSystem") },
+          },
+        });
       },
-    });
-    const icons = createIconReader({ environment, metrics });
-    Object.assign(isolatedState().icons, icons);
-    createAttributionUi({
-      environment,
-      metrics,
-      dependencies: {
-        icons: { DesignSystem: () => Reflect.get(icons, "DesignSystem") },
-      },
-    });
+      ctx,
+    );
   },
 });

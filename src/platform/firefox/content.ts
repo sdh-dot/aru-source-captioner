@@ -1,3 +1,7 @@
+import { contentDispatcher } from "../../runtime/content-dispatcher.ts";
+import { createSessionEnvironment } from "../../runtime/session-resources.ts";
+import { contextEffectGate } from "../../runtime/context-effect-gate.ts";
+import { readSettings } from "../../runtime/settings-read.ts";
 import { parsePixivFilenameUrl } from "../../source-caption/pixiv-filename.ts";
 import type { ParsedSourceResult } from "../../upload-attribution/models.ts";
 import type { DefaultValues } from "../../runtime/contracts.ts";
@@ -19,12 +23,22 @@ export function installFirefoxContent({
   environment = defaultEnvironment,
   dependencies = {},
 }: FactoryOptions = {}) {
+  const effectGate = contextEffectGate(environment);
+  if (!effectGate.allows()) {
+    return {};
+  }
+  const dispatcher = contentDispatcher(environment, effectGate);
+  if (!dispatcher) {
+    return {};
+  }
+  const scope = createSessionEnvironment(environment, effectGate);
+  environment = scope.environment;
+  const resources = scope.resources;
   const window = environment.window ?? environment;
   const {
     document,
     location,
     navigator,
-    chrome,
     MutationObserver,
     HTMLElement,
     TextDecoder,
@@ -115,93 +129,19 @@ export function installFirefoxContent({
       }
     }
 
-    // 저장소 가용성이나 callback 오류 때문에 기존 기본값의 초기화까지 중단하지 않는다.
-
-    // chrome.storage.sync 가용성 검증 — 모든 체인을 명시적 &&로 검증한다.
-    // optional chaining(`?.`)만으로는 일부 환경(특히 content script가 격리된
-    // realm에서 chrome 객체가 frozen / partial인 경우)에서 placement에 따라
-    // 여전히 throw할 수 있다는 보고가 있어, 한 단계씩 typeof + 명시적 &&로
-    // 검증하여 어느 한 단계라도 missing이면 false를 반환한다.
-    function isChromeStorageSyncAvailable() {
-      try {
-        if (typeof chrome === "undefined") {
-          return false;
-        }
-        if (!chrome) {
-          return false;
-        }
-        if (!chrome.storage) {
-          return false;
-        }
-        if (!chrome.storage.sync) {
-          return false;
-        }
-        if (typeof chrome.storage.sync.get !== "function") {
-          return false;
-        }
-        return true;
-      } catch {
-        return false;
+    // 성공한 빈 응답에만 기존 기본값을 적용한다. 조회 실패는 초기화를 중단한다.
+    async function loadConfig(): Promise<Options> {
+      const result = await readSettings(environment, null);
+      if (result.state !== "success") {
+        throw result.error;
       }
-    }
-
-    function loadConfig(): Promise<Options> {
-      return new Promise<Options>((resolve) => {
-        // 권한 회수·확장 재로드 중에는 storage가 없을 수 있어 기본값으로 나머지 기능의 초기화를 유지한다.
-
-        try {
-          if (!isChromeStorageSyncAvailable()) {
-            console.warn(
-              "[Aru Source Captioner] chrome.storage.sync unavailable — using default options",
-            );
-            resolve({ ...DEFAULT_OPTIONS });
-            return;
-          }
-          chrome.storage.sync.get(null, (items: Record<string, unknown>) => {
-            // chrome이 inject한 callback 내부에서 throw가 새어나가면 unhandled
-            // promise/error로 page에 노출되므로 callback 전체를 try/catch로 감싼다.
-            try {
-              // chrome.runtime이 없는 경우(예: extension context invalidated)에도
-              // throw하지 않도록 명시적 &&로 검증한다.
-              if (
-                typeof chrome !== "undefined" &&
-                chrome &&
-                chrome.runtime &&
-                chrome.runtime.lastError
-              ) {
-                console.warn(
-                  "[Aru Source Captioner] storage.get failed, falling back to defaults:",
-                  chrome.runtime.lastError.message,
-                );
-                resolve({ ...DEFAULT_OPTIONS });
-                return;
-              }
-              const merged: Options & Record<string, unknown> = {
-                ...DEFAULT_OPTIONS,
-              };
-              const safeItems = items && typeof items === "object" ? items : {};
-              for (const key of Object.keys(DEFAULT_OPTIONS)) {
-                if (key in safeItems) {
-                  merged[key] = safeItems[key];
-                }
-              }
-              resolve(merged);
-            } catch (callbackErr) {
-              console.warn(
-                "[Aru Source Captioner] storage.get callback threw, falling back to defaults:",
-                callbackErr,
-              );
-              resolve({ ...DEFAULT_OPTIONS });
-            }
-          });
-        } catch (err) {
-          console.warn(
-            "[Aru Source Captioner] loadConfig threw, falling back to defaults:",
-            err,
-          );
-          resolve({ ...DEFAULT_OPTIONS });
+      const merged: Options & Record<string, unknown> = { ...DEFAULT_OPTIONS };
+      for (const key of Object.keys(DEFAULT_OPTIONS)) {
+        if (key in result.values) {
+          merged[key] = result.values[key];
         }
-      });
+      }
+      return merged;
     }
 
     // ---------------- 파일 입력 감지 ----------------
@@ -210,6 +150,9 @@ export function installFirefoxContent({
       state: string;
       selected: number;
     }) {
+      if (!effectGate.allows()) {
+        return;
+      }
       const value = JSON.stringify(snapshot);
       if (document.documentElement.dataset.aruUploadDiagnostic !== value) {
         document.documentElement.dataset.aruUploadDiagnostic = value;
@@ -217,37 +160,39 @@ export function installFirefoxContent({
     }
 
     function attachFileInputListeners(_config: Options) {
-      document.addEventListener(
-        "change",
-        async (ev) => {
-          const target = ev.target;
-          if (
-            !(target instanceof HTMLInputElement) ||
-            target.type !== "file" ||
-            !target.files?.length
-          ) {
-            return;
-          }
-          if (handledFileEvents.has(ev)) {
-            return;
-          }
-          handledFileEvents.add(ev);
-          const images = Array.from(target.files).filter((file) =>
-            file?.type?.startsWith("image/"),
-          );
-          if (!images.length) {
-            return;
-          }
-          await handleSelectedImageFiles(images, target);
-        },
-        true,
-      );
+      if (!effectGate.allows()) {
+        return;
+      }
+      dispatcher!.setChange(async (ev) => {
+        const target = ev.target;
+        if (
+          !(target instanceof HTMLInputElement) ||
+          target.type !== "file" ||
+          !target.files?.length
+        ) {
+          return;
+        }
+        if (handledFileEvents.has(ev)) {
+          return;
+        }
+        handledFileEvents.add(ev);
+        const images = Array.from(target.files).filter((file) =>
+          file?.type?.startsWith("image/"),
+        );
+        if (!images.length) {
+          return;
+        }
+        await handleSelectedImageFiles(images, target);
+      });
     }
 
     async function handleSelectedImageFiles(
       files: string | any[],
       input: HTMLInputElement,
     ) {
+      if (!effectGate.allows()) {
+        return;
+      }
       if (uploadAttribution) {
         await uploadAttribution.select(files, input);
       } else {
@@ -795,25 +740,32 @@ export function installFirefoxContent({
     // ---------------- DOM 감시 ----------------
 
     function startEditorObserver(config: Options) {
+      if (!effectGate.allows()) {
+        return;
+      }
       const Controller = attribution?.Controller;
       if (!Controller) {
         return null;
       } // 대응 모듈이 없으면 파일 선택 순서만으로 출처를 추정하지 않는다.
       uploadAttribution = new Controller({
         document,
-        parse: (file: File) =>
-          parseSourceFromFile(file, {
+        parse: async (file: File) => {
+          if (!effectGate.allows()) {
+            return { status: "cancelled" };
+          }
+          const result = await parseSourceFromFile(file, {
             allowLooseFilenameFallback: !isMobileAutoInsertEnvironment(),
-          }),
+          });
+          return effectGate.allows() ? result : { status: "cancelled" };
+        },
         sanitize: (url: string) => sanitizeSourceUrl(url, config),
         caption: createSourceCaption,
         anchor: findImageParagraph,
         existing: hasExistingSourceCaption,
         onStatus: publishUploadStatus,
       });
-      window.addEventListener("pagehide", () => uploadAttribution?.destroy(), {
-        once: true,
-      });
+      const controller = uploadAttribution;
+      resources.own(() => controller!.destroy(), "upload-controller");
       return uploadAttribution;
     }
 
@@ -844,6 +796,7 @@ export function installFirefoxContent({
     }
 
     function createSourceCaption(url: string | null) {
+      effectGate.assert();
       const p = document.createElement("p");
       p.className = "aru-source-caption";
       p.style.textAlign = "center";
@@ -1163,6 +1116,9 @@ export function installFirefoxContent({
       textarea: Node | null,
       sourceText: string,
     ) {
+      if (!effectGate.allows()) {
+        return "context-inactive";
+      }
       if (!(textarea instanceof HTMLTextAreaElement)) {
         console.warn("[Aru Source Captioner] insert: not a textarea element");
         return "not-textarea";
@@ -1227,8 +1183,14 @@ export function installFirefoxContent({
         return false;
       }
       fileInput.dataset[COMMENT_FILE_BOUND_DATASET_KEY] = "1";
+      resources.own(() => {
+        delete fileInput.dataset[COMMENT_FILE_BOUND_DATASET_KEY];
+      });
 
-      fileInput.addEventListener("change", async (event) => {
+      resources.listen(fileInput, "change", async (event) => {
+        if (!effectGate.allows()) {
+          return;
+        }
         const target = event.target;
         const files = target instanceof HTMLInputElement ? target.files : null;
         if (!files || files.length === 0) {
@@ -1264,7 +1226,11 @@ export function installFirefoxContent({
           return;
         }
 
-        if (sourceInfo?.status !== "ok" || !sourceInfo.url) {
+        if (
+          !effectGate.allows() ||
+          sourceInfo?.status !== "ok" ||
+          !sourceInfo.url
+        ) {
           console.log(
             "[Aru Source Captioner] file: no Aru source metadata found in image",
             { reason: sourceInfo?.reason },
@@ -1310,6 +1276,9 @@ export function installFirefoxContent({
     function setupCommentSourceCaptioner(
       config: Options | undefined = undefined,
     ) {
+      if (!effectGate.allows()) {
+        return;
+      }
       if (!isReadPage()) {
         return;
       }
@@ -1364,6 +1333,9 @@ export function installFirefoxContent({
     }
 
     function startCommentObserver() {
+      if (!effectGate.allows()) {
+        return;
+      }
       if (!isReadPage()) {
         return null;
       }
@@ -1783,6 +1755,9 @@ export function installFirefoxContent({
       });
 
       const config = await loadConfig();
+      if (!effectGate.allows()) {
+        return;
+      }
 
       if (!config.enabled) {
         console.info(

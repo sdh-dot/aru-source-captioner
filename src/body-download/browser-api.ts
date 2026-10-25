@@ -1,3 +1,4 @@
+import { contextEffectGate } from "../runtime/context-effect-gate.ts";
 import type { DynamicApi } from "../runtime/contracts.ts";
 import {
   defaultEnvironment,
@@ -14,6 +15,7 @@ export function createDownloadBrowserApi({
   environment = defaultEnvironment,
   dependencies = {},
 }: FactoryOptions = {}) {
+  const effectGate = contextEffectGate(environment);
   let downloads = createModuleScope(
     dependencies.downloads,
     ["error", "JOB_KEY"],
@@ -24,7 +26,7 @@ export function createDownloadBrowserApi({
     const D = downloads,
       promise = !!root.browser?.runtime,
       api = promise ? root.browser : root.chrome;
-    function call(
+    function invoke(
       target: DynamicApi,
       method: string,
       ...args: unknown[]
@@ -47,17 +49,45 @@ export function createDownloadBrowserApi({
       return new Promise<DynamicApi>((resolve, reject) => {
         try {
           target[method](...args, (value: DynamicApi) => {
-            const err = api!.runtime.lastError;
-            if (err) {
-              reject(D.error("BROWSER_API", err.message));
-            } else {
-              resolve(value);
+            try {
+              effectGate.assert();
+              const err = api!.runtime.lastError;
+              if (err) {
+                reject(D.error("BROWSER_API", err.message));
+              } else {
+                resolve(value);
+              }
+            } catch (error) {
+              effectGate.observeError(error);
+              reject(error);
             }
           });
         } catch (err) {
           reject(err);
         }
       });
+    }
+    function call(
+      target: DynamicApi,
+      method: string,
+      ...args: unknown[]
+    ): Promise<DynamicApi> {
+      try {
+        effectGate.assert();
+        return invoke(target, method, ...args).then(
+          (value) => {
+            effectGate.assert();
+            return value;
+          },
+          (error) => {
+            effectGate.observeError(error);
+            throw error;
+          },
+        );
+      } catch (error) {
+        effectGate.observeError(error);
+        return Promise.reject(error);
+      }
     }
     async function options() {
       const value = await call(api!.storage.sync, "get", [

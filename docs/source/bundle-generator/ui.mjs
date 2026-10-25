@@ -2,7 +2,9 @@
 import { defaultEnvironment, } from "../runtime/contracts.mjs";
 // 통합팩 편집 상태와 미리보기를 분리하고 명시적 적용 전에는 작성기를 수정하지 않는다.
 import { createModuleScope, selectModuleExports, } from "../runtime/module-scope.mjs";
+import { contextEffectGate } from "../runtime/context-effect-gate.mjs";
 export function createBundleUi({ environment = defaultEnvironment, dependencies = {}, } = {}) {
+    const effectGate = contextEffectGate(environment);
     let bundle = createModuleScope(dependencies.bundle, [
         "Browser",
         "SourceReader",
@@ -19,8 +21,9 @@ export function createBundleUi({ environment = defaultEnvironment, dependencies 
         const B = bundle;
         const CSS = `:host{all:initial;font:14px system-ui;color:#30283e}.shade{position:fixed;inset:0;background:#201b3755;z-index:2147483600;display:grid;place-items:center}.dialog{width:min(960px,94vw);max-height:92vh;background:#fff;border-radius:14px;display:flex;flex-direction:column;box-shadow:0 20px 90px #211b3555}header,footer{padding:16px;display:flex;gap:10px;align-items:center;border-bottom:1px solid #e4deed}header strong{font-size:19px;flex:1}main{padding:18px;overflow:auto}footer{border-top:1px solid #e4deed;border-bottom:0;flex-wrap:wrap}button,input,textarea{font:inherit;box-sizing:border-box}button{cursor:pointer;border:1px solid #d7c7ec;border-radius:7px;padding:8px 12px;background:#f6f1fc;color:#513378}button:disabled{opacity:.45;cursor:default}button:focus-visible,input:focus-visible,summary:focus-visible{outline:3px solid #b58ee6;outline-offset:2px}.primary{background:#724daf;color:white}label{display:block;margin:12px 0}input{width:100%;border:1px solid #d6c9e8;border-radius:7px;padding:10px}small,.hint{color:#706279;font-size:12px;line-height:1.65}.lookup{display:flex;gap:8px}.lookup input{flex:1;min-width:100px}.status{padding:10px;background:#f5f0fc;white-space:pre-wrap;border-radius:7px;margin:12px 0}.status.error{background:#fff0eb;color:#993526}.refs{padding:0;list-style:none;max-height:380px;overflow:auto}.row{padding:12px;border:1px solid #e6ddee;border-radius:8px;margin:8px 0;background:#fdfbff}.row-head{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.row-head strong{flex:1;min-width:180px}.actions{display:flex;gap:5px}.actions button{padding:6px}.info{display:block;margin-top:5px}.drag{color:#887695;cursor:grab}.row.drag-over{outline:2px solid #9974cd}.preview{border:1px solid #ddd1ee;border-radius:8px;padding:14px;background:#faf7ff}.preview ol{max-height:200px;overflow:auto}textarea{width:100%;height:150px;border:1px solid #ddd;padding:8px}img{max-width:96px;max-height:96px;display:block}details{margin-top:8px}.empty{color:#7d7188}.close{background:#fff}.busy-note{min-height:22px}@media(max-width:600px){.lookup{flex-wrap:wrap}.lookup input{flex-basis:100%}.actions{flex-wrap:wrap}header,footer,main{padding:12px}.dialog{max-height:96vh}.row-head strong{min-width:100%}}`;
         class Panel {
-            constructor({ document = g.document, client, token, browser = B.Browser, reader = new B.SourceReader(), searcher, onClose = () => { }, }) {
+            constructor({ document = g.document, client, token, browser = B.Browser, reader = new B.SourceReader(), searcher, onClose = () => { }, restoredDraft, }) {
                 Object.assign(this, {
+                    restoredDraft,
                     doc: document,
                     client,
                     token,
@@ -39,6 +42,13 @@ export function createBundleUi({ environment = defaultEnvironment, dependencies 
                 this.host = this.doc.createElement("div");
                 this.host.dataset.aruBundlePanel = "";
                 this.shadow = this.host.attachShadow({ mode: "open" });
+                for (const type of ["click", "input", "change", "keydown", "submit"]) {
+                    this.shadow.addEventListener(type, (event) => {
+                        if (!effectGate.allows()) {
+                            event.stopImmediatePropagation();
+                        }
+                    }, true);
+                }
                 this.shadow.innerHTML = `<style>${CSS}</style><div class="shade"><section class="dialog" role="dialog" aria-modal="true" aria-label="아이콘 통합"><header><strong>아이콘 통합</strong><button type="button" class="close" aria-label="닫기"><svg class="aru-ui-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m6 6 12 12M18 6 6 18"/></svg></button></header><main><p class="hint">원본 게시글을 모아 통합팩을 만듭니다. 게시글 저장은 직접 진행하세요.</p><p class="context hint"></p><label>통합팩 제목<input class="name" maxlength="240" placeholder="통합 아이콘팩 제목"></label><label for="aru-bundle-url">원본 아이콘 공유 게시글 URL</label><div class="lookup"><input id="aru-bundle-url" class="url" type="url" placeholder="https://bbs.ruliweb.com/community/board/98/read/…"><button type="button" class="add">조회 · 추가</button><button type="button" class="cancel" disabled>조회 취소</button></div><div class="status" role="status" aria-live="polite">에디터 확인 중…</div><p class="hint">드래그하거나 위·아래 버튼으로 순서를 바꾸세요.</p><ul class="refs" aria-label="원본 글별 그룹"></ul><div class="preview" hidden></div></main><footer><button type="button" class="save">초안 저장</button><button type="button" class="load">초안 불러오기</button><button type="button" class="generate">변경 미리보기</button><button type="button" class="apply primary" disabled>편집기에 적용</button></footer></section></div>`;
                 this.uiCleanup = icons?.DesignSystem?.attach(this.shadow);
                 icons?.DesignSystem?.modalHeader(this.shadow.querySelector("header"), {
@@ -138,7 +148,12 @@ export function createBundleUi({ environment = defaultEnvironment, dependencies 
                     this.session = r.session;
                     this.articleId = r.articleId;
                     if (!this.initialized) {
-                        this.draft = new B.Draft(r.value);
+                        this.draft = this.restoredDraft
+                            ? B.Draft.restore(this.restoredDraft.draft)
+                            : new B.Draft(r.value);
+                        if (this.restoredDraft) {
+                            this.q(".url").value = this.restoredDraft.url;
+                        }
                         this.q(".name").value = this.draft.name;
                         this.initialized = true;
                     }

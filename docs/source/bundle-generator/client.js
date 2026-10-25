@@ -3,6 +3,123 @@
   var __defProp = Object.defineProperty;
   var __name = (target, value) => __defProp(target, "name", { value, configurable: true });
 
+  // docs/source/runtime/context-effect-gate.mjs
+  var gates = /* @__PURE__ */ new WeakMap();
+  var sharedGateKey = /* @__PURE__ */ Symbol.for("aru.context-effect-gate.v1");
+  var sessionGateKey = /* @__PURE__ */ Symbol.for("aru.effect-session-gate.v1");
+  function contextEffectGate(environment) {
+    const scoped = Reflect.get(environment, sessionGateKey);
+    if (scoped) {
+      return scoped;
+    }
+    const root = environment;
+    const key = root.window ?? environment;
+    let shared;
+    if (root.window) {
+      try {
+        shared = Reflect.get(key, sharedGateKey);
+      } catch {
+      }
+    }
+    const existing = shared ?? gates.get(key);
+    if (existing) {
+      return existing;
+    }
+    let state = "active";
+    let runtimeId;
+    const stopped = /* @__PURE__ */ new Set();
+    const terminal = /* @__PURE__ */ __name(() => state === "invalidated" || state === "disposed", "terminal");
+    const stop = /* @__PURE__ */ __name((next) => {
+      if (terminal()) {
+        return;
+      }
+      state = next;
+      root.removeEventListener?.("pagehide", dispose);
+      for (const callback of [...stopped]) {
+        try {
+          callback();
+        } catch (error) {
+          console.warn("[Aru] 컨텍스트 종료 정리 실패", error);
+        }
+      }
+      stopped.clear();
+    }, "stop");
+    const dispose = /* @__PURE__ */ __name(() => stop("disposed"), "dispose");
+    const gate = {
+      claimPageLifecycle() {
+        root.removeEventListener?.("pagehide", dispose);
+      },
+      get state() {
+        return state;
+      },
+      allows() {
+        if (terminal()) {
+          return false;
+        }
+        try {
+          const runtime = root.browser?.runtime ?? root.chrome?.runtime;
+          const id = runtime?.id;
+          if (typeof id === "string" && id) {
+            if (runtimeId && runtimeId !== id) {
+              stop("invalidated");
+              return false;
+            }
+            runtimeId = id;
+          } else if (runtimeId) {
+            stop("invalidated");
+            return false;
+          }
+          state = "active";
+          return true;
+        } catch (error) {
+          gate.observeError(error);
+          if (!terminal()) {
+            state = "suspended";
+          }
+          return false;
+        }
+      },
+      assert() {
+        if (!gate.allows()) {
+          throw Object.assign(new Error("확장 컨텍스트에서 새 작업을 실행할 수 없습니다."), {
+            code: terminal() ? "CONTEXT_INVALIDATED" : "CONTEXT_SUSPENDED"
+          });
+        }
+      },
+      invalidate: /* @__PURE__ */ __name(() => stop("invalidated"), "invalidate"),
+      dispose,
+      observeError(error) {
+        if (/extension context invalidated/i.test(error instanceof Error ? error.message : String(error))) {
+          stop("invalidated");
+        }
+      },
+      onStop(callback) {
+        if (terminal()) {
+          callback();
+          return () => {
+          };
+        }
+        stopped.add(callback);
+        return () => {
+          stopped.delete(callback);
+        };
+      }
+    };
+    gates.set(key, gate);
+    if (root.window) {
+      try {
+        Object.defineProperty(key, sharedGateKey, { value: gate });
+      } catch {
+      }
+    }
+    gate.allows();
+    if (!terminal()) {
+      root.addEventListener?.("pagehide", dispose, { once: true });
+    }
+    return gate;
+  }
+  __name(contextEffectGate, "contextEffectGate");
+
   // docs/source/runtime/contracts.mjs
   var defaultEnvironment = globalThis;
 
@@ -29,6 +146,7 @@
 
   // docs/source/bundle-generator/client.mjs
   function createBundleClient({ environment = defaultEnvironment, dependencies = {} } = {}) {
+    const effectGate = contextEffectGate(environment);
     const { TextEncoder } = environment;
     let bundle2 = createModuleScope(dependencies.bundle, ["fail", "Draft"], ["Client", "Browser"]);
     const initializeBundleClient = /* @__PURE__ */ __name(function(g) {
@@ -58,7 +176,9 @@
             }
             g.clearTimeout(r.timer);
             this.pending.delete(p.requestId);
-            if (p.ok) {
+            if (!effectGate.allows()) {
+              r.reject(new Error("효과 세션이 종료되었습니다."));
+            } else if (p.ok) {
               r.resolve(p.result);
             } else {
               r.reject(Object.assign(new Error(p.error?.message || "생성기 연결 오류"), {
@@ -67,8 +187,14 @@
             }
           };
           doc.addEventListener("aru-bundle-response-v1", this.receive);
+          effectGate.onStop(() => this.destroy());
         }
         request(op, data = {}) {
+          try {
+            effectGate.assert();
+          } catch (error) {
+            return Promise.reject(error);
+          }
           if (this.closed) {
             return Promise.reject(new Error("생성기가 종료되었습니다."));
           }
@@ -100,13 +226,18 @@
       }
       const api = g.browser || g.chrome, KEY = "aruBundleDraftV1";
       async function storage(area, method, arg) {
+        effectGate.assert();
         if (!api?.storage?.[area]) {
           throw new Error("확장 저장소에 접근할 수 없습니다.");
         }
         if (g.browser) {
-          return api.storage[area][method](arg);
+          const value2 = await api.storage[area][method](arg);
+          effectGate.assert();
+          return value2;
         }
-        return new Promise((resolve, reject) => api.storage[area][method](arg, (r) => api.runtime?.lastError ? reject(new Error(api.runtime.lastError.message)) : resolve(r)));
+        const value = await new Promise((resolve, reject) => api.storage[area][method](arg, (r) => api.runtime?.lastError ? reject(new Error(api.runtime.lastError.message)) : resolve(r)));
+        effectGate.assert();
+        return value;
       }
       __name(storage, "storage");
       const Browser = {

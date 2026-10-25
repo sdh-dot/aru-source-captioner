@@ -145,6 +145,7 @@
         return { url: value, video: nativeVideo, extension };
       }
       __name(media, "media");
+      global.addEventListener("pagehide", () => sessions.clear());
       function capture(token) {
         for (const [key, s2] of sessions) {
           if (Date.now() - s2.created > TTL) {

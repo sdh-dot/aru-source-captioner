@@ -27,8 +27,141 @@
   }
   __name(selectModuleExports, "selectModuleExports");
 
+  // docs/source/runtime/context-effect-gate.mjs
+  var gates = /* @__PURE__ */ new WeakMap();
+  var sharedGateKey = /* @__PURE__ */ Symbol.for("aru.context-effect-gate.v1");
+  var sessionGateKey = /* @__PURE__ */ Symbol.for("aru.effect-session-gate.v1");
+  function contextEffectGate(environment) {
+    const scoped = Reflect.get(environment, sessionGateKey);
+    if (scoped) {
+      return scoped;
+    }
+    const root = environment;
+    const key = root.window ?? environment;
+    let shared;
+    if (root.window) {
+      try {
+        shared = Reflect.get(key, sharedGateKey);
+      } catch {
+      }
+    }
+    const existing = shared ?? gates.get(key);
+    if (existing) {
+      return existing;
+    }
+    let state = "active";
+    let runtimeId;
+    const stopped = /* @__PURE__ */ new Set();
+    const terminal = /* @__PURE__ */ __name(() => state === "invalidated" || state === "disposed", "terminal");
+    const stop = /* @__PURE__ */ __name((next) => {
+      if (terminal()) {
+        return;
+      }
+      state = next;
+      root.removeEventListener?.("pagehide", dispose);
+      for (const callback of [...stopped]) {
+        try {
+          callback();
+        } catch (error) {
+          console.warn("[Aru] 컨텍스트 종료 정리 실패", error);
+        }
+      }
+      stopped.clear();
+    }, "stop");
+    const dispose = /* @__PURE__ */ __name(() => stop("disposed"), "dispose");
+    const gate = {
+      claimPageLifecycle() {
+        root.removeEventListener?.("pagehide", dispose);
+      },
+      get state() {
+        return state;
+      },
+      allows() {
+        if (terminal()) {
+          return false;
+        }
+        try {
+          const runtime = root.browser?.runtime ?? root.chrome?.runtime;
+          const id = runtime?.id;
+          if (typeof id === "string" && id) {
+            if (runtimeId && runtimeId !== id) {
+              stop("invalidated");
+              return false;
+            }
+            runtimeId = id;
+          } else if (runtimeId) {
+            stop("invalidated");
+            return false;
+          }
+          state = "active";
+          return true;
+        } catch (error) {
+          gate.observeError(error);
+          if (!terminal()) {
+            state = "suspended";
+          }
+          return false;
+        }
+      },
+      assert() {
+        if (!gate.allows()) {
+          throw Object.assign(new Error("확장 컨텍스트에서 새 작업을 실행할 수 없습니다."), {
+            code: terminal() ? "CONTEXT_INVALIDATED" : "CONTEXT_SUSPENDED"
+          });
+        }
+      },
+      invalidate: /* @__PURE__ */ __name(() => stop("invalidated"), "invalidate"),
+      dispose,
+      observeError(error) {
+        if (/extension context invalidated/i.test(error instanceof Error ? error.message : String(error))) {
+          stop("invalidated");
+        }
+      },
+      onStop(callback) {
+        if (terminal()) {
+          callback();
+          return () => {
+          };
+        }
+        stopped.add(callback);
+        return () => {
+          stopped.delete(callback);
+        };
+      }
+    };
+    gates.set(key, gate);
+    if (root.window) {
+      try {
+        Object.defineProperty(key, sharedGateKey, { value: gate });
+      } catch {
+      }
+    }
+    gate.allows();
+    if (!terminal()) {
+      root.addEventListener?.("pagehide", dispose, { once: true });
+    }
+    return gate;
+  }
+  __name(contextEffectGate, "contextEffectGate");
+
+  // docs/source/runtime/session-resources.mjs
+  var draftKey = /* @__PURE__ */ Symbol.for("aru.effect-session-drafts.v1");
+  function sessionDrafts(environment, namespace = "metadata") {
+    const store = Reflect.get(environment, draftKey);
+    if (!store) {
+      return void 0;
+    }
+    let drafts = store.get(namespace);
+    if (!drafts) {
+      store.set(namespace, drafts = /* @__PURE__ */ new Map());
+    }
+    return drafts;
+  }
+  __name(sessionDrafts, "sessionDrafts");
+
   // docs/source/bundle-generator/controller.mjs
   function createBundleController({ environment = defaultEnvironment, dependencies = {} } = {}) {
+    const effectGate = contextEffectGate(environment);
     let bundle2 = createModuleScope(dependencies.bundle, ["Browser", "Client", "Panel"], ["Controller"]);
     let icons2 = createModuleScope(dependencies.icons, ["DesignSystem"], []);
     const initializeBundleController = /* @__PURE__ */ __name(function(g) {
@@ -135,9 +268,13 @@
             client: this.client,
             token: rec.token,
             browser: this.browser,
+            restoredDraft: sessionDrafts(g, "bundle")?.get(rec.root),
             onClose: /* @__PURE__ */ __name(() => {
               this.panel = null;
-              if (rec.root.isConnected) {
+              if (effectGate.allows()) {
+                sessionDrafts(g, "bundle")?.delete(rec.root);
+              }
+              if (rec.root.isConnected && effectGate.allows()) {
                 rec.button.focus();
               }
             }, "onClose")
@@ -164,6 +301,31 @@
           this.panel?.close();
           for (const root of [...this.entries.keys()]) {
             this.remove(root);
+          }
+        }
+        suspend() {
+          const panel = this.panel;
+          const rec = Array.from(this.entries.values()).find((entry) => entry.token === panel?.token);
+          if (panel && rec) {
+            sessionDrafts(g, "bundle")?.set(rec.root, {
+              draft: panel.draft.snapshot(),
+              url: panel.q(".url").value
+            });
+          }
+          if (effectGate.documentGate?.allows()) {
+            this.destroy();
+          } else {
+            this.disposed = true;
+            this.active = false;
+            ++this.generation;
+            this.unsubscribe?.();
+            this.observer?.disconnect();
+            this.client.destroy();
+            if (panel) {
+              panel.closed = true;
+              panel.reader.destroy();
+              panel.search.destroy();
+            }
           }
         }
         destroy() {

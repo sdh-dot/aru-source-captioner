@@ -1,3 +1,4 @@
+import { contextEffectGate } from "../runtime/context-effect-gate.ts";
 import type { DynamicApi } from "../runtime/contracts.ts";
 import type { CodedError } from "../runtime/contracts.ts";
 import {
@@ -14,6 +15,7 @@ export function createComposerAdapter({
   site?: Record<string, any>;
   getDesignSystem?: () => Record<string, any> | null;
 } = {}) {
+  const effectGate = contextEffectGate(global);
   const { MutationObserver, AbortController, CustomEvent } = global;
   const requestAnimationFrame = (callback: FrameRequestCallback) =>
     global.requestAnimationFrame(callback);
@@ -34,6 +36,11 @@ export function createComposerAdapter({
     op: string,
     payload = {},
   ) {
+    try {
+      effectGate.assert();
+    } catch (error) {
+      return Promise.reject(error);
+    }
     const requestId = token();
     return new Promise<DynamicApi>((resolve, reject) => {
       let replied = false;
@@ -62,7 +69,13 @@ export function createComposerAdapter({
         }
         replied = true;
         document.removeEventListener(RESPONSE, listener);
-        if (reply.ok) {
+        if (!effectGate.allows()) {
+          reject(
+            Object.assign(new Error("확장 컨텍스트가 종료되었습니다."), {
+              code: "CONTEXT_INVALIDATED",
+            }),
+          );
+        } else if (reply.ok) {
           resolve(reply.result);
         } else {
           reject(
@@ -380,6 +393,7 @@ export function createComposerAdapter({
           entry.pending = pending;
           try {
             const session = await pending;
+            effectGate.assert();
             if (
               this.stopped ||
               !root.isConnected ||

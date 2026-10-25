@@ -1,8 +1,10 @@
 // 자동 생성: src/ruliweb-icons/feature.ts. tools/compile-typescript.mjs로 갱신한다.
+import { contextEffectGate } from "../runtime/context-effect-gate.mjs";
 import { defaultEnvironment, } from "../runtime/contracts.mjs";
 // 사용자 옵션에 따라 작성기별 기능을 시작·정리하고 탐색 후 중복 초기화를 막는다.
 import { createModuleScope, selectModuleExports, } from "../runtime/module-scope.mjs";
 export function createIconsFeature({ environment = defaultEnvironment, dependencies = {} } = {}) {
+    const effectGate = contextEffectGate(environment);
     const { MutationObserver, AbortController, console } = environment;
     const setTimeout = typeof environment.setTimeout === "function"
         ? (...args) => environment.setTimeout(...args)
@@ -40,19 +42,25 @@ export function createIconsFeature({ environment = defaultEnvironment, dependenc
                 this.destroyed = false;
                 this.onClick = this.onClick.bind(this);
                 this.onNavigate = () => this.stopSession(true);
+                this.detachGate = effectGate.onStop(() => this.destroy());
             }
             async start() {
-                if (this.unsubscribe || this.destroyed) {
+                if (this.unsubscribe || this.destroyed || !effectGate.allows()) {
                     return;
                 }
-                this.unsubscribe = this.browser.onChanged(() => this.applyOptions());
+                this.unsubscribe = this.browser.onChanged((options) => this.applyOptions(options), () => {
+                    ++this.optionsRevision;
+                    this.setActive(false);
+                });
                 await this.applyOptions();
             }
-            async applyOptions() {
+            async applyOptions(confirmed) {
                 const revision = ++this.optionsRevision;
+                // 재조회 중에는 이전 ON으로 새 효과를 시작하지 않는다. 기존 OFF 정리 경로를 재사용한다.
+                this.setActive(false);
                 let opts;
                 try {
-                    opts = await this.browser.readOptions();
+                    opts = confirmed ?? (await this.browser.readOptions());
                 }
                 catch (_) {
                     opts = {
@@ -60,11 +68,16 @@ export function createIconsFeature({ environment = defaultEnvironment, dependenc
                         aruIconsOptions: { enabled: false, autoLoad: true },
                     };
                 }
-                if (this.destroyed || revision !== this.optionsRevision) {
+                if (this.destroyed ||
+                    revision !== this.optionsRevision ||
+                    !effectGate.allows()) {
                     return;
                 }
-                const active = opts.active === true;
                 this.options = opts.aruIconsOptions;
+                this.setActive(opts.active === true);
+            }
+            setActive(active) {
+                active = active && effectGate.allows();
                 if (active === this.enabled) {
                     return;
                 }
@@ -185,7 +198,7 @@ export function createIconsFeature({ environment = defaultEnvironment, dependenc
                 }
             }
             async openComposer(entry) {
-                if (!this.enabled) {
+                if (!this.enabled || !effectGate.allows()) {
                     return;
                 }
                 const panel = entry.kind === "post"
@@ -306,7 +319,8 @@ export function createIconsFeature({ environment = defaultEnvironment, dependenc
                 return result;
             }
             async insertSelection(icon, context) {
-                if (!this.enabled) {
+                effectGate.assert();
+                if (!this.enabled || !effectGate.allows()) {
                     throw Object.assign(new Error("아이콘 기능이 비활성화되었습니다."), {
                         code: "FEATURE_DISABLED",
                     });
@@ -328,7 +342,7 @@ export function createIconsFeature({ environment = defaultEnvironment, dependenc
                         media: API.ComposerAdapter.selectedMedia(icon),
                         debug: this.options?.debug === true,
                     });
-                    if (this.current !== context) {
+                    if (!effectGate.allows() || this.current !== context) {
                         return result;
                     }
                     const input = context.target.root.querySelector("textarea.comment_input,textarea.reply_input,.note-editable");
@@ -341,7 +355,7 @@ export function createIconsFeature({ environment = defaultEnvironment, dependenc
                 }
             }
             async open(context) {
-                if (!this.enabled) {
+                if (!this.enabled || !effectGate.allows()) {
                     return;
                 }
                 const readBudget = this.current?.readBudget || { count: 0, max: 128 };
@@ -354,7 +368,7 @@ export function createIconsFeature({ environment = defaultEnvironment, dependenc
                         reader: new API.LibraryPackReader({
                             browser: this.browser,
                             site: this.site,
-                            isActive: () => this.enabled,
+                            isActive: () => this.enabled && effectGate.allows(),
                         }),
                     });
                 }
@@ -423,7 +437,7 @@ export function createIconsFeature({ environment = defaultEnvironment, dependenc
                 this.document.body.append(this.picker.element);
                 if (context.target) {
                     const update = () => {
-                        if (this.current !== context) {
+                        if (!effectGate.allows() || this.current !== context) {
                             return;
                         }
                         if (context.catalogMode) {
@@ -475,7 +489,7 @@ export function createIconsFeature({ environment = defaultEnvironment, dependenc
                 }
                 if (context.panel && typeof MutationObserver !== "undefined") {
                     this.panelObserver = new MutationObserver(() => {
-                        if (this.current !== context) {
+                        if (!effectGate.allows() || this.current !== context) {
                             return;
                         }
                         if (!context.panel.isConnected ||
@@ -513,7 +527,10 @@ export function createIconsFeature({ environment = defaultEnvironment, dependenc
                 });
             }
             collect(refresh, manualNative = false, transactional = false) {
-                if (!this.enabled || !this.current || !this.picker) {
+                if (!this.enabled ||
+                    !effectGate.allows() ||
+                    !this.current ||
+                    !this.picker) {
                     return Promise.resolve();
                 }
                 const key = JSON.stringify([
@@ -539,14 +556,18 @@ export function createIconsFeature({ environment = defaultEnvironment, dependenc
                 return task.promise;
             }
             async runCollection(refresh, manualNative = false, transactional = false) {
-                if (!this.enabled || !this.current || !this.picker) {
+                if (!this.enabled ||
+                    !effectGate.allows() ||
+                    !this.current ||
+                    !this.picker) {
                     return;
                 }
                 this.controller?.abort();
                 const controller = new AbortController();
                 this.controller = controller;
                 const signal = controller.signal, token = ++this.generation, context = this.current, picker = this.picker;
-                const current = () => !signal.aborted &&
+                const current = () => effectGate.allows() &&
+                    !signal.aborted &&
                     this.enabled &&
                     this.generation === token &&
                     this.current === context;
@@ -1068,6 +1089,10 @@ export function createIconsFeature({ environment = defaultEnvironment, dependenc
                 }
             }
             destroy() {
+                if (this.destroyed) {
+                    return;
+                }
+                this.detachGate?.();
                 this.destroyed = true;
                 this.optionsRevision++;
                 this.enabled = false;

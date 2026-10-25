@@ -1,4 +1,5 @@
 import type { DynamicApi } from "../runtime/contracts.ts";
+import { contextEffectGate } from "../runtime/context-effect-gate.ts";
 import {
   defaultEnvironment,
   type RuntimeEnvironment,
@@ -14,6 +15,7 @@ export function createBundleClient({
   environment = defaultEnvironment,
   dependencies = {},
 }: FactoryOptions = {}) {
+  const effectGate = contextEffectGate(environment);
   const { TextEncoder } = environment;
 
   let bundle = createModuleScope(
@@ -56,7 +58,9 @@ export function createBundleClient({
           }
           g.clearTimeout(r.timer);
           this.pending.delete(p.requestId);
-          if (p.ok) {
+          if (!effectGate.allows()) {
+            r.reject(new Error("효과 세션이 종료되었습니다."));
+          } else if (p.ok) {
             r.resolve(p.result);
           } else {
             r.reject(
@@ -67,8 +71,14 @@ export function createBundleClient({
           }
         };
         doc.addEventListener("aru-bundle-response-v1", this.receive);
+        effectGate.onStop(() => this.destroy());
       }
       request<T = DynamicApi>(op: any, data = {}): Promise<T> {
+        try {
+          effectGate.assert();
+        } catch (error) {
+          return Promise.reject(error);
+        }
         if (this.closed) {
           return Promise.reject(new Error("생성기가 종료되었습니다."));
         }
@@ -115,19 +125,24 @@ export function createBundleClient({
       method: string,
       arg: unknown,
     ): Promise<DynamicApi> {
+      effectGate.assert();
       if (!api?.storage?.[area]) {
         throw new Error("확장 저장소에 접근할 수 없습니다.");
       }
       if (g.browser) {
-        return api.storage[area][method](arg);
+        const value = await api.storage[area][method](arg);
+        effectGate.assert();
+        return value;
       }
-      return new Promise((resolve, reject) =>
+      const value = await new Promise<DynamicApi>((resolve, reject) =>
         api.storage[area][method](arg, (r: unknown) =>
           api.runtime?.lastError
             ? reject(new Error(api.runtime.lastError.message))
             : resolve(r as DynamicApi),
         ),
       );
+      effectGate.assert();
+      return value;
     }
     const Browser = {
       async active() {

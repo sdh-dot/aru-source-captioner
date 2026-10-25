@@ -3,6 +3,674 @@
   var __defProp = Object.defineProperty;
   var __name = (target, value) => __defProp(target, "name", { value, configurable: true });
 
+  // docs/source/runtime/content-dispatcher.mjs
+  var dispatchers = /* @__PURE__ */ new WeakMap();
+  function contentDispatcher(environment, gate) {
+    const doc = environment.document;
+    let dispatcher = dispatchers.get(doc);
+    if (!dispatcher) {
+      dispatcher = createDispatcher(doc, gate.documentGate ?? gate);
+      dispatchers.set(doc, dispatcher);
+    }
+    return dispatcher.begin(gate) ? dispatcher : void 0;
+  }
+  __name(contentDispatcher, "contentDispatcher");
+  function createDispatcher(doc, documentGate) {
+    let current;
+    let change;
+    const forward = /* @__PURE__ */ __name((event) => {
+      if (current?.allows()) {
+        change?.(event);
+      }
+    }, "forward");
+    doc.addEventListener("change", forward, true);
+    documentGate.onStop(() => {
+      doc.removeEventListener("change", forward, true);
+      change = void 0;
+    });
+    return {
+      begin(gate) {
+        if (current === gate || (current?.allows() ?? false) || !gate.allows()) {
+          return false;
+        }
+        current = gate;
+        gate.onStop(() => {
+          if (current === gate) {
+            change = void 0;
+          }
+        });
+        return true;
+      },
+      setChange(callback) {
+        change = callback;
+      }
+    };
+  }
+  __name(createDispatcher, "createDispatcher");
+
+  // docs/source/runtime/context-effect-gate.mjs
+  var gates = /* @__PURE__ */ new WeakMap();
+  var sharedGateKey = /* @__PURE__ */ Symbol.for("aru.context-effect-gate.v1");
+  var sessionGateKey = /* @__PURE__ */ Symbol.for("aru.effect-session-gate.v1");
+  var sessionSignalKey = /* @__PURE__ */ Symbol.for("aru.effect-session-signal.v1");
+  function contextEffectGate(environment) {
+    const scoped = Reflect.get(environment, sessionGateKey);
+    if (scoped) {
+      return scoped;
+    }
+    const root = environment;
+    const key = root.window ?? environment;
+    let shared;
+    if (root.window) {
+      try {
+        shared = Reflect.get(key, sharedGateKey);
+      } catch {
+      }
+    }
+    const existing = shared ?? gates.get(key);
+    if (existing) {
+      return existing;
+    }
+    let state = "active";
+    let runtimeId;
+    const stopped = /* @__PURE__ */ new Set();
+    const terminal = /* @__PURE__ */ __name(() => state === "invalidated" || state === "disposed", "terminal");
+    const stop = /* @__PURE__ */ __name((next) => {
+      if (terminal()) {
+        return;
+      }
+      state = next;
+      root.removeEventListener?.("pagehide", dispose);
+      for (const callback of [...stopped]) {
+        try {
+          callback();
+        } catch (error) {
+          console.warn("[Aru] 컨텍스트 종료 정리 실패", error);
+        }
+      }
+      stopped.clear();
+    }, "stop");
+    const dispose = /* @__PURE__ */ __name(() => stop("disposed"), "dispose");
+    const gate = {
+      claimPageLifecycle() {
+        root.removeEventListener?.("pagehide", dispose);
+      },
+      get state() {
+        return state;
+      },
+      allows() {
+        if (terminal()) {
+          return false;
+        }
+        try {
+          const runtime = root.browser?.runtime ?? root.chrome?.runtime;
+          const id = runtime?.id;
+          if (typeof id === "string" && id) {
+            if (runtimeId && runtimeId !== id) {
+              stop("invalidated");
+              return false;
+            }
+            runtimeId = id;
+          } else if (runtimeId) {
+            stop("invalidated");
+            return false;
+          }
+          state = "active";
+          return true;
+        } catch (error) {
+          gate.observeError(error);
+          if (!terminal()) {
+            state = "suspended";
+          }
+          return false;
+        }
+      },
+      assert() {
+        if (!gate.allows()) {
+          throw Object.assign(new Error("확장 컨텍스트에서 새 작업을 실행할 수 없습니다."), {
+            code: terminal() ? "CONTEXT_INVALIDATED" : "CONTEXT_SUSPENDED"
+          });
+        }
+      },
+      invalidate: /* @__PURE__ */ __name(() => stop("invalidated"), "invalidate"),
+      dispose,
+      observeError(error) {
+        if (/extension context invalidated/i.test(error instanceof Error ? error.message : String(error))) {
+          stop("invalidated");
+        }
+      },
+      onStop(callback) {
+        if (terminal()) {
+          callback();
+          return () => {
+          };
+        }
+        stopped.add(callback);
+        return () => {
+          stopped.delete(callback);
+        };
+      }
+    };
+    gates.set(key, gate);
+    if (root.window) {
+      try {
+        Object.defineProperty(key, sharedGateKey, { value: gate });
+      } catch {
+      }
+    }
+    gate.allows();
+    if (!terminal()) {
+      root.addEventListener?.("pagehide", dispose, { once: true });
+    }
+    return gate;
+  }
+  __name(contextEffectGate, "contextEffectGate");
+
+  // docs/source/runtime/session-resources.mjs
+  var draftKey = /* @__PURE__ */ Symbol.for("aru.effect-session-drafts.v1");
+  var ownedKey = /* @__PURE__ */ Symbol.for("aru.effect-session-resources.v1");
+  function sessionResources(environment, gate = contextEffectGate(environment), owned = Reflect.get(environment, ownedKey)) {
+    const cleanups = /* @__PURE__ */ new Set();
+    let closed = false;
+    const own = /* @__PURE__ */ __name((cleanup, kind) => {
+      if (closed) {
+        cleanup();
+        return () => {
+        };
+      }
+      let retained = true;
+      if (kind && owned) {
+        owned.set(kind, (owned.get(kind) ?? 0) + 1);
+      }
+      const release = /* @__PURE__ */ __name(() => {
+        if (!retained) {
+          return;
+        }
+        retained = false;
+        if (kind && owned) {
+          owned.set(kind, (owned.get(kind) ?? 1) - 1);
+        }
+      }, "release");
+      const wrapped = /* @__PURE__ */ __name(() => {
+        release();
+        cleanup();
+      }, "wrapped");
+      cleanups.add(wrapped);
+      return () => {
+        if (cleanups.delete(wrapped)) {
+          release();
+        }
+      };
+    }, "own");
+    const listen = /* @__PURE__ */ __name((target, type, callback, options) => {
+      if (closed) {
+        return;
+      }
+      const listener = /* @__PURE__ */ __name((event) => {
+        if (gate.allows()) {
+          if (typeof callback === "function") {
+            callback.call(target, event);
+          } else {
+            callback.handleEvent(event);
+          }
+        }
+      }, "listener");
+      target.addEventListener(type, listener, options);
+      own(() => target.removeEventListener(type, listener, options));
+    }, "listen");
+    const dispose = /* @__PURE__ */ __name(() => {
+      if (closed) {
+        return;
+      }
+      closed = true;
+      for (const cleanup of Array.from(cleanups).reverse()) {
+        try {
+          cleanup();
+        } catch (error) {
+          environment.console.warn("[Aru] 세션 자원 정리 실패", error);
+        }
+      }
+      cleanups.clear();
+    }, "dispose");
+    gate.onStop(dispose);
+    return {
+      own,
+      listen,
+      dispose,
+      get size() {
+        return cleanups.size;
+      }
+    };
+  }
+  __name(sessionResources, "sessionResources");
+  function createSessionEnvironment(root, gate, drafts = Reflect.get(root, draftKey)) {
+    const owned = Reflect.get(root, ownedKey) ?? /* @__PURE__ */ new Map();
+    const cancellation = new root.AbortController();
+    const resources = sessionResources(root, gate, owned);
+    const local = /* @__PURE__ */ new Map();
+    const timers = /* @__PURE__ */ new Map();
+    const frames = /* @__PURE__ */ new Set();
+    const listeners = /* @__PURE__ */ new Map();
+    const observers = /* @__PURE__ */ new Set();
+    const NativeObserver = root.MutationObserver;
+    const scopedObserver = NativeObserver && class extends NativeObserver {
+      constructor(callback) {
+        super((records, observer) => {
+          if (gate.allows()) {
+            callback(records, observer);
+          }
+        });
+      }
+      observe(target, options) {
+        if (!gate.allows()) {
+          return;
+        }
+        observers.add(this);
+        super.observe(target, options);
+      }
+      disconnect() {
+        observers.delete(this);
+        super.disconnect();
+      }
+    };
+    const NativeResizeObserver = root.ResizeObserver;
+    const scopedResizeObserver = NativeResizeObserver && class extends NativeResizeObserver {
+      constructor(callback) {
+        super((entries, observer) => {
+          if (gate.allows()) {
+            callback(entries, observer);
+          }
+        });
+      }
+      observe(target, options) {
+        if (!gate.allows()) {
+          return;
+        }
+        observers.add(this);
+        super.observe(target, options);
+      }
+      disconnect() {
+        observers.delete(this);
+        super.disconnect();
+      }
+    };
+    const NativeIntersectionObserver = root.IntersectionObserver;
+    const scopedIntersectionObserver = NativeIntersectionObserver && class extends NativeIntersectionObserver {
+      constructor(callback, options) {
+        super((entries, observer) => {
+          if (gate.allows()) {
+            callback(entries, observer);
+          }
+        }, options);
+      }
+      observe(target) {
+        if (!gate.allows()) {
+          return;
+        }
+        observers.add(this);
+        super.observe(target);
+      }
+      disconnect() {
+        observers.delete(this);
+        super.disconnect();
+      }
+    };
+    const cancelTimer = /* @__PURE__ */ __name((handle) => {
+      timers.get(handle)?.();
+      timers.delete(handle);
+    }, "cancelTimer");
+    const timer = /* @__PURE__ */ __name((repeat, callback, delay, ...args) => {
+      if (!gate.allows()) {
+        return 0;
+      }
+      const run = /* @__PURE__ */ __name(() => {
+        if (!repeat) {
+          timers.delete(handle);
+        }
+        if (gate.allows() && typeof callback === "function") {
+          callback(...args);
+        }
+      }, "run");
+      const handle = repeat ? root.setInterval(run, delay) : root.setTimeout(run, delay);
+      timers.set(handle, () => repeat ? root.clearInterval(handle) : root.clearTimeout(handle));
+      return handle;
+    }, "timer");
+    let scoped;
+    const bound = /* @__PURE__ */ new Set([
+      "alert",
+      "confirm",
+      "getSelection",
+      "queueMicrotask",
+      "getComputedStyle",
+      "matchMedia",
+      "fetch",
+      "atob",
+      "btoa",
+      "requestAnimationFrame",
+      "cancelAnimationFrame"
+    ]);
+    scoped = new Proxy(root, {
+      get(target, key) {
+        if (key === sessionGateKey) {
+          return gate;
+        }
+        if (key === sessionSignalKey) {
+          return cancellation.signal;
+        }
+        if (key === draftKey) {
+          return drafts;
+        }
+        if (key === ownedKey) {
+          return owned;
+        }
+        if (key === "window" || key === "self") {
+          return scoped;
+        }
+        if (key === "MutationObserver") {
+          return scopedObserver;
+        }
+        if (key === "ResizeObserver") {
+          return scopedResizeObserver;
+        }
+        if (key === "IntersectionObserver") {
+          return scopedIntersectionObserver;
+        }
+        if (key === "setTimeout") {
+          return (callback, delay, ...args) => timer(false, callback, delay, ...args);
+        }
+        if (key === "setInterval") {
+          return (callback, delay, ...args) => timer(true, callback, delay, ...args);
+        }
+        if (key === "clearTimeout" || key === "clearInterval") {
+          return cancelTimer;
+        }
+        if (key === "requestAnimationFrame") {
+          return (callback) => {
+            if (!gate.allows()) {
+              return 0;
+            }
+            const frame = root.requestAnimationFrame((time) => {
+              frames.delete(frame);
+              if (gate.allows()) {
+                callback(time);
+              }
+            });
+            frames.add(frame);
+            return frame;
+          };
+        }
+        if (key === "cancelAnimationFrame") {
+          return (frame) => {
+            frames.delete(frame);
+            root.cancelAnimationFrame(frame);
+          };
+        }
+        if (key === "addEventListener") {
+          return (type, callback, options) => {
+            if (!gate.allows()) {
+              return;
+            }
+            const capture = typeof options === "boolean" ? options : !!options?.capture;
+            const id = type + ":" + capture;
+            let types = listeners.get(callback);
+            if (!types) {
+              listeners.set(callback, types = /* @__PURE__ */ new Map());
+            }
+            if (types.has(id)) {
+              return;
+            }
+            const listener = /* @__PURE__ */ __name((event) => {
+              if (gate.allows()) {
+                callback.call(scoped, event);
+              }
+            }, "listener");
+            types.set(id, listener);
+            root.addEventListener(type, listener, options);
+            resources.own(() => root.removeEventListener(type, listener, capture));
+          };
+        }
+        if (key === "removeEventListener") {
+          return (type, callback, options) => {
+            const capture = typeof options === "boolean" ? options : !!options?.capture;
+            const id = type + ":" + capture, types = listeners.get(callback), listener = types?.get(id);
+            if (listener) {
+              root.removeEventListener(type, listener, capture);
+            }
+            types?.delete(id);
+          };
+        }
+        if (local.has(key)) {
+          return local.get(key);
+        }
+        if (typeof key === "string" && /^__aru.*Controller$/.test(key)) {
+          return void 0;
+        }
+        const value = Reflect.get(target, key, target);
+        return bound.has(key) && typeof value === "function" ? value.bind(root.window ?? root) : value;
+      },
+      set(target, key, value) {
+        if (typeof key === "string" && key.startsWith("__aru")) {
+          local.set(key, value);
+          return true;
+        }
+        return Reflect.set(target, key, value, target);
+      }
+    });
+    resources.own(() => {
+      for (const cancel of timers.values()) {
+        cancel();
+      }
+      timers.clear();
+      for (const frame of frames) {
+        root.cancelAnimationFrame(frame);
+      }
+      frames.clear();
+      for (const observer of Array.from(observers)) {
+        observer.disconnect();
+      }
+      listeners.clear();
+      local.clear();
+    });
+    resources.own(() => cancellation.abort());
+    return {
+      environment: scoped,
+      resources,
+      snapshot: /* @__PURE__ */ __name(() => ({
+        timers: timers.size,
+        observers: observers.size,
+        windowListeners: Array.from(listeners.values()).reduce((n, x) => n + x.size, 0),
+        owned: Object.fromEntries(owned)
+      }), "snapshot")
+    };
+  }
+  __name(createSessionEnvironment, "createSessionEnvironment");
+
+  // docs/source/runtime/settings-read.mjs
+  var clock = {
+    setTimeout: /* @__PURE__ */ __name((callback, delay) => globalThis.setTimeout(callback, delay), "setTimeout"),
+    clearTimeout: /* @__PURE__ */ __name((handle) => globalThis.clearTimeout(handle), "clearTimeout")
+  };
+  function failure(code, message) {
+    return Object.assign(new Error(message), { code });
+  }
+  __name(failure, "failure");
+  function errorResult(error) {
+    const value = error instanceof Error ? error : failure("API_ERROR", String(error));
+    return {
+      state: /extension context invalidated/i.test(value.message) ? "invalidated" : "failed",
+      error: value,
+      attempts: 1
+    };
+  }
+  __name(errorResult, "errorResult");
+  function selectApi(root) {
+    const browser = root.browser;
+    const promiseApi = !!(browser?.runtime && browser.storage);
+    return { api: promiseApi ? browser : root.chrome, promiseApi };
+  }
+  __name(selectApi, "selectApi");
+  function readOnce(root, keys, timer, signal) {
+    return new Promise((resolve) => {
+      let finished = false;
+      let deadline;
+      const finish = /* @__PURE__ */ __name((result2) => {
+        if (finished) {
+          return;
+        }
+        finished = true;
+        timer.clearTimeout(deadline);
+        signal?.removeEventListener("abort", cancel);
+        resolve(result2);
+      }, "finish");
+      const cancel = /* @__PURE__ */ __name(() => finish({
+        state: "cancelled",
+        attempts: 1,
+        error: failure("SETTINGS_CANCELLED", "설정 조회가 취소되었습니다.")
+      }), "cancel");
+      if (signal?.aborted) {
+        cancel();
+        return;
+      }
+      signal?.addEventListener("abort", cancel, { once: true });
+      deadline = timer.setTimeout(() => finish({
+        state: "failed",
+        attempts: 1,
+        error: failure("SETTINGS_TIMEOUT", "설정 조회 응답 시간이 초과되었습니다.")
+      }), 1e3);
+      const accept = /* @__PURE__ */ __name((value) => {
+        if (!value || typeof value !== "object" || Array.isArray(value)) {
+          finish({
+            state: "failed",
+            attempts: 1,
+            error: failure("SETTINGS_INVALID_RESPONSE", "설정 조회 응답이 올바르지 않습니다.")
+          });
+        } else {
+          finish({
+            state: "success",
+            values: value,
+            attempts: 1
+          });
+        }
+      }, "accept");
+      try {
+        const { api, promiseApi } = selectApi(root);
+        const sync = api?.storage?.sync;
+        if (!sync || typeof sync.get !== "function") {
+          finish({
+            state: "failed",
+            attempts: 1,
+            error: failure("API_UNAVAILABLE", "확장 프로그램 API를 사용할 수 없습니다.")
+          });
+          return;
+        }
+        const callback = /* @__PURE__ */ __name((value) => {
+          try {
+            const error = api?.runtime?.lastError;
+            if (error) {
+              finish(errorResult(failure("API_ERROR", error.message || "확장 프로그램 API 요청에 실패했습니다.")));
+            } else {
+              accept(value);
+            }
+          } catch (error) {
+            finish(errorResult(error));
+          }
+        }, "callback");
+        const returned = promiseApi ? sync.get(keys) : sync.get(keys, callback);
+        if (returned && typeof returned.then === "function") {
+          Promise.resolve(returned).then(accept, (error) => finish(errorResult(error)));
+        }
+      } catch (error) {
+        finish(errorResult(error));
+      }
+    });
+  }
+  __name(readOnce, "readOnce");
+  async function readSettings(root, keys, options = {}) {
+    const timer = options.clock ?? clock;
+    const controller = new AbortController();
+    const scopedSignal = Reflect.get(root, sessionSignalKey);
+    const cancel = /* @__PURE__ */ __name(() => controller.abort(), "cancel");
+    if (scopedSignal?.aborted) {
+      cancel();
+    } else {
+      scopedSignal?.addEventListener("abort", cancel, { once: true });
+    }
+    if (options.signal?.aborted) {
+      cancel();
+    } else {
+      options.signal?.addEventListener("abort", cancel, { once: true });
+    }
+    const unsubscribe = subscribeSettings(root, (changes, area) => {
+      if (area === "sync" && Object.keys(changes).some((key) => keys === null || keys.includes(key))) {
+        cancel();
+      }
+    });
+    try {
+      for (let attempt = 1; ; attempt++) {
+        const result2 = await readOnce(root, keys, timer, controller.signal);
+        result2.attempts = attempt;
+        if (result2.state === "invalidated") {
+          contextEffectGate(root).invalidate();
+        }
+        if (controller.signal.aborted) {
+          return {
+            state: "cancelled",
+            attempts: attempt,
+            error: failure("SETTINGS_CANCELLED", "설정 조회가 취소되었습니다.")
+          };
+        }
+        if (result2.state !== "failed" || attempt === 3) {
+          return result2;
+        }
+        const proceed = await new Promise((resolve) => {
+          if (controller.signal.aborted) {
+            resolve(false);
+            return;
+          }
+          const cancelWait = /* @__PURE__ */ __name(() => {
+            timer.clearTimeout(handle);
+            resolve(false);
+          }, "cancelWait");
+          const handle = timer.setTimeout(() => {
+            controller.signal.removeEventListener("abort", cancelWait);
+            resolve(true);
+          }, attempt === 1 ? 200 : 500);
+          controller.signal.addEventListener("abort", cancelWait, { once: true });
+        });
+        if (!proceed) {
+          return {
+            state: "cancelled",
+            attempts: attempt,
+            error: failure("SETTINGS_CANCELLED", "설정 조회가 취소되었습니다.")
+          };
+        }
+      }
+    } finally {
+      scopedSignal?.removeEventListener("abort", cancel);
+      options.signal?.removeEventListener("abort", cancel);
+      unsubscribe?.();
+    }
+  }
+  __name(readSettings, "readSettings");
+  function subscribeSettings(root, listener) {
+    try {
+      const changed = selectApi(root).api?.storage?.onChanged;
+      if (!changed) {
+        return void 0;
+      }
+      changed.addListener(listener);
+      return () => {
+        try {
+          changed.removeListener(listener);
+        } catch {
+        }
+      };
+    } catch {
+      return void 0;
+    }
+  }
+  __name(subscribeSettings, "subscribeSettings");
+
   // docs/source/source-caption/pixiv-filename.mjs
   function parsePixivFilenameUrl(filename) {
     if (typeof filename !== "string") {
@@ -139,8 +807,19 @@
 
   // docs/source/platform/whale/content.mjs
   function installWhaleContent({ environment = defaultEnvironment, dependencies = {} } = {}) {
+    const effectGate = contextEffectGate(environment);
+    if (!effectGate.allows()) {
+      return {};
+    }
+    const dispatcher = contentDispatcher(environment, effectGate);
+    if (!dispatcher) {
+      return {};
+    }
+    const scope = createSessionEnvironment(environment, effectGate);
+    environment = scope.environment;
+    const resources = scope.resources;
     const window = environment.window ?? environment;
-    const { document, location, navigator, chrome, MutationObserver, HTMLElement, TextDecoder, Image, URL, exifr, console } = environment;
+    const { document, location, navigator, MutationObserver, HTMLElement, TextDecoder, Image, URL, exifr, console: console2 } = environment;
     const setTimeout = typeof environment.setTimeout === "function" ? (...args) => environment.setTimeout(...args) : void 0;
     const setInterval = typeof environment.setInterval === "function" ? (...args) => environment.setInterval(...args) : void 0;
     const clearInterval = typeof environment.clearInterval === "function" ? (...args) => environment.clearInterval(...args) : void 0;
@@ -177,67 +856,24 @@
       const WALK_MAX_DEPTH = 10;
       let uploadAttribution = null;
       const handledFileEvents = /* @__PURE__ */ new WeakSet();
-      function isChromeStorageSyncAvailable() {
-        try {
-          if (typeof chrome === "undefined") {
-            return false;
-          }
-          if (!chrome) {
-            return false;
-          }
-          if (!chrome.storage) {
-            return false;
-          }
-          if (!chrome.storage.sync) {
-            return false;
-          }
-          if (typeof chrome.storage.sync.get !== "function") {
-            return false;
-          }
-          return true;
-        } catch {
-          return false;
+      async function loadConfig() {
+        const result2 = await readSettings(environment, null);
+        if (result2.state !== "success") {
+          throw result2.error;
         }
-      }
-      __name(isChromeStorageSyncAvailable, "isChromeStorageSyncAvailable");
-      function loadConfig() {
-        return new Promise((resolve) => {
-          try {
-            if (!isChromeStorageSyncAvailable()) {
-              console.warn("[Aru Source Captioner] chrome.storage.sync unavailable — using default options");
-              resolve({ ...DEFAULT_OPTIONS });
-              return;
-            }
-            chrome.storage.sync.get(null, (items) => {
-              try {
-                if (typeof chrome !== "undefined" && chrome && chrome.runtime && chrome.runtime.lastError) {
-                  console.warn("[Aru Source Captioner] storage.get failed, falling back to defaults:", chrome.runtime.lastError.message);
-                  resolve({ ...DEFAULT_OPTIONS });
-                  return;
-                }
-                const merged = {
-                  ...DEFAULT_OPTIONS
-                };
-                const safeItems = items && typeof items === "object" ? items : {};
-                for (const key of Object.keys(DEFAULT_OPTIONS)) {
-                  if (key in safeItems) {
-                    merged[key] = safeItems[key];
-                  }
-                }
-                resolve(merged);
-              } catch (callbackErr) {
-                console.warn("[Aru Source Captioner] storage.get callback threw, falling back to defaults:", callbackErr);
-                resolve({ ...DEFAULT_OPTIONS });
-              }
-            });
-          } catch (err) {
-            console.warn("[Aru Source Captioner] loadConfig threw, falling back to defaults:", err);
-            resolve({ ...DEFAULT_OPTIONS });
+        const merged = { ...DEFAULT_OPTIONS };
+        for (const key of Object.keys(DEFAULT_OPTIONS)) {
+          if (key in result2.values) {
+            merged[key] = result2.values[key];
           }
-        });
+        }
+        return merged;
       }
       __name(loadConfig, "loadConfig");
       function publishUploadStatus(snapshot) {
+        if (!effectGate.allows()) {
+          return;
+        }
         const value = JSON.stringify(snapshot);
         if (document.documentElement.dataset.aruUploadDiagnostic !== value) {
           document.documentElement.dataset.aruUploadDiagnostic = value;
@@ -245,7 +881,10 @@
       }
       __name(publishUploadStatus, "publishUploadStatus");
       function attachFileInputListeners(config) {
-        document.addEventListener("change", async (ev) => {
+        if (!effectGate.allows()) {
+          return;
+        }
+        dispatcher.setChange(async (ev) => {
           const target = ev.target;
           if (!(target instanceof HTMLInputElement) || target.type !== "file" || !target.files?.length) {
             return;
@@ -269,10 +908,13 @@
             }
           }
           await handleSelectedImageFiles(images, target);
-        }, true);
+        });
       }
       __name(attachFileInputListeners, "attachFileInputListeners");
       async function handleSelectedImageFiles(files, input) {
+        if (!effectGate.allows()) {
+          return;
+        }
         if (uploadAttribution) {
           await uploadAttribution.select(files, input);
         } else {
@@ -383,13 +1025,13 @@
             return aruResult;
           }
           if (aruResult.status === "error") {
-            console.debug("[Aru Source Captioner] png itxt fallback to exifr:", file.name, aruResult.reason);
+            console2.debug("[Aru Source Captioner] png itxt fallback to exifr:", file.name, aruResult.reason);
           }
         }
         if (typeof exifr === "undefined" || !exifr || typeof exifr.parse !== "function") {
           const filenameUrl = parsePixivFilenameUrl(file.name);
           if (filenameUrl) {
-            console.info("[Aru Source Captioner] filename fallback", {
+            console2.info("[Aru Source Captioner] filename fallback", {
               fileName: file.name,
               url: filenameUrl,
               reason: "exifr_unavailable"
@@ -412,10 +1054,10 @@
             userComment: true
           });
         } catch (err) {
-          console.warn("[Aru Source Captioner] exifr.parse failed —", `name=${file.name} type=${file.type || "unknown"} size=${file.size}B isWebp=${isWebp}`, err.message || err);
+          console2.warn("[Aru Source Captioner] exifr.parse failed —", `name=${file.name} type=${file.type || "unknown"} size=${file.size}B isWebp=${isWebp}`, err.message || err);
           const filenameUrl = parsePixivFilenameUrl(file.name);
           if (filenameUrl) {
-            console.info("[Aru Source Captioner] filename fallback", {
+            console2.info("[Aru Source Captioner] filename fallback", {
               fileName: file.name,
               url: filenameUrl,
               reason: "exifr_parse_failed"
@@ -434,7 +1076,7 @@
         if (!metadata || typeof metadata !== "object") {
           const filenameUrl = parsePixivFilenameUrl(file.name);
           if (filenameUrl) {
-            console.info("[Aru Source Captioner] filename fallback", {
+            console2.info("[Aru Source Captioner] filename fallback", {
               fileName: file.name,
               url: filenameUrl,
               reason: "no_metadata"
@@ -451,7 +1093,7 @@
         if (candidates.length === 0) {
           const filenameUrl = parsePixivFilenameUrl(file.name);
           if (filenameUrl) {
-            console.info("[Aru Source Captioner] filename fallback", {
+            console2.info("[Aru Source Captioner] filename fallback", {
               fileName: file.name,
               url: filenameUrl,
               reason: "no_url_candidates"
@@ -540,7 +1182,7 @@
             if (urlVal && /^https?:\/\//.test(urlVal) && !isPixivUserUrl(urlVal)) {
               candidates.push(urlVal);
             } else if (urlVal && isPixivUserUrl(urlVal)) {
-              console.debug("[Aru Source Captioner] source candidate skipped (artist url):", { key, urlVal });
+              console2.debug("[Aru Source Captioner] source candidate skipped (artist url):", { key, urlVal });
             }
           }
           const artworkId = (obj.artwork_id || "").trim();
@@ -607,7 +1249,7 @@
         try {
           return JSON.parse(trimmed);
         } catch (err) {
-          console.warn("[Aru Source Captioner] JSON parse failed; fallback continues", {
+          console2.warn("[Aru Source Captioner] JSON parse failed; fallback continues", {
             parser: "aru_json",
             error: String(err),
             sample: String(text).slice(0, 160)
@@ -802,6 +1444,9 @@
       }
       __name(buildPixelTable, "buildPixelTable");
       function insertPixelTableWithCaption(editor, table, sourceUrl, fileName) {
+        if (!effectGate.allows()) {
+          return;
+        }
         const wrapper = document.createElement("p");
         wrapper.style.textAlign = "center";
         wrapper.dataset.aruPixelTableWrapper = "1";
@@ -810,27 +1455,30 @@
         if (sourceUrl) {
           editor.appendChild(createSourceCaption(sourceUrl));
         } else {
-          console.log("[Aru Source Captioner] pixelTable: no source URL — caption omitted", { fileName });
+          console2.log("[Aru Source Captioner] pixelTable: no source URL — caption omitted", { fileName });
         }
       }
       __name(insertPixelTableWithCaption, "insertPixelTableWithCaption");
       async function handlePixelTableInsert(images, config, _isMobile) {
+        if (!effectGate.allows()) {
+          return;
+        }
         const editor = findEditorRoot();
         if (!editor) {
-          console.warn("[Aru Source Captioner] pixelTable: no editor found — cannot insert");
+          console2.warn("[Aru Source Captioner] pixelTable: no editor found — cannot insert");
           return;
         }
         for (const file of images) {
           const validation = validatePixelTableFile(file);
           if (!validation.valid) {
-            console.warn("[Aru Source Captioner] pixelTable: file rejected —", validation.reason, { name: file.name });
+            console2.warn("[Aru Source Captioner] pixelTable: file rejected —", validation.reason, { name: file.name });
             continue;
           }
           let pixels, tableWidth, tableHeight;
           try {
             ({ pixels, tableWidth, tableHeight } = await renderPixelTableCanvas(file, config));
           } catch (err) {
-            console.warn("[Aru Source Captioner] pixelTable: canvas render failed:", err);
+            console2.warn("[Aru Source Captioner] pixelTable: canvas render failed:", err);
             continue;
           }
           const table = buildPixelTable(pixels, tableWidth, tableHeight, config);
@@ -841,18 +1489,18 @@
               sourceUrl = sanitizeSourceUrl(sourceInfo.url, config ?? { ...DEFAULT_OPTIONS });
             }
           } catch (err) {
-            console.debug("[Aru Source Captioner] pixelTable: parseSourceFromFile failed:", err);
+            console2.debug("[Aru Source Captioner] pixelTable: parseSourceFromFile failed:", err);
           }
           try {
             insertPixelTableWithCaption(editor, table, sourceUrl, file.name);
-            console.info("[Aru Source Captioner] pixelTable: inserted", {
+            console2.info("[Aru Source Captioner] pixelTable: inserted", {
               name: file.name,
               tableWidth,
               tableHeight,
               hasCaption: !!sourceUrl
             });
           } catch (err) {
-            console.warn("[Aru Source Captioner] pixelTable: insert failed:", err);
+            console2.warn("[Aru Source Captioner] pixelTable: insert failed:", err);
           }
         }
       }
@@ -868,24 +1516,32 @@
       }
       __name(findEditorRoot, "findEditorRoot");
       function startEditorObserver(config) {
+        if (!effectGate.allows()) {
+          return;
+        }
         const Controller = attribution2?.Controller;
         if (!Controller) {
           return null;
         }
         uploadAttribution = new Controller({
           document,
-          parse: /* @__PURE__ */ __name((file) => parseSourceFromFile(file, {
-            allowLooseFilenameFallback: !isMobileAutoInsertEnvironment()
-          }), "parse"),
+          parse: /* @__PURE__ */ __name(async (file) => {
+            if (!effectGate.allows()) {
+              return { status: "cancelled" };
+            }
+            const result2 = await parseSourceFromFile(file, {
+              allowLooseFilenameFallback: !isMobileAutoInsertEnvironment()
+            });
+            return effectGate.allows() ? result2 : { status: "cancelled" };
+          }, "parse"),
           sanitize: /* @__PURE__ */ __name((url) => sanitizeSourceUrl(url, config), "sanitize"),
           caption: createSourceCaption,
           anchor: findImageParagraph,
           existing: hasExistingSourceCaption,
           onStatus: publishUploadStatus
         });
-        window.addEventListener("pagehide", () => uploadAttribution?.destroy(), {
-          once: true
-        });
+        const controller = uploadAttribution;
+        resources.own(() => controller.destroy(), "upload-controller");
         return uploadAttribution;
       }
       __name(startEditorObserver, "startEditorObserver");
@@ -913,6 +1569,7 @@
       }
       __name(hasExistingSourceCaption, "hasExistingSourceCaption");
       function createSourceCaption(url) {
+        effectGate.assert();
         const p = document.createElement("p");
         p.className = "aru-source-caption";
         p.style.textAlign = "center";
@@ -962,34 +1619,34 @@
       const COMMENT_BOUND_DATASET_KEY = "aruSourceCommentBound";
       const COMMENT_BUTTON_CLASS = "aru-source-caption-comment-button";
       function handleCommentSourceButtonClick(textarea) {
-        console.log("[Aru Source Captioner] click: button clicked");
+        console2.log("[Aru Source Captioner] click: button clicked");
         if (!(textarea instanceof HTMLTextAreaElement)) {
-          console.warn("[Aru Source Captioner] click: textarea reference is not a textarea");
+          console2.warn("[Aru Source Captioner] click: textarea reference is not a textarea");
           return;
         }
         if (!document.contains(textarea)) {
-          console.warn("[Aru Source Captioner] click: textarea is detached from DOM, re-scanning...");
+          console2.warn("[Aru Source Captioner] click: textarea is detached from DOM, re-scanning...");
           try {
             setupCommentSourceCaptioner();
           } catch (err) {
-            console.debug("[Aru Source Captioner] click: re-scan failed:", err);
+            console2.debug("[Aru Source Captioner] click: re-scan failed:", err);
           }
           return;
         }
         const wrapper = resolveCommentWrapperForTextarea(textarea);
         const savedSource = wrapper ? wrapperSourceMap.get(wrapper) : null;
         if (!savedSource) {
-          console.log("[Aru Source Captioner] click: no extracted source — image not attached or has no Aru metadata");
+          console2.log("[Aru Source Captioner] click: no extracted source — image not attached or has no Aru metadata");
           try {
             alert("이미지에 출처 metadata가 없습니다.\nAru Archive로 처리한 이미지를 댓글에 첨부해 주세요.");
           } catch {
           }
           return;
         }
-        console.log("[Aru Source Captioner] click: using stored source =", savedSource);
+        console2.log("[Aru Source Captioner] click: using stored source =", savedSource);
         const sourceText = buildCommentSourceText(savedSource);
         const result2 = insertSourceIntoCommentTextarea(textarea, sourceText);
-        console.log("[Aru Source Captioner] click: insertion result =", result2);
+        console2.log("[Aru Source Captioner] click: insertion result =", result2);
       }
       __name(handleCommentSourceButtonClick, "handleCommentSourceButtonClick");
       const COMMENT_FILE_BOUND_DATASET_KEY = "aruSourceFileBound";
@@ -1029,15 +1686,15 @@
           className: textarea.className
         };
         if (imgButton) {
-          console.log("[Aru Source Captioner] scan: wrapper OK (has textarea + .common_img_button)", { wrapper, textarea: textareaInfo });
+          console2.log("[Aru Source Captioner] scan: wrapper OK (has textarea + .common_img_button)", { wrapper, textarea: textareaInfo });
         } else {
-          console.log("[Aru Source Captioner] scan: wrapper has textarea but no .common_img_button — will use textarea position", { wrapper, textarea: textareaInfo });
+          console2.log("[Aru Source Captioner] scan: wrapper has textarea but no .common_img_button — will use textarea position", { wrapper, textarea: textareaInfo });
         }
       }
       __name(classifyAndPushWrapper, "classifyAndPushWrapper");
       function findCommentInputWrappers() {
         const textareas = document.querySelectorAll(COMMENT_TEXTAREA_SELECTOR);
-        console.log(`[Aru Source Captioner] scan: found ${textareas.length} comment textarea candidates`);
+        console2.log(`[Aru Source Captioner] scan: found ${textareas.length} comment textarea candidates`);
         const wrappers = /* @__PURE__ */ new Set();
         for (const textarea of textareas) {
           if (!(textarea instanceof HTMLTextAreaElement)) {
@@ -1052,7 +1709,7 @@
         for (const wrapper of wrappers) {
           classifyAndPushWrapper(wrapper, result2);
         }
-        console.log(`[Aru Source Captioner] scan: ${result2.length} comment wrappers identified`);
+        console2.log(`[Aru Source Captioner] scan: ${result2.length} comment wrappers identified`);
         return result2;
       }
       __name(findCommentInputWrappers, "findCommentInputWrappers");
@@ -1062,7 +1719,7 @@
       }
       __name(buildCommentSourceText, "buildCommentSourceText");
       function logCommentInsertSkip(reason, detail) {
-        console.debug("[Aru Source Captioner] comment insert skipped:", reason, detail || "");
+        console2.debug("[Aru Source Captioner] comment insert skipped:", reason, detail || "");
       }
       __name(logCommentInsertSkip, "logCommentInsertSkip");
       function focusTextareaSafe(textarea) {
@@ -1075,19 +1732,19 @@
       function checkInsertSkipReason(textarea, existing, sourceLine, newValue) {
         if (existing.includes(sourceLine)) {
           focusTextareaSafe(textarea);
-          console.log("[Aru Source Captioner] insert: same source already present — focus only");
+          console2.log("[Aru Source Captioner] insert: same source already present — focus only");
           logCommentInsertSkip("duplicate_source_line");
           return "duplicate";
         }
         if (/(^|\n)\s*출처\s*:\s*\S/.test(existing)) {
           focusTextareaSafe(textarea);
-          console.log("[Aru Source Captioner] insert: different source already present — skipped");
+          console2.log("[Aru Source Captioner] insert: different source already present — skipped");
           logCommentInsertSkip("other_source_present");
           return "different-source";
         }
         const maxLen = typeof textarea.maxLength === "number" ? textarea.maxLength : -1;
         if (maxLen > 0 && newValue.length > maxLen) {
-          console.warn("[Aru Source Captioner] insert: maxLength exceeded — skipped", {
+          console2.warn("[Aru Source Captioner] insert: maxLength exceeded — skipped", {
             newLength: newValue.length,
             maxLength: maxLen
           });
@@ -1109,7 +1766,7 @@
       __name(buildMergedTextareaValue, "buildMergedTextareaValue");
       function applyTextareaValue(textarea, newValue) {
         textarea.value = newValue;
-        console.log("[Aru Source Captioner] insert: value set", {
+        console2.log("[Aru Source Captioner] insert: value set", {
           actualValue: typeof textarea.value === "string" ? textarea.value.slice(0, 50) : null,
           valueMatches: textarea.value === newValue,
           valueLength: typeof textarea.value === "string" ? textarea.value.length : -1
@@ -1124,18 +1781,21 @@
           textarea.dispatchEvent(new Event("input", { bubbles: true }));
           textarea.dispatchEvent(new Event("change", { bubbles: true }));
         } catch (err) {
-          console.debug("[Aru Source Captioner] event dispatch failed:", err);
+          console2.debug("[Aru Source Captioner] event dispatch failed:", err);
         }
       }
       __name(applyTextareaValue, "applyTextareaValue");
       function insertSourceIntoCommentTextarea(textarea, sourceText) {
+        if (!effectGate.allows()) {
+          return "context-inactive";
+        }
         if (!(textarea instanceof HTMLTextAreaElement)) {
-          console.warn("[Aru Source Captioner] insert: not a textarea element");
+          console2.warn("[Aru Source Captioner] insert: not a textarea element");
           return "not-textarea";
         }
         const existing = typeof textarea.value === "string" ? textarea.value : "";
         const sourceLine = sourceText.split("\n")[0];
-        console.log("[Aru Source Captioner] insert: called", {
+        console2.log("[Aru Source Captioner] insert: called", {
           textareaExists: true,
           inDOM: document.contains(textarea),
           currentValue: existing.slice(0, 50),
@@ -1147,7 +1807,7 @@
           return skip;
         }
         applyTextareaValue(textarea, newValue);
-        console.log("[Aru Source Captioner] insert: completed successfully");
+        console2.log("[Aru Source Captioner] insert: completed successfully");
         return "ok";
       }
       __name(insertSourceIntoCommentTextarea, "insertSourceIntoCommentTextarea");
@@ -1156,17 +1816,20 @@
           return false;
         }
         if (wrapper.dataset[COMMENT_BOUND_DATASET_KEY] === "1") {
-          console.log("[Aru Source Captioner] inject: skipped (already bound)", wrapper);
+          console2.log("[Aru Source Captioner] inject: skipped (already bound)", wrapper);
           return false;
         }
         const textarea = wrapper.querySelector(COMMENT_TEXTAREA_SELECTOR);
         if (!(textarea instanceof HTMLTextAreaElement)) {
-          console.log("[Aru Source Captioner] inject: skipped (no textarea)", wrapper);
+          console2.log("[Aru Source Captioner] inject: skipped (no textarea)", wrapper);
           return false;
         }
         if (wrapper.querySelector("." + COMMENT_BUTTON_CLASS)) {
           wrapper.dataset[COMMENT_BOUND_DATASET_KEY] = "1";
-          console.log("[Aru Source Captioner] inject: skipped (button already in this wrapper)", wrapper);
+          resources.own(() => {
+            delete wrapper.dataset[COMMENT_BOUND_DATASET_KEY];
+          });
+          console2.log("[Aru Source Captioner] inject: skipped (button already in this wrapper)", wrapper);
           return false;
         }
         const imgButton = wrapper.querySelector(COMMENT_IMG_BUTTON_SELECTOR);
@@ -1176,7 +1839,8 @@
         button.textContent = "출처 추가";
         button.title = "현재 게시글 URL을 댓글에 출처로 추가합니다";
         button.dataset.aruSourceCommentButton = "1";
-        button.addEventListener("click", (ev) => {
+        resources.own(() => button.remove());
+        resources.listen(button, "click", (ev) => {
           try {
             ev.preventDefault();
           } catch {
@@ -1192,13 +1856,13 @@
             imgButton.after(button);
           } else {
             textarea.after(button);
-            console.log("[Aru Source Captioner] inject: used textarea fallback (no .common_img_button)", { wrapper, textarea });
+            console2.log("[Aru Source Captioner] inject: used textarea fallback (no .common_img_button)", { wrapper, textarea });
           }
         } catch (err) {
-          console.debug("[Aru Source Captioner] comment button insert failed:", err);
+          console2.debug("[Aru Source Captioner] comment button insert failed:", err);
           return false;
         }
-        console.log("[Aru Source Captioner] inject: button added", { wrapper });
+        console2.log("[Aru Source Captioner] inject: button added", { wrapper });
         return true;
       }
       __name(injectCommentSourceButton, "injectCommentSourceButton");
@@ -1208,7 +1872,7 @@
         }
         const fileInput = wrapper.querySelector(COMMENT_FILE_INPUT_SELECTOR);
         if (!(fileInput instanceof HTMLInputElement)) {
-          console.log("[Aru Source Captioner] file: no file input in wrapper", wrapper);
+          console2.log("[Aru Source Captioner] file: no file input in wrapper", wrapper);
           return false;
         }
         if (fileInput.type !== "file") {
@@ -1218,7 +1882,13 @@
           return false;
         }
         fileInput.dataset[COMMENT_FILE_BOUND_DATASET_KEY] = "1";
-        fileInput.addEventListener("change", async (event) => {
+        resources.own(() => {
+          delete fileInput.dataset[COMMENT_FILE_BOUND_DATASET_KEY];
+        });
+        resources.listen(fileInput, "change", async (event) => {
+          if (!effectGate.allows()) {
+            return;
+          }
           const target = event.target;
           const files = target instanceof HTMLInputElement ? target.files : null;
           if (!files || files.length === 0) {
@@ -1232,38 +1902,38 @@
             }
           }
           if (!imageFile) {
-            console.log("[Aru Source Captioner] file: no image in selection");
+            console2.log("[Aru Source Captioner] file: no image in selection");
             return;
           }
-          console.log("[Aru Source Captioner] file: extracting metadata from", imageFile.name);
+          console2.log("[Aru Source Captioner] file: extracting metadata from", imageFile.name);
           let sourceInfo;
           try {
             sourceInfo = await parseSourceFromFile(imageFile);
           } catch (err) {
-            console.warn("[Aru Source Captioner] file: metadata extraction threw", err);
+            console2.warn("[Aru Source Captioner] file: metadata extraction threw", err);
             return;
           }
-          if (sourceInfo?.status !== "ok" || !sourceInfo.url) {
-            console.log("[Aru Source Captioner] file: no Aru source metadata found in image", { reason: sourceInfo?.reason });
+          if (!effectGate.allows() || sourceInfo?.status !== "ok" || !sourceInfo.url) {
+            console2.log("[Aru Source Captioner] file: no Aru source metadata found in image", { reason: sourceInfo?.reason });
             return;
           }
           const safeUrl = sanitizeSourceUrl(sourceInfo.url, config);
           if (!safeUrl) {
-            console.log("[Aru Source Captioner] file: extracted source rejected by sanitizer", { rawUrl: sourceInfo.url });
+            console2.log("[Aru Source Captioner] file: extracted source rejected by sanitizer", { rawUrl: sourceInfo.url });
             return;
           }
-          console.log("[Aru Source Captioner] file: extracted source =", safeUrl);
+          console2.log("[Aru Source Captioner] file: extracted source =", safeUrl);
           wrapperSourceMap.set(wrapper, safeUrl);
           const textarea = wrapper.querySelector(COMMENT_TEXTAREA_SELECTOR);
           if (textarea instanceof HTMLTextAreaElement) {
             const sourceText = buildCommentSourceText(safeUrl);
             const result2 = insertSourceIntoCommentTextarea(textarea, sourceText);
-            console.log("[Aru Source Captioner] file: auto insertion result =", result2);
+            console2.log("[Aru Source Captioner] file: auto insertion result =", result2);
           } else {
-            console.log("[Aru Source Captioner] file: source stored, but no textarea found for auto insert", wrapper);
+            console2.log("[Aru Source Captioner] file: source stored, but no textarea found for auto insert", wrapper);
           }
         });
-        console.log("[Aru Source Captioner] file: hooked file input change", {
+        console2.log("[Aru Source Captioner] file: hooked file input change", {
           wrapper,
           fileInput
         });
@@ -1271,6 +1941,9 @@
       }
       __name(hookCommentFileInput, "hookCommentFileInput");
       function setupCommentSourceCaptioner(config = void 0) {
+        if (!effectGate.allows()) {
+          return;
+        }
         if (!isReadPage()) {
           return;
         }
@@ -1283,6 +1956,9 @@
             const ok = injectCommentSourceButton(wrapper);
             if (ok) {
               wrapper.dataset[COMMENT_BOUND_DATASET_KEY] = "1";
+              resources.own(() => {
+                delete wrapper.dataset[COMMENT_BOUND_DATASET_KEY];
+              });
               injected++;
             }
           }
@@ -1291,9 +1967,9 @@
           }
         }
         if (wrappers.length === 0) {
-          console.log("[Aru Source Captioner] setup: no comment wrapper found yet (may load later)");
+          console2.log("[Aru Source Captioner] setup: no comment wrapper found yet (may load later)");
         } else if (injected > 0 || hookedFileInputs > 0) {
-          console.log(`[Aru Source Captioner] setup: injected ${injected} new buttons, hooked ${hookedFileInputs} new file inputs`);
+          console2.log(`[Aru Source Captioner] setup: injected ${injected} new buttons, hooked ${hookedFileInputs} new file inputs`);
         }
       }
       __name(setupCommentSourceCaptioner, "setupCommentSourceCaptioner");
@@ -1309,12 +1985,15 @@
           try {
             setupCommentSourceCaptioner();
           } catch (err) {
-            console.debug("[Aru Source Captioner] comment setup failed:", err);
+            console2.debug("[Aru Source Captioner] comment setup failed:", err);
           }
         });
       }
       __name(scheduleCommentSetup, "scheduleCommentSetup");
       function startCommentObserver() {
+        if (!effectGate.allows()) {
+          return;
+        }
         if (!isReadPage()) {
           return null;
         }
@@ -1345,14 +2024,14 @@
           try {
             setupCommentSourceCaptioner();
           } catch (err) {
-            console.debug("[Aru Source Captioner] poll setup failed:", err);
+            console2.debug("[Aru Source Captioner] poll setup failed:", err);
           }
           if (attempts >= maxAttempts) {
             clearInterval(pollIntervalId);
-            console.log("[Aru Source Captioner] poll: stopping after 15s (MutationObserver continues)");
+            console2.log("[Aru Source Captioner] poll: stopping after 15s (MutationObserver continues)");
           }
         }, 500);
-        console.log("[Aru Source Captioner] observer: started (polling 15s + MutationObserver)");
+        console2.log("[Aru Source Captioner] observer: started (polling 15s + MutationObserver)");
         return commentObserver;
       }
       __name(startCommentObserver, "startCommentObserver");
@@ -1471,14 +2150,14 @@
       function _tryRuliwebOverlayClickOnce(config) {
         const boardMainView = _findBoardMainView();
         if (!boardMainView) {
-          console.debug("[Aru][reveal] .board_main_view not found");
+          console2.debug("[Aru][reveal] .board_main_view not found");
           return false;
         }
         const overlayText = getRuliwebRevealOverlayText();
         const { shouldOpen, allowed, blocked } = shouldOpenRuliwebOverlayByKeywords(overlayText, config);
         const allowKeywords = config && config.ruliwebAiRevealAllowKeywords || DEFAULT_OPTIONS.ruliwebAiRevealAllowKeywords;
         const blockKeywords = config && config.ruliwebAiRevealBlockKeywords || DEFAULT_OPTIONS.ruliwebAiRevealBlockKeywords;
-        console.info("[Aru][reveal] overlay keyword decision", {
+        console2.info("[Aru][reveal] overlay keyword decision", {
           overlayText: overlayText.slice(0, 200),
           allowKeywords,
           blockKeywords,
@@ -1488,9 +2167,9 @@
         });
         if (!shouldOpen) {
           if (blocked) {
-            console.info("[Aru][reveal] skip overlay: blocked keyword matched");
+            console2.info("[Aru][reveal] skip overlay: blocked keyword matched");
           } else {
-            console.info("[Aru][reveal] skip overlay: no allow keyword matched");
+            console2.info("[Aru][reveal] skip overlay: no allow keyword matched");
           }
           return false;
         }
@@ -1499,7 +2178,7 @@
         const cy = Math.round(rect.top + Math.min(rect.height * 0.45, 260));
         const pointEl = document.elementFromPoint(cx, cy);
         if (!pointEl) {
-          console.debug("[Aru][reveal] elementFromPoint returned null", {
+          console2.debug("[Aru][reveal] elementFromPoint returned null", {
             cx,
             cy
           });
@@ -1507,14 +2186,14 @@
         }
         const unsafe = pointEl.closest(RULIWEB_UNSAFE_CLICK_SELECTOR);
         if (unsafe) {
-          console.warn("[Aru][reveal] click aborted — unsafe element at overlay center", {
+          console2.warn("[Aru][reveal] click aborted — unsafe element at overlay center", {
             pointTag: pointEl.tagName,
             unsafeTag: unsafe.tagName,
             unsafeHref: unsafe.href || "(none)"
           });
           return false;
         }
-        console.log("[Aru][reveal] overlay click target", {
+        console2.log("[Aru][reveal] overlay click target", {
           x: cx,
           y: cy,
           tag: pointEl.tagName,
@@ -1526,7 +2205,7 @@
         _dispatchPointerMouseSequence(pointEl, cx, cy);
         setTimeout(() => {
           if (location.href !== hrefBefore) {
-            console.error("[Aru][reveal] URL changed after overlay click", {
+            console2.error("[Aru][reveal] URL changed after overlay click", {
               beforeUrl: hrefBefore,
               afterUrl: location.href
             });
@@ -1535,7 +2214,7 @@
           const imgCount = document.querySelectorAll(".view_content img").length;
           const viewContent = document.querySelector(".view_content");
           const textLength = viewContent ? (viewContent.textContent || "").length : 0;
-          console.log("[Aru][reveal] after overlay click", {
+          console2.log("[Aru][reveal] after overlay click", {
             hasAiBlind,
             imgCount,
             textLength
@@ -1585,30 +2264,30 @@
       function restoreRuliwebMetaDescription() {
         const meta = document.querySelector('meta[name="description"]');
         if (!meta) {
-          console.debug("[Aru][reveal] text_fallback: no meta description found");
+          console2.debug("[Aru][reveal] text_fallback: no meta description found");
           return false;
         }
         const text = (meta.content || "").trim();
         if (!text) {
-          console.debug("[Aru][reveal] text_fallback: meta description is empty");
+          console2.debug("[Aru][reveal] text_fallback: meta description is empty");
           return false;
         }
         const viewContent = document.querySelector(".view_content");
         if (!viewContent) {
-          console.debug("[Aru][reveal] text_fallback: .view_content not found");
+          console2.debug("[Aru][reveal] text_fallback: .view_content not found");
           return false;
         }
         const p = document.createElement("p");
         p.textContent = text;
         p.dataset.aruMetaFallback = "1";
         viewContent.prepend(p);
-        console.info("[Aru][reveal] text_fallback: meta description prepended (images not restored)");
+        console2.info("[Aru][reveal] text_fallback: meta description prepended (images not restored)");
         return true;
       }
       __name(restoreRuliwebMetaDescription, "restoreRuliwebMetaDescription");
       function setupRuliwebAiReveal(config) {
         const mode = config.ruliwebAiRevealMode ?? "off";
-        console.log("[Aru][reveal] setup", {
+        console2.log("[Aru][reveal] setup", {
           mode,
           href: location.href,
           isRead: isRuliwebReadPage(),
@@ -1633,14 +2312,17 @@
       }
       __name(setupRuliwebAiReveal, "setupRuliwebAiReveal");
       async function init() {
-        console.info("[Aru Source Captioner] content loaded", {
+        console2.info("[Aru Source Captioner] content loaded", {
           href: location.href,
           userAgent: navigator.userAgent,
           exifrAvailable: typeof exifr !== "undefined"
         });
         const config = await loadConfig();
+        if (!effectGate.allows()) {
+          return;
+        }
         if (!config.enabled) {
-          console.info("[Aru Source Captioner] disabled — skipping content script");
+          console2.info("[Aru Source Captioner] disabled — skipping content script");
           return;
         }
         if (isReadPage()) {
@@ -1648,25 +2330,25 @@
           setupCommentSourceCaptioner(config);
           startCommentObserver();
           setupRuliwebAiReveal(config);
-          console.info("[Aru Source Captioner] read page active — comment source button enabled", {
+          console2.info("[Aru Source Captioner] read page active — comment source button enabled", {
             strictAllowlist: config.strictAllowlist,
             allowHttp: config.allowHttp
           });
           return;
         }
         if (typeof exifr === "undefined") {
-          console.warn("[Aru Source Captioner] exifr not loaded — running in filename-only fallback mode");
+          console2.warn("[Aru Source Captioner] exifr not loaded — running in filename-only fallback mode");
         }
         attachFileInputListeners(config);
         startEditorObserver(config);
-        console.info("[Aru Source Captioner] phase 2B active — caption insertion enabled", {
+        console2.info("[Aru Source Captioner] phase 2B active — caption insertion enabled", {
           strictAllowlist: config.strictAllowlist,
           allowHttp: config.allowHttp
         });
       }
       __name(init, "init");
       init().catch((err) => {
-        console.warn("[Aru Source Captioner] init failed:", err);
+        console2.warn("[Aru Source Captioner] init failed:", err);
       });
     }, "bootstrap");
     runBootstrap1();

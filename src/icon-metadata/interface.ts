@@ -1,3 +1,5 @@
+import { contextEffectGate } from "../runtime/context-effect-gate.ts";
+import { sessionDrafts } from "../runtime/session-resources.ts";
 import type { MetadataImage } from "./models.ts";
 import type { BridgeClient, DynamicApi } from "../runtime/contracts.ts";
 import type { CodedError } from "../runtime/contracts.ts";
@@ -12,10 +14,19 @@ import {
   selectModuleExports,
 } from "../runtime/module-scope.ts";
 
+interface MetadataDraft {
+  tags: string[];
+  free: string;
+  search: string;
+  operation: string;
+  checkbox: boolean;
+}
+
 export function createMetadataInterface({
   environment = defaultEnvironment,
   dependencies = {},
 }: FactoryOptions = {}) {
+  const effectGate = contextEffectGate(environment);
   const { URL } = environment;
 
   let metadata = createModuleScope(
@@ -36,6 +47,7 @@ export function createMetadataInterface({
       declare closed: boolean;
 
       declare receive: EventListener;
+      declare detachGate: (() => void) | undefined;
       constructor(doc: Document) {
         this.doc = doc;
         this.pending = new Map();
@@ -59,7 +71,13 @@ export function createMetadataInterface({
           }
           g.clearTimeout(item.timer);
           this.pending.delete(p.requestId);
-          if (p.ok) {
+          if (!effectGate.allows()) {
+            item.reject(
+              Object.assign(new Error("확장 컨텍스트가 종료되었습니다."), {
+                code: "CONTEXT_INVALIDATED",
+              }),
+            );
+          } else if (p.ok) {
             item.resolve(p.result);
           } else {
             item.reject(
@@ -70,8 +88,14 @@ export function createMetadataInterface({
           }
         };
         doc.addEventListener("aru-metadata-response-v1", this.receive);
+        this.detachGate = effectGate.onStop(() => this.destroy());
       }
       request<T = DynamicApi>(op: any, body = {}): Promise<T> {
+        try {
+          effectGate.assert();
+        } catch (error) {
+          return Promise.reject(error);
+        }
         if (this.closed) {
           return Promise.reject(new Error("편집기가 종료되었습니다."));
         }
@@ -107,6 +131,10 @@ export function createMetadataInterface({
         });
       }
       destroy() {
+        if (this.closed) {
+          return;
+        }
+        this.detachGate?.();
         this.closed = true;
         this.doc.removeEventListener("aru-metadata-response-v1", this.receive);
         for (const p of this.pending.values()) {
@@ -119,23 +147,44 @@ export function createMetadataInterface({
     const api = g.browser || g.chrome;
     const Browser = {
       async active() {
-        if (!api?.storage?.sync) {
-          return false;
-        }
-        let values;
-        if (g.browser) {
-          values = await api.storage.sync.get(["enabled", "aruIconsOptions"]);
-        } else {
-          values = await new Promise((resolve) =>
-            api.storage.sync.get(
-              ["enabled", "aruIconsOptions"],
-              (v: DynamicApi) => resolve(api.runtime?.lastError ? {} : v),
-            ),
+        try {
+          if (!effectGate.allows()) {
+            return false;
+          }
+          if (!api?.storage?.sync) {
+            return false;
+          }
+          let values;
+          if (g.browser) {
+            values = await api.storage.sync.get(["enabled", "aruIconsOptions"]);
+          } else {
+            values = await new Promise((resolve) =>
+              api.storage.sync.get(
+                ["enabled", "aruIconsOptions"],
+                (v: DynamicApi) => {
+                  try {
+                    const error = api.runtime?.lastError;
+                    if (error) {
+                      effectGate.observeError(error.message);
+                    }
+                    resolve(error ? {} : v);
+                  } catch (error) {
+                    effectGate.observeError(error);
+                    resolve({});
+                  }
+                },
+              ),
+            );
+          }
+          return (
+            effectGate.allows() &&
+            values?.enabled !== false &&
+            values?.aruIconsOptions?.enabled === true
           );
+        } catch (error) {
+          effectGate.observeError(error);
+          throw error;
         }
-        return (
-          values?.enabled !== false && values?.aruIconsOptions?.enabled === true
-        );
       },
       subscribe(fn: () => void) {
         const listener = (
@@ -204,21 +253,26 @@ export function createMetadataInterface({
       declare frame: any;
 
       declare previewTimer: number | undefined;
+      declare restoredDraft: MetadataDraft | undefined;
       constructor({
         document,
         client,
         token,
         onClose,
+        draft,
       }: {
         document: Document;
         client: BridgeClient;
         token: string;
         onClose: () => void;
+        draft?: MetadataDraft;
       }) {
+        effectGate.assert();
         this.doc = document;
         this.client = client;
         this.token = token;
         this.onClose = onClose;
+        this.restoredDraft = draft;
         this.selection = new M.Selection();
         this.images = [];
         this.filtered = [];
@@ -230,6 +284,18 @@ export function createMetadataInterface({
         this.host = document.createElement("div");
         this.host.dataset.aruMetadataPanel = "";
         this.shadow = this.host.attachShadow({ mode: "open" });
+        // 무효화 시 입력값은 남겨 복사할 수 있게 하고 확장 동작으로 이어지는 이벤트만 막는다.
+        for (const type of ["click", "input", "change", "keydown", "submit"]) {
+          this.shadow.addEventListener(
+            type,
+            (event: Event) => {
+              if (!effectGate.allows()) {
+                event.stopImmediatePropagation();
+              }
+            },
+            true,
+          );
+        }
         this.shadow.innerHTML = `<style>${CSS}</style><div class="overlay"><section class="dialog" role="dialog" aria-modal="true" aria-labelledby="title"><header class="header"><h2 id="title">아이콘 태그</h2><button type="button" data-action="close">닫기</button></header><div class="body"><div class="controls"><input class="search" type="search" placeholder="번호·이름·태그 검색" aria-label="이미지 필터"><button type="button" data-action="filtered">검색 결과 선택</button><button type="button" data-action="all">전체 선택</button><button type="button" data-action="clear">선택 해제</button><label><input type="checkbox" class="checkbox"> 체크박스 선택</label></div><div class="note summary" aria-live="polite"></div><div class="viewport" tabindex="0" aria-label="이미지 다중 선택 목록"><div class="space"></div></div><p class="note">Ctrl로 추가 선택 · Shift로 범위 선택 · Ctrl+A로 검색 결과 선택</p><div class="fixed" aria-label="고정 태그"></div><div class="controls"><input class="free" aria-label="자유 태그" placeholder="자유 태그 입력"><button type="button" data-action="tag">태그 추가</button><select class="operation" aria-label="태그 작업"><option value="add">추가 · 기존 태그 보존</option><option value="remove">제거 · 지정한 태그만</option><option value="replace">교체 · 기존 태그 덮어쓰기</option></select></div><div class="chips" aria-label="이번 작업의 태그"></div><p class="note operation-note"></p><div class="status" role="status" aria-live="polite"></div></div><footer class="footer"><span class="change-count">이미지를 선택해 주세요.</span><button type="button" data-action="refresh">목록 갱신</button><button type="button" data-action="undo" disabled>실행 취소</button><button type="button" data-action="redo" disabled>다시 실행</button><button type="button" class="apply" data-action="apply" disabled>편집기에 적용</button></footer></section></div>`;
         this.uiCleanup = icons?.DesignSystem?.attach(this.shadow);
         icons?.DesignSystem?.modalHeader(this.shadow.querySelector("header"), {
@@ -333,6 +399,14 @@ export function createMetadataInterface({
           this.observer.observe(this.viewport);
         }
         document.body.append(this.host);
+        // 초안 문자열은 효과 권한이 아니다. scan 실패 때도 복사할 수 있도록 먼저 복원한다.
+        if (draft) {
+          this.tags = [...draft.tags];
+          this.q(".free").value = draft.free;
+          this.q(".search").value = draft.search;
+          this.q(".operation").value = draft.operation;
+          this.q(".checkbox").checked = draft.checkbox;
+        }
         this.q(".search").focus();
         this.load();
       }
@@ -343,8 +417,20 @@ export function createMetadataInterface({
             token: this.token,
             session: this.session,
           });
-          if (!this.closed) {
+          if (!this.closed && effectGate.allows()) {
             this.accept(data);
+            const draft = this.restoredDraft;
+            if (draft) {
+              this.restoredDraft = undefined;
+              this.tags = [...draft.tags];
+              this.q(".free").value = draft.free;
+              this.q(".search").value = draft.search;
+              this.q(".operation").value = draft.operation;
+              this.q(".checkbox").checked = draft.checkbox;
+              // MAIN handle은 새 scan에서만 얻는다. 이전 선택을 자동 적용하지 않는다.
+              this.filter();
+              this.changed();
+            }
             this.status(
               data.collisions
                 ? `중복 ID ${data.collisions}개: 적용할 때 선택한 이미지의 충돌만 정리합니다.`
@@ -358,7 +444,7 @@ export function createMetadataInterface({
           );
         } finally {
           this.setBusy(false);
-          if (!this.closed) {
+          if (!this.closed && effectGate.allows()) {
             this.q(".search").focus();
           }
         }
@@ -397,7 +483,7 @@ export function createMetadataInterface({
         }
         this.frame = g.requestAnimationFrame(() => {
           this.frame = null;
-          if (!this.closed) {
+          if (!this.closed && effectGate.allows()) {
             this.render();
           }
         });
@@ -462,7 +548,7 @@ export function createMetadataInterface({
             img.addEventListener(
               "error",
               () => {
-                if (!this.closed) {
+                if (!this.closed && effectGate.allows()) {
                   img.removeAttribute("src");
                   img.alt = "썸네일 로딩 실패 · 다시 누르면 재시도";
                   b.dataset.failed = "true";
@@ -703,7 +789,7 @@ export function createMetadataInterface({
             token: this.token,
             session: this.session,
           });
-          if (!this.closed) {
+          if (!this.closed && effectGate.allows()) {
             this.space.replaceChildren();
             this.accept(data);
             this.status(
@@ -717,7 +803,7 @@ export function createMetadataInterface({
           );
         } finally {
           this.setBusy(false);
-          if (!this.closed) {
+          if (!this.closed && effectGate.allows()) {
             this.q("[data-action=apply]").focus();
           }
         }
@@ -730,7 +816,7 @@ export function createMetadataInterface({
         this.selection.clear();
         try {
           const data = await this.client.request(op, { session: this.session });
-          if (!this.closed) {
+          if (!this.closed && effectGate.allows()) {
             this.space.replaceChildren();
             this.accept(data);
             this.status(
@@ -747,7 +833,7 @@ export function createMetadataInterface({
           );
         } finally {
           this.setBusy(false);
-          if (!this.closed) {
+          if (!this.closed && effectGate.allows()) {
             this.q(".search").focus();
           }
         }
@@ -829,6 +915,38 @@ export function createMetadataInterface({
         this.disposed = false;
         this.generation = 0;
         this.client = new M.Client(document);
+        if (effectGate.documentGate) {
+          effectGate.onStop(() => {
+            if (effectGate.documentGate!.allows()) {
+              const panel = this.panel;
+              const rec = Array.from(this.entries.values()).find(
+                (item: any) => item.token === panel?.token,
+              ) as DynamicApi | undefined;
+              if (panel && rec) {
+                sessionDrafts(g)?.set(rec.root, {
+                  tags: [...panel.tags],
+                  free: panel.q(".free").value,
+                  search: panel.q(".search").value,
+                  operation: panel.q(".operation").value,
+                  checkbox: panel.q(".checkbox").checked,
+                } satisfies MetadataDraft);
+              }
+              this.destroy();
+            } else {
+              // terminal 컨텍스트에서는 기존 입력을 복사할 수 있게 두고 외부 자원만 닫는다.
+              this.disposed = true;
+              this.active = false;
+              ++this.generation;
+              this.unsubscribe?.();
+              this.observer?.disconnect();
+              this.doc.removeEventListener(
+                "aru-metadata-count-v1",
+                this.countListener,
+              );
+              this.client.destroy();
+            }
+          });
+        }
       }
       async start() {
         this.unsubscribe = this.browser.subscribe(() => this.options());
@@ -839,12 +957,17 @@ export function createMetadataInterface({
         let active = false;
         try {
           active = await this.browser.active();
-        } catch (_) {}
+        } catch (error) {
+          effectGate.observeError(error);
+        }
         if (
           this.disposed ||
           generation !== this.generation ||
           active === this.active
         ) {
+          return;
+        }
+        if (!effectGate.allows()) {
           return;
         }
         this.active = active;
@@ -855,7 +978,13 @@ export function createMetadataInterface({
         }
       }
       enable() {
+        if (!effectGate.allows()) {
+          return;
+        }
         this.countListener = (e) => {
+          if (!effectGate.allows()) {
+            return;
+          }
           if (typeof (e as CustomEvent<string>).detail !== "string") {
             return;
           }
@@ -903,7 +1032,7 @@ export function createMetadataInterface({
         this.timer = g.setTimeout(() => this.discover(), 160);
       }
       discover() {
-        if (!this.active) {
+        if (!this.active || !effectGate.allows()) {
           return;
         }
         for (const [root, r] of this.entries) {
@@ -1020,9 +1149,13 @@ export function createMetadataInterface({
           document: this.doc,
           client: this.client,
           token: rec.token,
+          draft: sessionDrafts(g)?.get(rec.root) as MetadataDraft | undefined,
           onClose: () => {
             this.panel = null;
-            if (rec.root.isConnected) {
+            if (effectGate.allows()) {
+              sessionDrafts(g)?.delete(rec.root);
+            }
+            if (rec.root.isConnected && effectGate.allows()) {
               rec.button.focus();
             }
           },

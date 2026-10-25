@@ -7,6 +7,123 @@
       __defProp(target, name, { get: all[name], enumerable: true });
   };
 
+  // docs/source/runtime/context-effect-gate.mjs
+  var gates = /* @__PURE__ */ new WeakMap();
+  var sharedGateKey = /* @__PURE__ */ Symbol.for("aru.context-effect-gate.v1");
+  var sessionGateKey = /* @__PURE__ */ Symbol.for("aru.effect-session-gate.v1");
+  function contextEffectGate(environment) {
+    const scoped = Reflect.get(environment, sessionGateKey);
+    if (scoped) {
+      return scoped;
+    }
+    const root = environment;
+    const key = root.window ?? environment;
+    let shared;
+    if (root.window) {
+      try {
+        shared = Reflect.get(key, sharedGateKey);
+      } catch {
+      }
+    }
+    const existing = shared ?? gates.get(key);
+    if (existing) {
+      return existing;
+    }
+    let state = "active";
+    let runtimeId;
+    const stopped = /* @__PURE__ */ new Set();
+    const terminal = /* @__PURE__ */ __name(() => state === "invalidated" || state === "disposed", "terminal");
+    const stop = /* @__PURE__ */ __name((next) => {
+      if (terminal()) {
+        return;
+      }
+      state = next;
+      root.removeEventListener?.("pagehide", dispose);
+      for (const callback of [...stopped]) {
+        try {
+          callback();
+        } catch (error) {
+          console.warn("[Aru] 컨텍스트 종료 정리 실패", error);
+        }
+      }
+      stopped.clear();
+    }, "stop");
+    const dispose = /* @__PURE__ */ __name(() => stop("disposed"), "dispose");
+    const gate = {
+      claimPageLifecycle() {
+        root.removeEventListener?.("pagehide", dispose);
+      },
+      get state() {
+        return state;
+      },
+      allows() {
+        if (terminal()) {
+          return false;
+        }
+        try {
+          const runtime = root.browser?.runtime ?? root.chrome?.runtime;
+          const id = runtime?.id;
+          if (typeof id === "string" && id) {
+            if (runtimeId && runtimeId !== id) {
+              stop("invalidated");
+              return false;
+            }
+            runtimeId = id;
+          } else if (runtimeId) {
+            stop("invalidated");
+            return false;
+          }
+          state = "active";
+          return true;
+        } catch (error) {
+          gate.observeError(error);
+          if (!terminal()) {
+            state = "suspended";
+          }
+          return false;
+        }
+      },
+      assert() {
+        if (!gate.allows()) {
+          throw Object.assign(new Error("확장 컨텍스트에서 새 작업을 실행할 수 없습니다."), {
+            code: terminal() ? "CONTEXT_INVALIDATED" : "CONTEXT_SUSPENDED"
+          });
+        }
+      },
+      invalidate: /* @__PURE__ */ __name(() => stop("invalidated"), "invalidate"),
+      dispose,
+      observeError(error) {
+        if (/extension context invalidated/i.test(error instanceof Error ? error.message : String(error))) {
+          stop("invalidated");
+        }
+      },
+      onStop(callback) {
+        if (terminal()) {
+          callback();
+          return () => {
+          };
+        }
+        stopped.add(callback);
+        return () => {
+          stopped.delete(callback);
+        };
+      }
+    };
+    gates.set(key, gate);
+    if (root.window) {
+      try {
+        Object.defineProperty(key, sharedGateKey, { value: gate });
+      } catch {
+      }
+    }
+    gate.allows();
+    if (!terminal()) {
+      root.addEventListener?.("pagehide", dispose, { once: true });
+    }
+    return gate;
+  }
+  __name(contextEffectGate, "contextEffectGate");
+
   // docs/source/runtime/contracts.mjs
   var defaultEnvironment = globalThis;
 
@@ -1801,12 +1918,18 @@
 
   // docs/source/ruliweb-icons/composer-adapter.mjs
   function createComposerAdapter({ environment: global = defaultEnvironment, site = createSiteAdapter({ environment: global }), getDesignSystem = /* @__PURE__ */ __name(() => null, "getDesignSystem") } = {}) {
+    const effectGate = contextEffectGate(global);
     const { MutationObserver, AbortController, CustomEvent } = global;
     const requestAnimationFrame = /* @__PURE__ */ __name((callback) => global.requestAnimationFrame(callback), "requestAnimationFrame");
     const cancelAnimationFrame = /* @__PURE__ */ __name((frame) => global.cancelAnimationFrame(frame), "cancelAnimationFrame");
     const REQUEST = "aru-icons-composer-request-v1", RESPONSE = "aru-icons-composer-response-v1";
     const token = /* @__PURE__ */ __name(() => global.crypto.randomUUID().replaceAll("-", ""), "token");
     function request(document, op, payload = {}) {
+      try {
+        effectGate.assert();
+      } catch (error) {
+        return Promise.reject(error);
+      }
       const requestId = token();
       return new Promise((resolve, reject) => {
         let replied = false;
@@ -1825,7 +1948,11 @@
           }
           replied = true;
           document.removeEventListener(RESPONSE, listener);
-          if (reply.ok) {
+          if (!effectGate.allows()) {
+            reject(Object.assign(new Error("확장 컨텍스트가 종료되었습니다."), {
+              code: "CONTEXT_INVALIDATED"
+            }));
+          } else if (reply.ok) {
             resolve(reply.result);
           } else {
             reject(Object.assign(new Error(reply.error?.message || "작성기에 반영하지 못했습니다."), { code: reply.error?.code }));
@@ -2025,6 +2152,7 @@
           entry.pending = pending;
           try {
             const session = await pending;
+            effectGate.assert();
             if (this.stopped || !root.isConnected || this.entries.get(root) !== entry) {
               await request(this.document, "release", {
                 session: session.session

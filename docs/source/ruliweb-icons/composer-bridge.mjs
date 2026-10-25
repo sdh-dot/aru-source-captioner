@@ -173,6 +173,7 @@ export function createIconsComposerBridge({ environment = defaultEnvironment, de
             }
             return { url: value, video: nativeVideo, extension };
         }
+        global.addEventListener("pagehide", () => sessions.clear());
         function capture(token) {
             for (const [key, s] of sessions) {
                 if (Date.now() - s.created > TTL) {
