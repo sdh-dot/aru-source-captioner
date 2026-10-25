@@ -2000,21 +2000,46 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
         }
         lock.count++;
         lock.styles.forEach(({ node }) => node.style.setProperty("overflow", "hidden", "important"));
+        let released = false;
         return () => {
+          if (released) {
+            return;
+          }
+          released = true;
           if (--lock.count) {
             return;
           }
-          for (const { node, value, priority } of lock.styles) {
-            if (node.style.getPropertyValue("overflow") !== "hidden") {
-              continue;
+          let failed = false;
+          let firstError;
+          try {
+            for (const { node, value, priority } of lock.styles) {
+              if (lock.count > 0) {
+                break;
+              }
+              try {
+                if (node.style.getPropertyValue("overflow") !== "hidden") {
+                  continue;
+                }
+                if (value) {
+                  node.style.setProperty("overflow", value, priority);
+                } else {
+                  node.style.removeProperty("overflow");
+                }
+              } catch (error) {
+                if (!failed) {
+                  failed = true;
+                  firstError = error;
+                }
+              }
             }
-            if (value) {
-              node.style.setProperty("overflow", value, priority);
-            } else {
-              node.style.removeProperty("overflow");
+          } finally {
+            if (lock.count === 0 && scrollLocks.get(doc) === lock) {
+              scrollLocks.delete(doc);
             }
           }
-          scrollLocks.delete(doc);
+          if (failed) {
+            throw firstError;
+          }
         };
       }
       __name(lockPage, "lockPage");
@@ -2742,15 +2767,16 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
         const byIconId = /* @__PURE__ */ __name((id) => (pack && pack.icons || []).find((icon) => icon.id === id), "byIconId");
         const tagsFor = /* @__PURE__ */ __name((icon) => displayTags.get(icon.id) || [], "tagsFor");
         const sourceOf = /* @__PURE__ */ __name((icon) => icon.librarySource || (pack && pack.sources || []).find((source) => source.sourceId === icon.sourceId || source.id === icon.sourceId), "sourceOf");
-        function pauseMedia(node) {
+        function pauseMedia(node, cleanup) {
+          const run = cleanup || ((_stage, action) => action());
           node.querySelectorAll("video").forEach((video) => {
-            mediaCleanups.get(video)?.();
+            run("MEDIA_LISTENERS", () => mediaCleanups.get(video)?.());
             mediaCleanups.delete(video);
             try {
-              video.pause();
-              video.removeAttribute("src");
-              video.querySelectorAll("source").forEach((s) => s.removeAttribute("src"));
-              video.load();
+              run("MEDIA_PAUSE", () => video.pause());
+              run("MEDIA_SOURCE", () => video.removeAttribute("src"));
+              run("MEDIA_SOURCES", () => video.querySelectorAll("source").forEach((source) => run("MEDIA_SOURCE", () => source.removeAttribute("src"))));
+              run("MEDIA_LOAD", () => video.load());
             } catch (_) {
             }
           });
@@ -2763,23 +2789,24 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
           }
         }
         __name(cancelSearch, "cancelSearch");
-        function teardownGroups() {
-          mediaBudget?.reset();
+        function teardownGroups(cleanup) {
+          const run = cleanup || ((_stage, action) => action());
+          run("GROUP_BUDGET", () => mediaBudget?.reset());
           if (virtualFrame) {
-            cancelAnimationFrame(virtualFrame);
+            run("VIRTUAL_FRAME", () => cancelAnimationFrame(virtualFrame));
             virtualFrame = 0;
           }
           if (visibilityObserver) {
-            visibilityObserver.disconnect();
+            run("VISIBILITY_OBSERVER", () => visibilityObserver.disconnect());
             visibilityObserver = null;
           }
           if (resizeObserver) {
-            resizeObserver.disconnect();
+            run("RESIZE_OBSERVER", () => resizeObserver.disconnect());
             resizeObserver = null;
           }
           contexts.forEach((context) => {
-            context.viewport.removeEventListener("scroll", context.scrollHandler);
-            pauseMedia(context.content);
+            run("GROUP_LISTENER", () => context.viewport.removeEventListener("scroll", context.scrollHandler));
+            run("GROUP_MEDIA", () => pauseMedia(context.content, cleanup));
           });
           contexts = [];
         }
@@ -3908,51 +3935,76 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
         }
         __name(destroy, "destroy");
         function disposePicker() {
-          detachGate?.();
-          for (const type of [
-            "click",
-            "input",
-            "change",
-            "keydown",
-            "submit",
-            "pointerdown",
-            "dblclick"
-          ]) {
-            root.removeEventListener(type, guardEvent, true);
+          const failures = [];
+          let firstError;
+          const cleanup = /* @__PURE__ */ __name((stage, action) => {
+            try {
+              action();
+            } catch (error) {
+              if (!failures.length) {
+                firstError = error;
+              }
+              failures.push(stage);
+            }
+          }, "cleanup");
+          cleanup("CONTEXT_GATE", () => detachGate?.());
+          for (const type of ["click", "input", "change", "keydown", "submit", "pointerdown", "dblclick"]) {
+            cleanup("ROOT_EVENTS", () => root.removeEventListener(type, guardEvent, true));
           }
-          clearTimeout2(toastTimer);
-          cancelSearch();
-          previewCleanup();
-          library?.cancel();
-          uiCleanup?.();
+          cleanup("TOAST_TIMER", () => clearTimeout2(toastTimer));
+          cleanup("SEARCH_TIMER", cancelSearch);
+          cleanup("PREVIEW", previewCleanup);
+          cleanup("LIBRARY", () => library?.cancel());
+          cleanup("UI", () => uiCleanup?.());
           if (libraryFrame) {
-            cancelAnimationFrame(libraryFrame);
+            cleanup("LIBRARY_FRAME", () => cancelAnimationFrame(libraryFrame));
           }
           if (initialFocusFrame) {
-            cancelAnimationFrame(initialFocusFrame);
+            cleanup("INITIAL_FOCUS_FRAME", () => cancelAnimationFrame(initialFocusFrame));
           }
-          events.abort();
-          teardownGroups();
-          pauseMedia(root);
-          mediaBudget?.destroy();
-          catalogView?.destroy();
-          root.querySelectorAll("img,source").forEach((n) => n.removeAttribute("src"));
+          cleanup("EVENTS", () => events.abort());
+          cleanup("GROUPS", () => teardownGroups(cleanup));
+          cleanup("MEDIA", () => pauseMedia(root, cleanup));
+          cleanup("MEDIA_BUDGET", () => mediaBudget?.destroy());
+          cleanup("CATALOG", () => catalogView?.destroy());
+          cleanup("IMAGE_SOURCES", () => root.querySelectorAll("img,source").forEach((node) => cleanup("IMAGE_SOURCE", () => node.removeAttribute("src"))));
           pack = null;
           index = null;
-          displayTags.clear();
+          cleanup("DISPLAY_TAGS", () => displayTags.clear());
           collectionDiagnostics = null;
           selectedIconId = null;
           result2 = { groups: [], uniqueCount: 0, membershipCount: 0 };
-          folds.forEach((item) => item.dispose());
+          folds.forEach((item) => cleanup("FOLD", () => item.dispose()));
           if (!folds.size) {
-            fold.dispose();
+            cleanup("FOLD", () => fold.dispose());
           }
           folds.clear();
-          root.replaceChildren();
-          host.remove();
-          unlockPage();
-          if (opener && opener.isConnected && typeof opener.focus === "function" && !(mobileInput() && opener.matches?.('input,textarea,[contenteditable="true"]'))) {
-            opener.focus({ preventScroll: true });
+          cleanup("SHADOW_DOM", () => root.replaceChildren());
+          cleanup("HOST", () => host.remove());
+          if (host.parentNode) {
+            cleanup("HOST_FALLBACK", () => host.parentNode?.removeChild(host));
+          }
+          cleanup("SCROLL_LOCK", unlockPage);
+          cleanup("FOCUS", () => {
+            const openerHost = opener?.getRootNode?.()?.host;
+            const focusedPicker = document.activeElement?.closest('[data-aru-icons-picker="true"]');
+            if (scrollLocks.has(document) && (!openerHost?.matches('[data-aru-icons-picker="true"]') || focusedPicker && focusedPicker !== openerHost)) {
+              return;
+            }
+            if (opener && opener.isConnected && typeof opener.focus === "function" && !(mobileInput() && opener.matches?.('input,textarea,[contenteditable="true"]'))) {
+              opener.focus({ preventScroll: true });
+            }
+          });
+          if (failures.length) {
+            try {
+              global.console?.warn?.("[Aru Icons] Picker cleanup failed", {
+                code: "PICKER_CLEANUP_FAILED",
+                stages: failures,
+                count: failures.length
+              });
+            } catch (_) {
+            }
+            throw firstError;
           }
         }
         __name(disposePicker, "disposePicker");
