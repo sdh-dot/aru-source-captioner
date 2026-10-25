@@ -52,6 +52,8 @@ export function* parsePngItxtChunks(
   }
 }
 
+// iTXt의 구분자와 압축 정보를 확인한 뒤 JSON 텍스트 영역만 반환한다.
+// Firefox에서 다른 realm의 view 생성자에 접근하지 않도록 바이트 범위를 직접 읽는다.
 export function parseItxtChunk(data: Uint8Array | null | undefined) {
   if (!data || data.length < 6) {
     return null;
@@ -71,7 +73,10 @@ export function parseItxtChunk(data: Uint8Array | null | undefined) {
 
   let keyword;
   try {
-    keyword = String.fromCodePoint(...data.subarray(0, kwEnd));
+    keyword = "";
+    for (let i = 0; i < kwEnd; i++) {
+      keyword += String.fromCodePoint(data[i]);
+    }
   } catch {
     return null;
   }
@@ -104,7 +109,11 @@ export function parseItxtChunk(data: Uint8Array | null | undefined) {
     return null;
   }
 
-  const textBytes = data.subarray(tkwEnd + 1);
+  const textBytes = new Uint8Array(
+    data.buffer,
+    data.byteOffset + tkwEnd + 1,
+    data.length - tkwEnd - 1,
+  );
 
   return { keyword, compressionFlag, compressionMethod, textBytes };
 }

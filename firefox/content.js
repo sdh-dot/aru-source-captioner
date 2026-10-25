@@ -767,7 +767,10 @@
     }
     let keyword;
     try {
-      keyword = String.fromCodePoint(...data.subarray(0, kwEnd));
+      keyword = "";
+      for (let i = 0; i < kwEnd; i++) {
+        keyword += String.fromCodePoint(data[i]);
+      }
     } catch {
       return null;
     }
@@ -796,7 +799,7 @@
     if (tkwEnd === -1) {
       return null;
     }
-    const textBytes = data.subarray(tkwEnd + 1);
+    const textBytes = new Uint8Array(data.buffer, data.byteOffset + tkwEnd + 1, data.length - tkwEnd - 1);
     return { keyword, compressionFlag, compressionMethod, textBytes };
   }
   __name(parseItxtChunk, "parseItxtChunk");
