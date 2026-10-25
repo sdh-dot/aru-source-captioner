@@ -1,0 +1,20 @@
+[
+  {"name":"string-id","payload":{"artwork_id":" 143805797 "},"urls":["https://www.pixiv.net/artworks/143805797"]},
+  {"name":"string-url","payload":{"artwork_url":" https://www.pixiv.net/artworks/55667788 "},"urls":["https://www.pixiv.net/artworks/55667788"]},
+  {"name":"number-id","payload":{"artwork_id":143805797},"urls":[]},
+  {"name":"object-id","payload":{"artwork_id":{"id":"143805797"}},"urls":[]},
+  {"name":"array-id","payload":{"artwork_id":["143805797"]},"urls":[]},
+  {"name":"boolean-id","payload":{"artwork_id":true},"urls":[]},
+  {"name":"null-fields","payload":{"artwork_id":null,"artwork_url":null},"urls":[]},
+  {"name":"empty-fields","payload":{"artwork_id":"  ","artwork_url":""},"urls":[]},
+  {"name":"undefined-fields","payload":{},"urls":[]},
+  {"name":"valid-url-bad-id","payload":{"artwork_url":"https://www.pixiv.net/artworks/55667788","artwork_id":143805797},"urls":["https://www.pixiv.net/artworks/55667788"]},
+  {"name":"number-url-then-valid","payload":{"artwork_url":143805797,"source_url":"https://www.pixiv.net/artworks/66778899"},"urls":["https://www.pixiv.net/artworks/66778899"]},
+  {"name":"object-url-then-valid","payload":{"artwork_url":{"url":"https://www.pixiv.net/artworks/99999999"},"source_url":"https://www.pixiv.net/artworks/66778899"},"urls":["https://www.pixiv.net/artworks/66778899"]},
+  {"name":"array-url-then-valid","payload":{"artwork_url":["https://www.pixiv.net/artworks/99999999"],"source_url":"https://www.pixiv.net/artworks/66778899"},"urls":["https://www.pixiv.net/artworks/66778899"]},
+  {"name":"invalid-string-then-valid","payload":{"artwork_url":"javascript:alert(1)","source_url":"https://www.pixiv.net/artworks/66778899"},"urls":["https://www.pixiv.net/artworks/66778899"]},
+  {"name":"artist-then-valid","payload":{"artwork_url":"https://www.pixiv.net/users/143805797","artworkUrl":"https://www.pixiv.net/artworks/77889900"},"urls":["https://www.pixiv.net/artworks/77889900"]},
+  {"name":"all-invalid-with-nested-url","payload":{"artwork_url":{"url":"https://www.pixiv.net/artworks/99999999"},"source_url":["https://www.pixiv.net/artworks/88888888"],"artwork_id":["143805797"]},"urls":[]},
+  {"name":"ordered-urls-and-id","payload":{"artwork_url":"https://www.pixiv.net/artworks/55667788","source_url":"https://www.pixiv.net/artworks/66778899","artworkUrl":"https://www.pixiv.net/artworks/77889900","artwork_id":"143805797"},"urls":["https://www.pixiv.net/artworks/55667788","https://www.pixiv.net/artworks/66778899","https://www.pixiv.net/artworks/77889900","https://www.pixiv.net/artworks/143805797"]},
+  {"name":"bad-id-valid-original-name","payload":{"artwork_id":{},"original_filename":"143805797_p0_master1200 (2).jpg"},"urls":["https://www.pixiv.net/artworks/143805797"],"pngUrls":[]}
+]
