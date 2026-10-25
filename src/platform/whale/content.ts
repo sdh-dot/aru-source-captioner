@@ -1,3 +1,5 @@
+import { contentDispatcher } from "../../runtime/content-dispatcher.ts";
+import { createSessionEnvironment } from "../../runtime/session-resources.ts";
 import { contextEffectGate } from "../../runtime/context-effect-gate.ts";
 import { readSettings } from "../../runtime/settings-read.ts";
 import { parsePixivFilenameUrl } from "../../source-caption/pixiv-filename.ts";
@@ -17,17 +19,21 @@ import {
 // 브라우저별 기존 초기화·저장 키·사용자 설정과 이벤트 계약을 유지한다.
 import { createModuleScope } from "../../runtime/module-scope.ts";
 
-const installedDocuments = new WeakSet<Document>();
-
 export function installWhaleContent({
   environment = defaultEnvironment,
   dependencies = {},
 }: FactoryOptions = {}) {
   const effectGate = contextEffectGate(environment);
-  if (!effectGate.allows() || installedDocuments.has(environment.document)) {
+  if (!effectGate.allows()) {
     return {};
   }
-  installedDocuments.add(environment.document);
+  const dispatcher = contentDispatcher(environment, effectGate);
+  if (!dispatcher) {
+    return {};
+  }
+  const scope = createSessionEnvironment(environment, effectGate);
+  environment = scope.environment;
+  const resources = scope.resources;
   const window = environment.window ?? environment;
   const {
     document,
@@ -151,42 +157,38 @@ export function installWhaleContent({
       if (!effectGate.allows()) {
         return;
       }
-      document.addEventListener(
-        "change",
-        async (ev) => {
-          const target = ev.target;
-          if (
-            !(target instanceof HTMLInputElement) ||
-            target.type !== "file" ||
-            !target.files?.length
-          ) {
+      dispatcher!.setChange(async (ev) => {
+        const target = ev.target;
+        if (
+          !(target instanceof HTMLInputElement) ||
+          target.type !== "file" ||
+          !target.files?.length
+        ) {
+          return;
+        }
+        if (handledFileEvents.has(ev)) {
+          return;
+        }
+        handledFileEvents.add(ev);
+        const images = Array.from(target.files).filter((file) =>
+          file?.type?.startsWith("image/"),
+        );
+        if (!images.length) {
+          return;
+        }
+        // 사용자가 켠 pixel table 경로와 사이트의 기존 입력 이벤트를 유지한다.
+        if ((config.pixelTableMode ?? "off") !== "off") {
+          const isMobile = isMobileAutoInsertEnvironment();
+          if (shouldUsePixelTableInsert(config, isMobile)) {
+            ev.stopImmediatePropagation();
+            ev.stopPropagation();
+            ev.preventDefault();
+            await handlePixelTableInsert(images, config, isMobile);
             return;
           }
-          if (handledFileEvents.has(ev)) {
-            return;
-          }
-          handledFileEvents.add(ev);
-          const images = Array.from(target.files).filter((file) =>
-            file?.type?.startsWith("image/"),
-          );
-          if (!images.length) {
-            return;
-          }
-          // 사용자가 켠 pixel table 경로와 사이트의 기존 입력 이벤트를 유지한다.
-          if ((config.pixelTableMode ?? "off") !== "off") {
-            const isMobile = isMobileAutoInsertEnvironment();
-            if (shouldUsePixelTableInsert(config, isMobile)) {
-              ev.stopImmediatePropagation();
-              ev.stopPropagation();
-              ev.preventDefault();
-              await handlePixelTableInsert(images, config, isMobile);
-              return;
-            }
-          }
-          await handleSelectedImageFiles(images, target);
-        },
-        true,
-      );
+        }
+        await handleSelectedImageFiles(images, target);
+      });
     }
 
     async function handleSelectedImageFiles(
@@ -1017,10 +1019,8 @@ export function installWhaleContent({
         existing: hasExistingSourceCaption,
         onStatus: publishUploadStatus,
       });
-      effectGate.onStop(() => uploadAttribution?.destroy());
-      window.addEventListener("pagehide", () => uploadAttribution?.destroy(), {
-        once: true,
-      });
+      const controller = uploadAttribution;
+      resources.own(() => controller!.destroy(), "upload-controller");
       return uploadAttribution;
     }
 
@@ -1485,6 +1485,9 @@ export function installWhaleContent({
       // skip되는 사고를 막기 위함이다. wrapper-level guard만 유지한다.
       if (wrapper.querySelector("." + COMMENT_BUTTON_CLASS)) {
         wrapper.dataset[COMMENT_BOUND_DATASET_KEY] = "1";
+        resources.own(() => {
+          delete wrapper.dataset[COMMENT_BOUND_DATASET_KEY];
+        });
         console.log(
           "[Aru Source Captioner] inject: skipped (button already in this wrapper)",
           wrapper,
@@ -1500,8 +1503,9 @@ export function installWhaleContent({
       button.textContent = "출처 추가";
       button.title = "현재 게시글 URL을 댓글에 출처로 추가합니다";
       button.dataset.aruSourceCommentButton = "1";
+      resources.own(() => button.remove());
 
-      button.addEventListener("click", (ev) => {
+      resources.listen(button, "click", (ev) => {
         // 사이트의 form submit / 다른 핸들러 트리거를 막는다.
         try {
           ev.preventDefault();
@@ -1572,8 +1576,11 @@ export function installWhaleContent({
         return false;
       }
       fileInput.dataset[COMMENT_FILE_BOUND_DATASET_KEY] = "1";
+      resources.own(() => {
+        delete fileInput.dataset[COMMENT_FILE_BOUND_DATASET_KEY];
+      });
 
-      fileInput.addEventListener("change", async (event) => {
+      resources.listen(fileInput, "change", async (event) => {
         if (!effectGate.allows()) {
           return;
         }
@@ -1680,6 +1687,9 @@ export function installWhaleContent({
           const ok = injectCommentSourceButton(wrapper);
           if (ok) {
             wrapper.dataset[COMMENT_BOUND_DATASET_KEY] = "1";
+            resources.own(() => {
+              delete wrapper.dataset[COMMENT_BOUND_DATASET_KEY];
+            });
             injected++;
           }
         }

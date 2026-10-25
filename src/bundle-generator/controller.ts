@@ -8,11 +8,15 @@ import {
   createModuleScope,
   selectModuleExports,
 } from "../runtime/module-scope.ts";
+import { contextEffectGate } from "../runtime/context-effect-gate.ts";
+import { sessionDrafts } from "../runtime/session-resources.ts";
+import type { DynamicApi } from "../runtime/contracts.ts";
 
 export function createBundleController({
   environment = defaultEnvironment,
   dependencies = {},
 }: FactoryOptions = {}) {
+  const effectGate = contextEffectGate(environment);
   let bundle = createModuleScope(
     dependencies.bundle,
     ["Browser", "Client", "Panel"],
@@ -181,9 +185,13 @@ export function createBundleController({
           client: this.client,
           token: rec.token,
           browser: this.browser,
+          restoredDraft: sessionDrafts(g, "bundle")?.get(rec.root),
           onClose: () => {
             this.panel = null;
-            if (rec.root.isConnected) {
+            if (effectGate.allows()) {
+              sessionDrafts(g, "bundle")?.delete(rec.root);
+            }
+            if (rec.root.isConnected && effectGate.allows()) {
               rec.button.focus();
             }
           },
@@ -211,6 +219,33 @@ export function createBundleController({
         // oxlint-disable-next-line unicorn/no-useless-spread -- 정리·외부 콜백의 재진입이 순회 대상을 바꾸더라도 이번 작업의 대상은 보존한다.
         for (const root of [...this.entries.keys()]) {
           this.remove(root);
+        }
+      }
+      suspend() {
+        const panel = this.panel;
+        const rec = Array.from(this.entries.values()).find(
+          (entry: DynamicApi) => entry.token === panel?.token,
+        ) as DynamicApi | undefined;
+        if (panel && rec) {
+          sessionDrafts(g, "bundle")?.set(rec.root, {
+            draft: panel.draft.snapshot(),
+            url: panel.q(".url").value,
+          });
+        }
+        if (effectGate.documentGate?.allows()) {
+          this.destroy();
+        } else {
+          this.disposed = true;
+          this.active = false;
+          ++this.generation;
+          this.unsubscribe?.();
+          this.observer?.disconnect();
+          this.client.destroy();
+          if (panel) {
+            panel.closed = true;
+            panel.reader.destroy();
+            panel.search.destroy();
+          }
         }
       }
       destroy() {

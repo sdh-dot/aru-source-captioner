@@ -27,8 +27,126 @@
   }
   __name(selectModuleExports, "selectModuleExports");
 
+  // docs/source/runtime/context-effect-gate.mjs
+  var gates = /* @__PURE__ */ new WeakMap();
+  var sharedGateKey = /* @__PURE__ */ Symbol.for("aru.context-effect-gate.v1");
+  var sessionGateKey = /* @__PURE__ */ Symbol.for("aru.effect-session-gate.v1");
+  function contextEffectGate(environment) {
+    const scoped = Reflect.get(environment, sessionGateKey);
+    if (scoped) {
+      return scoped;
+    }
+    const root = environment;
+    const key = root.window ?? environment;
+    let shared;
+    if (root.window) {
+      try {
+        shared = Reflect.get(key, sharedGateKey);
+      } catch {
+      }
+    }
+    const existing = shared ?? gates.get(key);
+    if (existing) {
+      return existing;
+    }
+    let state = "active";
+    let runtimeId;
+    const stopped = /* @__PURE__ */ new Set();
+    const terminal = /* @__PURE__ */ __name(() => state === "invalidated" || state === "disposed", "terminal");
+    const stop = /* @__PURE__ */ __name((next) => {
+      if (terminal()) {
+        return;
+      }
+      state = next;
+      root.removeEventListener?.("pagehide", dispose);
+      for (const callback of [...stopped]) {
+        try {
+          callback();
+        } catch (error) {
+          console.warn("[Aru] 컨텍스트 종료 정리 실패", error);
+        }
+      }
+      stopped.clear();
+    }, "stop");
+    const dispose = /* @__PURE__ */ __name(() => stop("disposed"), "dispose");
+    const gate = {
+      claimPageLifecycle() {
+        root.removeEventListener?.("pagehide", dispose);
+      },
+      get state() {
+        return state;
+      },
+      allows() {
+        if (terminal()) {
+          return false;
+        }
+        try {
+          const runtime = root.browser?.runtime ?? root.chrome?.runtime;
+          const id = runtime?.id;
+          if (typeof id === "string" && id) {
+            if (runtimeId && runtimeId !== id) {
+              stop("invalidated");
+              return false;
+            }
+            runtimeId = id;
+          } else if (runtimeId) {
+            stop("invalidated");
+            return false;
+          }
+          state = "active";
+          return true;
+        } catch (error) {
+          gate.observeError(error);
+          if (!terminal()) {
+            state = "suspended";
+          }
+          return false;
+        }
+      },
+      assert() {
+        if (!gate.allows()) {
+          throw Object.assign(new Error("확장 컨텍스트에서 새 작업을 실행할 수 없습니다."), {
+            code: terminal() ? "CONTEXT_INVALIDATED" : "CONTEXT_SUSPENDED"
+          });
+        }
+      },
+      invalidate: /* @__PURE__ */ __name(() => stop("invalidated"), "invalidate"),
+      dispose,
+      observeError(error) {
+        if (/extension context invalidated/i.test(error instanceof Error ? error.message : String(error))) {
+          stop("invalidated");
+        }
+      },
+      onStop(callback) {
+        if (terminal()) {
+          callback();
+          return () => {
+          };
+        }
+        stopped.add(callback);
+        return () => {
+          stopped.delete(callback);
+        };
+      }
+    };
+    gates.set(key, gate);
+    if (root.window) {
+      try {
+        Object.defineProperty(key, sharedGateKey, { value: gate });
+      } catch {
+      }
+    }
+    gate.allows();
+    if (!terminal()) {
+      root.addEventListener?.("pagehide", dispose, { once: true });
+    }
+    return gate;
+  }
+  __name(contextEffectGate, "contextEffectGate");
+
   // docs/source/bundle-generator/ui.mjs
   function createBundleUi({ environment = defaultEnvironment, dependencies = {} } = {}) {
+    const effectGate = contextEffectGate(environment);
     let bundle2 = createModuleScope(dependencies.bundle, [
       "Browser",
       "SourceReader",
@@ -49,8 +167,9 @@
           __name(this, "Panel");
         }
         constructor({ document = g.document, client, token, browser = B.Browser, reader = new B.SourceReader(), searcher, onClose = /* @__PURE__ */ __name(() => {
-        }, "onClose") }) {
+        }, "onClose"), restoredDraft }) {
           Object.assign(this, {
+            restoredDraft,
             doc: document,
             client,
             token,
@@ -69,6 +188,13 @@
           this.host = this.doc.createElement("div");
           this.host.dataset.aruBundlePanel = "";
           this.shadow = this.host.attachShadow({ mode: "open" });
+          for (const type of ["click", "input", "change", "keydown", "submit"]) {
+            this.shadow.addEventListener(type, (event) => {
+              if (!effectGate.allows()) {
+                event.stopImmediatePropagation();
+              }
+            }, true);
+          }
           this.shadow.innerHTML = `<style>${CSS}</style><div class="shade"><section class="dialog" role="dialog" aria-modal="true" aria-label="아이콘 통합"><header><strong>아이콘 통합</strong><button type="button" class="close" aria-label="닫기"><svg class="aru-ui-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m6 6 12 12M18 6 6 18"/></svg></button></header><main><p class="hint">원본 게시글을 모아 통합팩을 만듭니다. 게시글 저장은 직접 진행하세요.</p><p class="context hint"></p><label>통합팩 제목<input class="name" maxlength="240" placeholder="통합 아이콘팩 제목"></label><label for="aru-bundle-url">원본 아이콘 공유 게시글 URL</label><div class="lookup"><input id="aru-bundle-url" class="url" type="url" placeholder="https://bbs.ruliweb.com/community/board/98/read/…"><button type="button" class="add">조회 · 추가</button><button type="button" class="cancel" disabled>조회 취소</button></div><div class="status" role="status" aria-live="polite">에디터 확인 중…</div><p class="hint">드래그하거나 위·아래 버튼으로 순서를 바꾸세요.</p><ul class="refs" aria-label="원본 글별 그룹"></ul><div class="preview" hidden></div></main><footer><button type="button" class="save">초안 저장</button><button type="button" class="load">초안 불러오기</button><button type="button" class="generate">변경 미리보기</button><button type="button" class="apply primary" disabled>편집기에 적용</button></footer></section></div>`;
           this.uiCleanup = icons2?.DesignSystem?.attach(this.shadow);
           icons2?.DesignSystem?.modalHeader(this.shadow.querySelector("header"), {
@@ -164,7 +290,10 @@
             this.session = r.session;
             this.articleId = r.articleId;
             if (!this.initialized) {
-              this.draft = new B.Draft(r.value);
+              this.draft = this.restoredDraft ? B.Draft.restore(this.restoredDraft.draft) : new B.Draft(r.value);
+              if (this.restoredDraft) {
+                this.q(".url").value = this.restoredDraft.url;
+              }
               this.q(".name").value = this.draft.name;
               this.initialized = true;
             }

@@ -12,7 +12,7 @@ export function createDownloadContent({ environment = defaultEnvironment, depend
         if (!D.api?.runtime?.onMessage) {
             return;
         }
-        D.api.runtime.onMessage.addListener((message, sender, reply) => {
+        const listener = (message, sender, reply) => {
             if (message?.type !== "aru-body-download:collect") {
                 return;
             }
@@ -41,7 +41,9 @@ export function createDownloadContent({ environment = defaultEnvironment, depend
                     error: { code: err.code || "COLLECT", message: err.message },
                 }));
             return true;
-        });
+        };
+        D.api.runtime.onMessage.addListener(listener);
+        effectGate.onStop(() => D.api.runtime.onMessage.removeListener?.(listener));
     };
     initializeDownloadContent(environment);
     return {};

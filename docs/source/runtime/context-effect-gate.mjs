@@ -2,7 +2,12 @@
 const gates = new WeakMap();
 // 별도 생성 번들도 같은 ISOLATED Window의 종료 판단을 공유한다. MAIN의 Window와 저장 데이터는 사용하지 않는다.
 const sharedGateKey = Symbol.for("aru.context-effect-gate.v1");
+export const sessionGateKey = Symbol.for("aru.effect-session-gate.v1");
 export function contextEffectGate(environment) {
+    const scoped = Reflect.get(environment, sessionGateKey);
+    if (scoped) {
+        return scoped;
+    }
     const root = environment;
     const key = root.window ?? environment;
     let shared;
@@ -42,6 +47,9 @@ export function contextEffectGate(environment) {
     };
     const dispose = () => stop("disposed");
     const gate = {
+        claimPageLifecycle() {
+            root.removeEventListener?.("pagehide", dispose);
+        },
         get state() {
             return state;
         },
@@ -113,6 +121,64 @@ export function contextEffectGate(environment) {
     if (!terminal()) {
         root.addEventListener?.("pagehide", dispose, { once: true });
     }
+    return gate;
+}
+// 이전 세션을 닫아도 문서 권한은 살아 있을 수 있다. 닫힌 세션 자체는 절대 재사용하지 않는다.
+export function createEffectSessionGate(documentGate) {
+    let closed = false;
+    const stopped = new Set();
+    let detach;
+    const dispose = () => {
+        if (closed) {
+            return;
+        }
+        closed = true;
+        detach?.();
+        for (const callback of Array.from(stopped)) {
+            try {
+                callback();
+            }
+            catch (error) {
+                console.warn("[Aru] 효과 세션 정리 실패", error);
+            }
+        }
+        stopped.clear();
+    };
+    const gate = {
+        documentGate,
+        get state() {
+            return closed ? "disposed" : documentGate.state;
+        },
+        allows() {
+            return !closed && documentGate.allows();
+        },
+        assert() {
+            if (!gate.allows()) {
+                throw Object.assign(new Error("효과 세션이 종료되었습니다."), {
+                    code: "CONTEXT_INVALIDATED",
+                });
+            }
+        },
+        dispose,
+        invalidate() {
+            documentGate.invalidate();
+        },
+        observeError(error) {
+            // 이전 작업의 정상 결과는 버려도 같은 native context의 무효화는 문서 전체에 전달한다.
+            documentGate.observeError(error);
+        },
+        onStop(callback) {
+            if (closed) {
+                callback();
+                return () => { };
+            }
+            stopped.add(callback);
+            return () => {
+                stopped.delete(callback);
+            };
+        },
+    };
+    detach = documentGate.onStop(dispose);
     return gate;
 }
 // WXT hook은 감지의 한 경로다. hook만으로 OFF/ON을 모두 감지한다고 가정하지 않는다.

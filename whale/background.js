@@ -1161,7 +1161,12 @@
   // docs/source/runtime/context-effect-gate.mjs
   var gates = /* @__PURE__ */ new WeakMap();
   var sharedGateKey = /* @__PURE__ */ Symbol.for("aru.context-effect-gate.v1");
+  var sessionGateKey = /* @__PURE__ */ Symbol.for("aru.effect-session-gate.v1");
   function contextEffectGate(environment) {
+    const scoped = Reflect.get(environment, sessionGateKey);
+    if (scoped) {
+      return scoped;
+    }
     const root = environment;
     const key = root.window ?? environment;
     let shared;
@@ -1196,6 +1201,9 @@
     }, "stop");
     const dispose = /* @__PURE__ */ __name(() => stop("disposed"), "dispose");
     const gate = {
+      claimPageLifecycle() {
+        root.removeEventListener?.("pagehide", dispose);
+      },
       get state() {
         return state;
       },

@@ -259,6 +259,7 @@ export function createIconsComposerBridge({
       }
       return { url: value, video: nativeVideo, extension };
     }
+    global.addEventListener("pagehide", () => sessions.clear());
     function capture(token: any) {
       for (const [key, s] of sessions) {
         if (Date.now() - s.created > TTL) {

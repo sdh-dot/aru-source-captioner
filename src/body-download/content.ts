@@ -24,56 +24,56 @@ export function createDownloadContent({
     if (!D.api?.runtime?.onMessage) {
       return;
     }
-    D.api.runtime.onMessage.addListener(
-      (
-        message: { type: string; url: any },
-        sender: { id: any },
-        reply: (arg0: {
-          ok: boolean;
-          result?: any;
-          error?: { code: any; message: any };
-        }) => any,
-      ) => {
-        if (message?.type !== "aru-body-download:collect") {
-          return;
+    const listener = (
+      message: { type: string; url: any },
+      sender: { id: any },
+      reply: (arg0: {
+        ok: boolean;
+        result?: any;
+        error?: { code: any; message: any };
+      }) => any,
+    ) => {
+      if (message?.type !== "aru-body-download:collect") {
+        return;
+      }
+      const collectBodyImages = async () => {
+        effectGate.assert();
+        if (sender.id !== D.api.runtime.id) {
+          throw D.error("SENDER", "확장 내부 요청만 허용합니다.");
         }
-        const collectBodyImages = async () => {
-          effectGate.assert();
-          if (sender.id !== D.api.runtime.id) {
-            throw D.error("SENDER", "확장 내부 요청만 허용합니다.");
+        if (!(await D.options())) {
+          throw D.error(
+            "DISABLED",
+            "전체 확장과 게시글 다운로드 옵션을 켜 주세요.",
+          );
+        }
+        effectGate.assert();
+        const current = D.article(root.location.href);
+        if (current.url !== message.url) {
+          throw D.error(
+            "NAVIGATED",
+            "게시글이 변경되었습니다. 다시 실행해 주세요.",
+          );
+        }
+        return D.extract(root.document, root.location.href);
+      };
+      collectBodyImages().then(
+        (result) => {
+          if (effectGate.allows()) {
+            reply({ ok: true, result });
           }
-          if (!(await D.options())) {
-            throw D.error(
-              "DISABLED",
-              "전체 확장과 게시글 다운로드 옵션을 켜 주세요.",
-            );
-          }
-          effectGate.assert();
-          const current = D.article(root.location.href);
-          if (current.url !== message.url) {
-            throw D.error(
-              "NAVIGATED",
-              "게시글이 변경되었습니다. 다시 실행해 주세요.",
-            );
-          }
-          return D.extract(root.document, root.location.href);
-        };
-        collectBodyImages().then(
-          (result) => {
-            if (effectGate.allows()) {
-              reply({ ok: true, result });
-            }
-          },
-          (err) =>
-            effectGate.allows() &&
-            reply({
-              ok: false,
-              error: { code: err.code || "COLLECT", message: err.message },
-            }),
-        );
-        return true;
-      },
-    );
+        },
+        (err) =>
+          effectGate.allows() &&
+          reply({
+            ok: false,
+            error: { code: err.code || "COLLECT", message: err.message },
+          }),
+      );
+      return true;
+    };
+    D.api.runtime.onMessage.addListener(listener);
+    effectGate.onStop(() => D.api.runtime.onMessage.removeListener?.(listener));
   };
   initializeDownloadContent(environment);
 

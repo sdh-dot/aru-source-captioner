@@ -461,7 +461,12 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
   // docs/source/runtime/context-effect-gate.mjs
   var gates = /* @__PURE__ */ new WeakMap();
   var sharedGateKey = /* @__PURE__ */ Symbol.for("aru.context-effect-gate.v1");
+  var sessionGateKey = /* @__PURE__ */ Symbol.for("aru.effect-session-gate.v1");
   function contextEffectGate(environment) {
+    const scoped = Reflect.get(environment, sessionGateKey);
+    if (scoped) {
+      return scoped;
+    }
     const root = environment;
     const key = root.window ?? environment;
     let shared;
@@ -496,6 +501,9 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
     }, "stop");
     const dispose = /* @__PURE__ */ __name(() => stop("disposed"), "dispose");
     const gate = {
+      claimPageLifecycle() {
+        root.removeEventListener?.("pagehide", dispose);
+      },
       get state() {
         return state;
       },
@@ -566,6 +574,21 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
     return gate;
   }
   __name(contextEffectGate, "contextEffectGate");
+
+  // docs/source/runtime/session-resources.mjs
+  var draftKey = /* @__PURE__ */ Symbol.for("aru.effect-session-drafts.v1");
+  function sessionDrafts(environment, namespace = "metadata") {
+    const store = Reflect.get(environment, draftKey);
+    if (!store) {
+      return void 0;
+    }
+    let drafts = store.get(namespace);
+    if (!drafts) {
+      store.set(namespace, drafts = /* @__PURE__ */ new Map());
+    }
+    return drafts;
+  }
+  __name(sessionDrafts, "sessionDrafts");
 
   // docs/source/icon-metadata/interface.mjs
   function createMetadataInterface({ environment = defaultEnvironment, dependencies = {} } = {}) {
@@ -707,12 +730,13 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
         static {
           __name(this, "Panel");
         }
-        constructor({ document, client, token, onClose }) {
+        constructor({ document, client, token, onClose, draft }) {
           effectGate.assert();
           this.doc = document;
           this.client = client;
           this.token = token;
           this.onClose = onClose;
+          this.restoredDraft = draft;
           this.selection = new M.Selection();
           this.images = [];
           this.filtered = [];
@@ -802,6 +826,13 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
             this.observer.observe(this.viewport);
           }
           document.body.append(this.host);
+          if (draft) {
+            this.tags = [...draft.tags];
+            this.q(".free").value = draft.free;
+            this.q(".search").value = draft.search;
+            this.q(".operation").value = draft.operation;
+            this.q(".checkbox").checked = draft.checkbox;
+          }
           this.q(".search").focus();
           this.load();
         }
@@ -814,6 +845,17 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
             });
             if (!this.closed && effectGate.allows()) {
               this.accept(data);
+              const draft = this.restoredDraft;
+              if (draft) {
+                this.restoredDraft = void 0;
+                this.tags = [...draft.tags];
+                this.q(".free").value = draft.free;
+                this.q(".search").value = draft.search;
+                this.q(".operation").value = draft.operation;
+                this.q(".checkbox").checked = draft.checkbox;
+                this.filter();
+                this.changed();
+              }
               this.status(data.collisions ? `중복 ID ${data.collisions}개: 적용할 때 선택한 이미지의 충돌만 정리합니다.` : "이미지 선택만으로 본문은 바뀌지 않습니다.");
             }
           } catch (e) {
@@ -1183,6 +1225,32 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
           this.disposed = false;
           this.generation = 0;
           this.client = new M.Client(document);
+          if (effectGate.documentGate) {
+            effectGate.onStop(() => {
+              if (effectGate.documentGate.allows()) {
+                const panel = this.panel;
+                const rec = Array.from(this.entries.values()).find((item) => item.token === panel?.token);
+                if (panel && rec) {
+                  sessionDrafts(g)?.set(rec.root, {
+                    tags: [...panel.tags],
+                    free: panel.q(".free").value,
+                    search: panel.q(".search").value,
+                    operation: panel.q(".operation").value,
+                    checkbox: panel.q(".checkbox").checked
+                  });
+                }
+                this.destroy();
+              } else {
+                this.disposed = true;
+                this.active = false;
+                ++this.generation;
+                this.unsubscribe?.();
+                this.observer?.disconnect();
+                this.doc.removeEventListener("aru-metadata-count-v1", this.countListener);
+                this.client.destroy();
+              }
+            });
+          }
         }
         async start() {
           this.unsubscribe = this.browser.subscribe(() => this.options());
@@ -1345,9 +1413,13 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
             document: this.doc,
             client: this.client,
             token: rec.token,
+            draft: sessionDrafts(g)?.get(rec.root),
             onClose: /* @__PURE__ */ __name(() => {
               this.panel = null;
-              if (rec.root.isConnected) {
+              if (effectGate.allows()) {
+                sessionDrafts(g)?.delete(rec.root);
+              }
+              if (rec.root.isConnected && effectGate.allows()) {
                 rec.button.focus();
               }
             }, "onClose")

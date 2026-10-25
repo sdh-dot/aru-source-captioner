@@ -1,4 +1,5 @@
 import { contextEffectGate } from "../runtime/context-effect-gate.ts";
+import { sessionDrafts } from "../runtime/session-resources.ts";
 import type { MetadataImage } from "./models.ts";
 import type { BridgeClient, DynamicApi } from "../runtime/contracts.ts";
 import type { CodedError } from "../runtime/contracts.ts";
@@ -12,6 +13,14 @@ import {
   createModuleScope,
   selectModuleExports,
 } from "../runtime/module-scope.ts";
+
+interface MetadataDraft {
+  tags: string[];
+  free: string;
+  search: string;
+  operation: string;
+  checkbox: boolean;
+}
 
 export function createMetadataInterface({
   environment = defaultEnvironment,
@@ -244,22 +253,26 @@ export function createMetadataInterface({
       declare frame: any;
 
       declare previewTimer: number | undefined;
+      declare restoredDraft: MetadataDraft | undefined;
       constructor({
         document,
         client,
         token,
         onClose,
+        draft,
       }: {
         document: Document;
         client: BridgeClient;
         token: string;
         onClose: () => void;
+        draft?: MetadataDraft;
       }) {
         effectGate.assert();
         this.doc = document;
         this.client = client;
         this.token = token;
         this.onClose = onClose;
+        this.restoredDraft = draft;
         this.selection = new M.Selection();
         this.images = [];
         this.filtered = [];
@@ -386,6 +399,14 @@ export function createMetadataInterface({
           this.observer.observe(this.viewport);
         }
         document.body.append(this.host);
+        // 초안 문자열은 효과 권한이 아니다. scan 실패 때도 복사할 수 있도록 먼저 복원한다.
+        if (draft) {
+          this.tags = [...draft.tags];
+          this.q(".free").value = draft.free;
+          this.q(".search").value = draft.search;
+          this.q(".operation").value = draft.operation;
+          this.q(".checkbox").checked = draft.checkbox;
+        }
         this.q(".search").focus();
         this.load();
       }
@@ -398,6 +419,18 @@ export function createMetadataInterface({
           });
           if (!this.closed && effectGate.allows()) {
             this.accept(data);
+            const draft = this.restoredDraft;
+            if (draft) {
+              this.restoredDraft = undefined;
+              this.tags = [...draft.tags];
+              this.q(".free").value = draft.free;
+              this.q(".search").value = draft.search;
+              this.q(".operation").value = draft.operation;
+              this.q(".checkbox").checked = draft.checkbox;
+              // MAIN handle은 새 scan에서만 얻는다. 이전 선택을 자동 적용하지 않는다.
+              this.filter();
+              this.changed();
+            }
             this.status(
               data.collisions
                 ? `중복 ID ${data.collisions}개: 적용할 때 선택한 이미지의 충돌만 정리합니다.`
@@ -882,6 +915,38 @@ export function createMetadataInterface({
         this.disposed = false;
         this.generation = 0;
         this.client = new M.Client(document);
+        if (effectGate.documentGate) {
+          effectGate.onStop(() => {
+            if (effectGate.documentGate!.allows()) {
+              const panel = this.panel;
+              const rec = Array.from(this.entries.values()).find(
+                (item: any) => item.token === panel?.token,
+              ) as DynamicApi | undefined;
+              if (panel && rec) {
+                sessionDrafts(g)?.set(rec.root, {
+                  tags: [...panel.tags],
+                  free: panel.q(".free").value,
+                  search: panel.q(".search").value,
+                  operation: panel.q(".operation").value,
+                  checkbox: panel.q(".checkbox").checked,
+                } satisfies MetadataDraft);
+              }
+              this.destroy();
+            } else {
+              // terminal 컨텍스트에서는 기존 입력을 복사할 수 있게 두고 외부 자원만 닫는다.
+              this.disposed = true;
+              this.active = false;
+              ++this.generation;
+              this.unsubscribe?.();
+              this.observer?.disconnect();
+              this.doc.removeEventListener(
+                "aru-metadata-count-v1",
+                this.countListener,
+              );
+              this.client.destroy();
+            }
+          });
+        }
       }
       async start() {
         this.unsubscribe = this.browser.subscribe(() => this.options());
@@ -1084,9 +1149,13 @@ export function createMetadataInterface({
           document: this.doc,
           client: this.client,
           token: rec.token,
+          draft: sessionDrafts(g)?.get(rec.root) as MetadataDraft | undefined,
           onClose: () => {
             this.panel = null;
-            if (rec.root.isConnected) {
+            if (effectGate.allows()) {
+              sessionDrafts(g)?.delete(rec.root);
+            }
+            if (rec.root.isConnected && effectGate.allows()) {
               rec.button.focus();
             }
           },

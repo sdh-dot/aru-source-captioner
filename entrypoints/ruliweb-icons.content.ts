@@ -1,4 +1,4 @@
-import { bindContextEffectGate } from "../src/runtime/context-effect-gate.ts";
+import { documentLifecycle } from "../src/runtime/document-lifecycle.ts";
 import { isolatedState } from "../runtime/world-state";
 import { defineContentScript } from "wxt/utils/define-content-script";
 import { contentMatches } from "../config/manifests";
@@ -17,28 +17,32 @@ export default defineContentScript({
   world: "ISOLATED",
   main(ctx) {
     const environment = createEnvironment(parser);
-    if (!bindContextEffectGate(environment, ctx).allows()) {
-      return;
-    }
-    const metrics = createPerformanceMetrics({ environment });
-    const { attribution } = createAttributionCore({ environment, metrics });
-    const install = import.meta.env.FIREFOX
-      ? installFirefoxContent
-      : installWhaleContent;
-    install({
-      environment,
-      dependencies: {
-        attribution: { Controller: () => attribution.Controller },
+    documentLifecycle(environment).register(
+      "icons-and-attribution",
+      (session) => {
+        const environment = session.environment;
+        const metrics = createPerformanceMetrics({ environment });
+        const { attribution } = createAttributionCore({ environment, metrics });
+        const install = import.meta.env.FIREFOX
+          ? installFirefoxContent
+          : installWhaleContent;
+        install({
+          environment,
+          dependencies: {
+            attribution: { Controller: () => attribution.Controller },
+          },
+        });
+        const icons = createIconReader({ environment, metrics });
+        Object.assign(isolatedState().icons, icons);
+        createAttributionUi({
+          environment,
+          metrics,
+          dependencies: {
+            icons: { DesignSystem: () => Reflect.get(icons, "DesignSystem") },
+          },
+        });
       },
-    });
-    const icons = createIconReader({ environment, metrics });
-    Object.assign(isolatedState().icons, icons);
-    createAttributionUi({
-      environment,
-      metrics,
-      dependencies: {
-        icons: { DesignSystem: () => Reflect.get(icons, "DesignSystem") },
-      },
-    });
+      ctx,
+    );
   },
 });

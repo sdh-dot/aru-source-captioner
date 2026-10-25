@@ -1,4 +1,6 @@
 // 자동 생성: src/platform/firefox/content.ts. tools/compile-typescript.mjs로 갱신한다.
+import { contentDispatcher } from "../../runtime/content-dispatcher.mjs";
+import { createSessionEnvironment } from "../../runtime/session-resources.mjs";
 import { contextEffectGate } from "../../runtime/context-effect-gate.mjs";
 import { readSettings } from "../../runtime/settings-read.mjs";
 import { parsePixivFilenameUrl } from "../../source-caption/pixiv-filename.mjs";
@@ -6,13 +8,18 @@ import { hasPngSignature, parsePngItxtChunks, parseItxtChunk, } from "../../sour
 import { defaultEnvironment, } from "../../runtime/contracts.mjs";
 // 브라우저별 기존 초기화·저장 키·사용자 설정과 이벤트 계약을 유지한다.
 import { createModuleScope } from "../../runtime/module-scope.mjs";
-const installedDocuments = new WeakSet();
 export function installFirefoxContent({ environment = defaultEnvironment, dependencies = {}, } = {}) {
     const effectGate = contextEffectGate(environment);
-    if (!effectGate.allows() || installedDocuments.has(environment.document)) {
+    if (!effectGate.allows()) {
         return {};
     }
-    installedDocuments.add(environment.document);
+    const dispatcher = contentDispatcher(environment, effectGate);
+    if (!dispatcher) {
+        return {};
+    }
+    const scope = createSessionEnvironment(environment, effectGate);
+    environment = scope.environment;
+    const resources = scope.resources;
     const window = environment.window ?? environment;
     const { document, location, navigator, MutationObserver, HTMLElement, TextDecoder, URL, exifr, console, } = environment;
     const setTimeout = typeof environment.setTimeout === "function"
@@ -100,7 +107,7 @@ export function installFirefoxContent({ environment = defaultEnvironment, depend
             if (!effectGate.allows()) {
                 return;
             }
-            document.addEventListener("change", async (ev) => {
+            dispatcher.setChange(async (ev) => {
                 const target = ev.target;
                 if (!(target instanceof HTMLInputElement) ||
                     target.type !== "file" ||
@@ -116,7 +123,7 @@ export function installFirefoxContent({ environment = defaultEnvironment, depend
                     return;
                 }
                 await handleSelectedImageFiles(images, target);
-            }, true);
+            });
         }
         async function handleSelectedImageFiles(files, input) {
             if (!effectGate.allows()) {
@@ -613,10 +620,8 @@ export function installFirefoxContent({ environment = defaultEnvironment, depend
                 existing: hasExistingSourceCaption,
                 onStatus: publishUploadStatus,
             });
-            effectGate.onStop(() => uploadAttribution?.destroy());
-            window.addEventListener("pagehide", () => uploadAttribution?.destroy(), {
-                once: true,
-            });
+            const controller = uploadAttribution;
+            resources.own(() => controller.destroy(), "upload-controller");
             return uploadAttribution;
         }
         function findImageParagraph(img) {
@@ -943,7 +948,10 @@ export function installFirefoxContent({ environment = defaultEnvironment, depend
                 return false;
             }
             fileInput.dataset[COMMENT_FILE_BOUND_DATASET_KEY] = "1";
-            fileInput.addEventListener("change", async (event) => {
+            resources.own(() => {
+                delete fileInput.dataset[COMMENT_FILE_BOUND_DATASET_KEY];
+            });
+            resources.listen(fileInput, "change", async (event) => {
                 if (!effectGate.allows()) {
                     return;
                 }

@@ -3,10 +3,60 @@
   var __defProp = Object.defineProperty;
   var __name = (target, value) => __defProp(target, "name", { value, configurable: true });
 
+  // docs/source/runtime/content-dispatcher.mjs
+  var dispatchers = /* @__PURE__ */ new WeakMap();
+  function contentDispatcher(environment, gate) {
+    const doc = environment.document;
+    let dispatcher = dispatchers.get(doc);
+    if (!dispatcher) {
+      dispatcher = createDispatcher(doc, gate.documentGate ?? gate);
+      dispatchers.set(doc, dispatcher);
+    }
+    return dispatcher.begin(gate) ? dispatcher : void 0;
+  }
+  __name(contentDispatcher, "contentDispatcher");
+  function createDispatcher(doc, documentGate) {
+    let current;
+    let change;
+    const forward = /* @__PURE__ */ __name((event) => {
+      if (current?.allows()) {
+        change?.(event);
+      }
+    }, "forward");
+    doc.addEventListener("change", forward, true);
+    documentGate.onStop(() => {
+      doc.removeEventListener("change", forward, true);
+      change = void 0;
+    });
+    return {
+      begin(gate) {
+        if (current === gate || (current?.allows() ?? false) || !gate.allows()) {
+          return false;
+        }
+        current = gate;
+        gate.onStop(() => {
+          if (current === gate) {
+            change = void 0;
+          }
+        });
+        return true;
+      },
+      setChange(callback) {
+        change = callback;
+      }
+    };
+  }
+  __name(createDispatcher, "createDispatcher");
+
   // docs/source/runtime/context-effect-gate.mjs
   var gates = /* @__PURE__ */ new WeakMap();
   var sharedGateKey = /* @__PURE__ */ Symbol.for("aru.context-effect-gate.v1");
+  var sessionGateKey = /* @__PURE__ */ Symbol.for("aru.effect-session-gate.v1");
   function contextEffectGate(environment) {
+    const scoped = Reflect.get(environment, sessionGateKey);
+    if (scoped) {
+      return scoped;
+    }
     const root = environment;
     const key = root.window ?? environment;
     let shared;
@@ -41,6 +91,9 @@
     }, "stop");
     const dispose = /* @__PURE__ */ __name(() => stop("disposed"), "dispose");
     const gate = {
+      claimPageLifecycle() {
+        root.removeEventListener?.("pagehide", dispose);
+      },
       get state() {
         return state;
       },
@@ -111,6 +164,316 @@
     return gate;
   }
   __name(contextEffectGate, "contextEffectGate");
+
+  // docs/source/runtime/session-resources.mjs
+  var draftKey = /* @__PURE__ */ Symbol.for("aru.effect-session-drafts.v1");
+  var ownedKey = /* @__PURE__ */ Symbol.for("aru.effect-session-resources.v1");
+  function sessionResources(environment, gate = contextEffectGate(environment), owned = Reflect.get(environment, ownedKey)) {
+    const cleanups = /* @__PURE__ */ new Set();
+    let closed = false;
+    const own = /* @__PURE__ */ __name((cleanup, kind) => {
+      if (closed) {
+        cleanup();
+        return () => {
+        };
+      }
+      let retained = true;
+      if (kind && owned) {
+        owned.set(kind, (owned.get(kind) ?? 0) + 1);
+      }
+      const release = /* @__PURE__ */ __name(() => {
+        if (!retained) {
+          return;
+        }
+        retained = false;
+        if (kind && owned) {
+          owned.set(kind, (owned.get(kind) ?? 1) - 1);
+        }
+      }, "release");
+      const wrapped = /* @__PURE__ */ __name(() => {
+        release();
+        cleanup();
+      }, "wrapped");
+      cleanups.add(wrapped);
+      return () => {
+        if (cleanups.delete(wrapped)) {
+          release();
+        }
+      };
+    }, "own");
+    const listen = /* @__PURE__ */ __name((target, type, callback, options) => {
+      if (closed) {
+        return;
+      }
+      const listener = /* @__PURE__ */ __name((event) => {
+        if (gate.allows()) {
+          if (typeof callback === "function") {
+            callback.call(target, event);
+          } else {
+            callback.handleEvent(event);
+          }
+        }
+      }, "listener");
+      target.addEventListener(type, listener, options);
+      own(() => target.removeEventListener(type, listener, options));
+    }, "listen");
+    const dispose = /* @__PURE__ */ __name(() => {
+      if (closed) {
+        return;
+      }
+      closed = true;
+      for (const cleanup of Array.from(cleanups).reverse()) {
+        try {
+          cleanup();
+        } catch (error) {
+          environment.console.warn("[Aru] 세션 자원 정리 실패", error);
+        }
+      }
+      cleanups.clear();
+    }, "dispose");
+    gate.onStop(dispose);
+    return {
+      own,
+      listen,
+      dispose,
+      get size() {
+        return cleanups.size;
+      }
+    };
+  }
+  __name(sessionResources, "sessionResources");
+  function createSessionEnvironment(root, gate, drafts = Reflect.get(root, draftKey)) {
+    const owned = Reflect.get(root, ownedKey) ?? /* @__PURE__ */ new Map();
+    const resources = sessionResources(root, gate, owned);
+    const local = /* @__PURE__ */ new Map();
+    const timers = /* @__PURE__ */ new Map();
+    const frames = /* @__PURE__ */ new Set();
+    const listeners = /* @__PURE__ */ new Map();
+    const observers = /* @__PURE__ */ new Set();
+    const NativeObserver = root.MutationObserver;
+    const scopedObserver = NativeObserver && class extends NativeObserver {
+      constructor(callback) {
+        super((records, observer) => {
+          if (gate.allows()) {
+            callback(records, observer);
+          }
+        });
+      }
+      observe(target, options) {
+        if (!gate.allows()) {
+          return;
+        }
+        observers.add(this);
+        super.observe(target, options);
+      }
+      disconnect() {
+        observers.delete(this);
+        super.disconnect();
+      }
+    };
+    const NativeResizeObserver = root.ResizeObserver;
+    const scopedResizeObserver = NativeResizeObserver && class extends NativeResizeObserver {
+      constructor(callback) {
+        super((entries, observer) => {
+          if (gate.allows()) {
+            callback(entries, observer);
+          }
+        });
+      }
+      observe(target, options) {
+        if (!gate.allows()) {
+          return;
+        }
+        observers.add(this);
+        super.observe(target, options);
+      }
+      disconnect() {
+        observers.delete(this);
+        super.disconnect();
+      }
+    };
+    const NativeIntersectionObserver = root.IntersectionObserver;
+    const scopedIntersectionObserver = NativeIntersectionObserver && class extends NativeIntersectionObserver {
+      constructor(callback, options) {
+        super((entries, observer) => {
+          if (gate.allows()) {
+            callback(entries, observer);
+          }
+        }, options);
+      }
+      observe(target) {
+        if (!gate.allows()) {
+          return;
+        }
+        observers.add(this);
+        super.observe(target);
+      }
+      disconnect() {
+        observers.delete(this);
+        super.disconnect();
+      }
+    };
+    const cancelTimer = /* @__PURE__ */ __name((handle) => {
+      timers.get(handle)?.();
+      timers.delete(handle);
+    }, "cancelTimer");
+    const timer = /* @__PURE__ */ __name((repeat, callback, delay, ...args) => {
+      if (!gate.allows()) {
+        return 0;
+      }
+      const run = /* @__PURE__ */ __name(() => {
+        if (!repeat) {
+          timers.delete(handle);
+        }
+        if (gate.allows() && typeof callback === "function") {
+          callback(...args);
+        }
+      }, "run");
+      const handle = repeat ? root.setInterval(run, delay) : root.setTimeout(run, delay);
+      timers.set(handle, () => repeat ? root.clearInterval(handle) : root.clearTimeout(handle));
+      return handle;
+    }, "timer");
+    let scoped;
+    const bound = /* @__PURE__ */ new Set([
+      "getComputedStyle",
+      "matchMedia",
+      "fetch",
+      "atob",
+      "btoa",
+      "requestAnimationFrame",
+      "cancelAnimationFrame"
+    ]);
+    scoped = new Proxy(root, {
+      get(target, key) {
+        if (key === sessionGateKey) {
+          return gate;
+        }
+        if (key === draftKey) {
+          return drafts;
+        }
+        if (key === ownedKey) {
+          return owned;
+        }
+        if (key === "window" || key === "self") {
+          return scoped;
+        }
+        if (key === "MutationObserver") {
+          return scopedObserver;
+        }
+        if (key === "ResizeObserver") {
+          return scopedResizeObserver;
+        }
+        if (key === "IntersectionObserver") {
+          return scopedIntersectionObserver;
+        }
+        if (key === "setTimeout") {
+          return (callback, delay, ...args) => timer(false, callback, delay, ...args);
+        }
+        if (key === "setInterval") {
+          return (callback, delay, ...args) => timer(true, callback, delay, ...args);
+        }
+        if (key === "clearTimeout" || key === "clearInterval") {
+          return cancelTimer;
+        }
+        if (key === "requestAnimationFrame") {
+          return (callback) => {
+            if (!gate.allows()) {
+              return 0;
+            }
+            const frame = root.requestAnimationFrame((time) => {
+              frames.delete(frame);
+              if (gate.allows()) {
+                callback(time);
+              }
+            });
+            frames.add(frame);
+            return frame;
+          };
+        }
+        if (key === "cancelAnimationFrame") {
+          return (frame) => {
+            frames.delete(frame);
+            root.cancelAnimationFrame(frame);
+          };
+        }
+        if (key === "addEventListener") {
+          return (type, callback, options) => {
+            if (!gate.allows()) {
+              return;
+            }
+            const capture = typeof options === "boolean" ? options : !!options?.capture;
+            const id = type + ":" + capture;
+            let types = listeners.get(callback);
+            if (!types) {
+              listeners.set(callback, types = /* @__PURE__ */ new Map());
+            }
+            if (types.has(id)) {
+              return;
+            }
+            const listener = /* @__PURE__ */ __name((event) => {
+              if (gate.allows()) {
+                callback.call(scoped, event);
+              }
+            }, "listener");
+            types.set(id, listener);
+            root.addEventListener(type, listener, options);
+            resources.own(() => root.removeEventListener(type, listener, capture));
+          };
+        }
+        if (key === "removeEventListener") {
+          return (type, callback, options) => {
+            const capture = typeof options === "boolean" ? options : !!options?.capture;
+            const id = type + ":" + capture, types = listeners.get(callback), listener = types?.get(id);
+            if (listener) {
+              root.removeEventListener(type, listener, capture);
+            }
+            types?.delete(id);
+          };
+        }
+        if (local.has(key)) {
+          return local.get(key);
+        }
+        if (typeof key === "string" && /^__aru.*Controller$/.test(key)) {
+          return void 0;
+        }
+        const value = Reflect.get(target, key, target);
+        return bound.has(key) && typeof value === "function" ? value.bind(target) : value;
+      },
+      set(target, key, value) {
+        if (typeof key === "string" && key.startsWith("__aru")) {
+          local.set(key, value);
+          return true;
+        }
+        return Reflect.set(target, key, value, target);
+      }
+    });
+    resources.own(() => {
+      for (const cancel of timers.values()) {
+        cancel();
+      }
+      timers.clear();
+      for (const frame of frames) {
+        root.cancelAnimationFrame(frame);
+      }
+      frames.clear();
+      for (const observer of Array.from(observers)) {
+        observer.disconnect();
+      }
+      listeners.clear();
+      local.clear();
+    });
+    return {
+      environment: scoped,
+      resources,
+      snapshot: /* @__PURE__ */ __name(() => ({
+        timers: timers.size,
+        observers: observers.size,
+        windowListeners: Array.from(listeners.values()).reduce((n, x) => n + x.size, 0),
+        owned: Object.fromEntries(owned)
+      }), "snapshot")
+    };
+  }
+  __name(createSessionEnvironment, "createSessionEnvironment");
 
   // docs/source/runtime/settings-read.mjs
   var clock = {
@@ -426,13 +789,18 @@
   __name(createModuleScope, "createModuleScope");
 
   // docs/source/platform/whale/content.mjs
-  var installedDocuments = /* @__PURE__ */ new WeakSet();
   function installWhaleContent({ environment = defaultEnvironment, dependencies = {} } = {}) {
     const effectGate = contextEffectGate(environment);
-    if (!effectGate.allows() || installedDocuments.has(environment.document)) {
+    if (!effectGate.allows()) {
       return {};
     }
-    installedDocuments.add(environment.document);
+    const dispatcher = contentDispatcher(environment, effectGate);
+    if (!dispatcher) {
+      return {};
+    }
+    const scope = createSessionEnvironment(environment, effectGate);
+    environment = scope.environment;
+    const resources = scope.resources;
     const window = environment.window ?? environment;
     const { document, location, navigator, MutationObserver, HTMLElement, TextDecoder, Image, URL, exifr, console: console2 } = environment;
     const setTimeout = typeof environment.setTimeout === "function" ? (...args) => environment.setTimeout(...args) : void 0;
@@ -499,7 +867,7 @@
         if (!effectGate.allows()) {
           return;
         }
-        document.addEventListener("change", async (ev) => {
+        dispatcher.setChange(async (ev) => {
           const target = ev.target;
           if (!(target instanceof HTMLInputElement) || target.type !== "file" || !target.files?.length) {
             return;
@@ -523,7 +891,7 @@
             }
           }
           await handleSelectedImageFiles(images, target);
-        }, true);
+        });
       }
       __name(attachFileInputListeners, "attachFileInputListeners");
       async function handleSelectedImageFiles(files, input) {
@@ -1155,10 +1523,8 @@
           existing: hasExistingSourceCaption,
           onStatus: publishUploadStatus
         });
-        effectGate.onStop(() => uploadAttribution?.destroy());
-        window.addEventListener("pagehide", () => uploadAttribution?.destroy(), {
-          once: true
-        });
+        const controller = uploadAttribution;
+        resources.own(() => controller.destroy(), "upload-controller");
         return uploadAttribution;
       }
       __name(startEditorObserver, "startEditorObserver");
@@ -1443,6 +1809,9 @@
         }
         if (wrapper.querySelector("." + COMMENT_BUTTON_CLASS)) {
           wrapper.dataset[COMMENT_BOUND_DATASET_KEY] = "1";
+          resources.own(() => {
+            delete wrapper.dataset[COMMENT_BOUND_DATASET_KEY];
+          });
           console2.log("[Aru Source Captioner] inject: skipped (button already in this wrapper)", wrapper);
           return false;
         }
@@ -1453,7 +1822,8 @@
         button.textContent = "출처 추가";
         button.title = "현재 게시글 URL을 댓글에 출처로 추가합니다";
         button.dataset.aruSourceCommentButton = "1";
-        button.addEventListener("click", (ev) => {
+        resources.own(() => button.remove());
+        resources.listen(button, "click", (ev) => {
           try {
             ev.preventDefault();
           } catch {
@@ -1495,7 +1865,10 @@
           return false;
         }
         fileInput.dataset[COMMENT_FILE_BOUND_DATASET_KEY] = "1";
-        fileInput.addEventListener("change", async (event) => {
+        resources.own(() => {
+          delete fileInput.dataset[COMMENT_FILE_BOUND_DATASET_KEY];
+        });
+        resources.listen(fileInput, "change", async (event) => {
           if (!effectGate.allows()) {
             return;
           }
@@ -1566,6 +1939,9 @@
             const ok = injectCommentSourceButton(wrapper);
             if (ok) {
               wrapper.dataset[COMMENT_BOUND_DATASET_KEY] = "1";
+              resources.own(() => {
+                delete wrapper.dataset[COMMENT_BOUND_DATASET_KEY];
+              });
               injected++;
             }
           }

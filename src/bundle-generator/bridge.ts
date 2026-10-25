@@ -459,7 +459,7 @@ export function createBundleBridge({
         new g.CustomEvent(RESPONSE, { detail: JSON.stringify(response) }),
       );
     });
-    g.addEventListener("pagehide", () => sessions.clear(), { once: true });
+    g.addEventListener("pagehide", () => sessions.clear());
   };
   initializeBundleBridge(environment);
 

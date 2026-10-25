@@ -2,7 +2,10 @@
 import { defaultEnvironment, } from "../runtime/contracts.mjs";
 // 사용자 옵션과 작성기 수명에 맞춰 통합팩 UI를 설치·정리한다.
 import { createModuleScope, selectModuleExports, } from "../runtime/module-scope.mjs";
+import { contextEffectGate } from "../runtime/context-effect-gate.mjs";
+import { sessionDrafts } from "../runtime/session-resources.mjs";
 export function createBundleController({ environment = defaultEnvironment, dependencies = {}, } = {}) {
+    const effectGate = contextEffectGate(environment);
     let bundle = createModuleScope(dependencies.bundle, ["Browser", "Client", "Panel"], ["Controller"]);
     let icons = createModuleScope(dependencies.icons, ["DesignSystem"], []);
     const initializeBundleController = function (g) {
@@ -115,9 +118,13 @@ export function createBundleController({ environment = defaultEnvironment, depen
                     client: this.client,
                     token: rec.token,
                     browser: this.browser,
+                    restoredDraft: sessionDrafts(g, "bundle")?.get(rec.root),
                     onClose: () => {
                         this.panel = null;
-                        if (rec.root.isConnected) {
+                        if (effectGate.allows()) {
+                            sessionDrafts(g, "bundle")?.delete(rec.root);
+                        }
+                        if (rec.root.isConnected && effectGate.allows()) {
                             rec.button.focus();
                         }
                     },
@@ -145,6 +152,32 @@ export function createBundleController({ environment = defaultEnvironment, depen
                 // oxlint-disable-next-line unicorn/no-useless-spread -- 정리·외부 콜백의 재진입이 순회 대상을 바꾸더라도 이번 작업의 대상은 보존한다.
                 for (const root of [...this.entries.keys()]) {
                     this.remove(root);
+                }
+            }
+            suspend() {
+                const panel = this.panel;
+                const rec = Array.from(this.entries.values()).find((entry) => entry.token === panel?.token);
+                if (panel && rec) {
+                    sessionDrafts(g, "bundle")?.set(rec.root, {
+                        draft: panel.draft.snapshot(),
+                        url: panel.q(".url").value,
+                    });
+                }
+                if (effectGate.documentGate?.allows()) {
+                    this.destroy();
+                }
+                else {
+                    this.disposed = true;
+                    this.active = false;
+                    ++this.generation;
+                    this.unsubscribe?.();
+                    this.observer?.disconnect();
+                    this.client.destroy();
+                    if (panel) {
+                        panel.closed = true;
+                        panel.reader.destroy();
+                        panel.search.destroy();
+                    }
                 }
             }
             destroy() {

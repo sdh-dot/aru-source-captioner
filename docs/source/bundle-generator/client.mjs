@@ -1,8 +1,10 @@
 // 자동 생성: src/bundle-generator/client.ts. tools/compile-typescript.mjs로 갱신한다.
+import { contextEffectGate } from "../runtime/context-effect-gate.mjs";
 import { defaultEnvironment, } from "../runtime/contracts.mjs";
 // ISOLATED UI의 통합팩 요청을 기존 MAIN 이벤트 계약에 맞춰 연결한다.
 import { createModuleScope, selectModuleExports, } from "../runtime/module-scope.mjs";
 export function createBundleClient({ environment = defaultEnvironment, dependencies = {}, } = {}) {
+    const effectGate = contextEffectGate(environment);
     const { TextEncoder } = environment;
     let bundle = createModuleScope(dependencies.bundle, ["fail", "Draft"], ["Client", "Browser"]);
     const initializeBundleClient = function (g) {
@@ -32,7 +34,10 @@ export function createBundleClient({ environment = defaultEnvironment, dependenc
                     }
                     g.clearTimeout(r.timer);
                     this.pending.delete(p.requestId);
-                    if (p.ok) {
+                    if (!effectGate.allows()) {
+                        r.reject(new Error("효과 세션이 종료되었습니다."));
+                    }
+                    else if (p.ok) {
                         r.resolve(p.result);
                     }
                     else {
@@ -42,8 +47,15 @@ export function createBundleClient({ environment = defaultEnvironment, dependenc
                     }
                 };
                 doc.addEventListener("aru-bundle-response-v1", this.receive);
+                effectGate.onStop(() => this.destroy());
             }
             request(op, data = {}) {
+                try {
+                    effectGate.assert();
+                }
+                catch (error) {
+                    return Promise.reject(error);
+                }
                 if (this.closed) {
                     return Promise.reject(new Error("생성기가 종료되었습니다."));
                 }
@@ -75,15 +87,20 @@ export function createBundleClient({ environment = defaultEnvironment, dependenc
         }
         const api = g.browser || g.chrome, KEY = "aruBundleDraftV1";
         async function storage(area, method, arg) {
+            effectGate.assert();
             if (!api?.storage?.[area]) {
                 throw new Error("확장 저장소에 접근할 수 없습니다.");
             }
             if (g.browser) {
-                return api.storage[area][method](arg);
+                const value = await api.storage[area][method](arg);
+                effectGate.assert();
+                return value;
             }
-            return new Promise((resolve, reject) => api.storage[area][method](arg, (r) => api.runtime?.lastError
+            const value = await new Promise((resolve, reject) => api.storage[area][method](arg, (r) => api.runtime?.lastError
                 ? reject(new Error(api.runtime.lastError.message))
                 : resolve(r)));
+            effectGate.assert();
+            return value;
         }
         const Browser = {
             async active() {

@@ -1,4 +1,4 @@
-import { bindContextEffectGate } from "../src/runtime/context-effect-gate.ts";
+import { documentLifecycle } from "../src/runtime/document-lifecycle.ts";
 import { defaultEnvironment } from "../src/runtime/contracts.ts";
 import { defineContentScript } from "wxt/utils/define-content-script";
 import { contentMatches } from "../config/manifests";
@@ -8,9 +8,12 @@ export default defineContentScript({
   runAt: "document_idle",
   world: "ISOLATED",
   main(ctx) {
-    if (!bindContextEffectGate(defaultEnvironment, ctx).allows()) {
-      return;
-    }
-    installDownloadContent({ environment: defaultEnvironment });
+    documentLifecycle(defaultEnvironment).register(
+      "body-download",
+      (session) => {
+        installDownloadContent({ environment: session.environment });
+      },
+      ctx,
+    );
   },
 });

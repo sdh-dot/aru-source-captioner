@@ -1,3 +1,5 @@
+import { contentDispatcher } from "../../runtime/content-dispatcher.ts";
+import { createSessionEnvironment } from "../../runtime/session-resources.ts";
 import { contextEffectGate } from "../../runtime/context-effect-gate.ts";
 import { readSettings } from "../../runtime/settings-read.ts";
 import { parsePixivFilenameUrl } from "../../source-caption/pixiv-filename.ts";
@@ -17,17 +19,21 @@ import {
 // 브라우저별 기존 초기화·저장 키·사용자 설정과 이벤트 계약을 유지한다.
 import { createModuleScope } from "../../runtime/module-scope.ts";
 
-const installedDocuments = new WeakSet<Document>();
-
 export function installFirefoxContent({
   environment = defaultEnvironment,
   dependencies = {},
 }: FactoryOptions = {}) {
   const effectGate = contextEffectGate(environment);
-  if (!effectGate.allows() || installedDocuments.has(environment.document)) {
+  if (!effectGate.allows()) {
     return {};
   }
-  installedDocuments.add(environment.document);
+  const dispatcher = contentDispatcher(environment, effectGate);
+  if (!dispatcher) {
+    return {};
+  }
+  const scope = createSessionEnvironment(environment, effectGate);
+  environment = scope.environment;
+  const resources = scope.resources;
   const window = environment.window ?? environment;
   const {
     document,
@@ -157,31 +163,27 @@ export function installFirefoxContent({
       if (!effectGate.allows()) {
         return;
       }
-      document.addEventListener(
-        "change",
-        async (ev) => {
-          const target = ev.target;
-          if (
-            !(target instanceof HTMLInputElement) ||
-            target.type !== "file" ||
-            !target.files?.length
-          ) {
-            return;
-          }
-          if (handledFileEvents.has(ev)) {
-            return;
-          }
-          handledFileEvents.add(ev);
-          const images = Array.from(target.files).filter((file) =>
-            file?.type?.startsWith("image/"),
-          );
-          if (!images.length) {
-            return;
-          }
-          await handleSelectedImageFiles(images, target);
-        },
-        true,
-      );
+      dispatcher!.setChange(async (ev) => {
+        const target = ev.target;
+        if (
+          !(target instanceof HTMLInputElement) ||
+          target.type !== "file" ||
+          !target.files?.length
+        ) {
+          return;
+        }
+        if (handledFileEvents.has(ev)) {
+          return;
+        }
+        handledFileEvents.add(ev);
+        const images = Array.from(target.files).filter((file) =>
+          file?.type?.startsWith("image/"),
+        );
+        if (!images.length) {
+          return;
+        }
+        await handleSelectedImageFiles(images, target);
+      });
     }
 
     async function handleSelectedImageFiles(
@@ -762,10 +764,8 @@ export function installFirefoxContent({
         existing: hasExistingSourceCaption,
         onStatus: publishUploadStatus,
       });
-      effectGate.onStop(() => uploadAttribution?.destroy());
-      window.addEventListener("pagehide", () => uploadAttribution?.destroy(), {
-        once: true,
-      });
+      const controller = uploadAttribution;
+      resources.own(() => controller!.destroy(), "upload-controller");
       return uploadAttribution;
     }
 
@@ -1183,8 +1183,11 @@ export function installFirefoxContent({
         return false;
       }
       fileInput.dataset[COMMENT_FILE_BOUND_DATASET_KEY] = "1";
+      resources.own(() => {
+        delete fileInput.dataset[COMMENT_FILE_BOUND_DATASET_KEY];
+      });
 
-      fileInput.addEventListener("change", async (event) => {
+      resources.listen(fileInput, "change", async (event) => {
         if (!effectGate.allows()) {
           return;
         }

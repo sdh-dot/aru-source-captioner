@@ -10,11 +10,13 @@ import {
   createModuleScope,
   selectModuleExports,
 } from "../runtime/module-scope.ts";
+import { contextEffectGate } from "../runtime/context-effect-gate.ts";
 
 export function createBundleUi({
   environment = defaultEnvironment,
   dependencies = {},
 }: FactoryOptions = {}) {
+  const effectGate = contextEffectGate(environment);
   let bundle = createModuleScope(
     dependencies.bundle,
     [
@@ -95,6 +97,7 @@ export function createBundleUi({
       declare dragId: any;
 
       declare browser: any;
+      declare restoredDraft: DynamicApi | undefined;
       constructor({
         document = g.document,
         client,
@@ -103,6 +106,7 @@ export function createBundleUi({
         reader = new B.SourceReader(),
         searcher,
         onClose = () => {},
+        restoredDraft,
       }: {
         document?: Document;
         client: DynamicApi;
@@ -111,8 +115,10 @@ export function createBundleUi({
         reader?: DynamicApi;
         searcher: DynamicApi;
         onClose?: () => void;
+        restoredDraft?: DynamicApi;
       }) {
         Object.assign(this, {
+          restoredDraft,
           doc: document,
           client,
           token,
@@ -131,6 +137,17 @@ export function createBundleUi({
         this.host = this.doc.createElement("div");
         this.host.dataset.aruBundlePanel = "";
         this.shadow = this.host.attachShadow({ mode: "open" });
+        for (const type of ["click", "input", "change", "keydown", "submit"]) {
+          this.shadow.addEventListener(
+            type,
+            (event: Event) => {
+              if (!effectGate.allows()) {
+                event.stopImmediatePropagation();
+              }
+            },
+            true,
+          );
+        }
         this.shadow.innerHTML = `<style>${CSS}</style><div class="shade"><section class="dialog" role="dialog" aria-modal="true" aria-label="아이콘 통합"><header><strong>아이콘 통합</strong><button type="button" class="close" aria-label="닫기"><svg class="aru-ui-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m6 6 12 12M18 6 6 18"/></svg></button></header><main><p class="hint">원본 게시글을 모아 통합팩을 만듭니다. 게시글 저장은 직접 진행하세요.</p><p class="context hint"></p><label>통합팩 제목<input class="name" maxlength="240" placeholder="통합 아이콘팩 제목"></label><label for="aru-bundle-url">원본 아이콘 공유 게시글 URL</label><div class="lookup"><input id="aru-bundle-url" class="url" type="url" placeholder="https://bbs.ruliweb.com/community/board/98/read/…"><button type="button" class="add">조회 · 추가</button><button type="button" class="cancel" disabled>조회 취소</button></div><div class="status" role="status" aria-live="polite">에디터 확인 중…</div><p class="hint">드래그하거나 위·아래 버튼으로 순서를 바꾸세요.</p><ul class="refs" aria-label="원본 글별 그룹"></ul><div class="preview" hidden></div></main><footer><button type="button" class="save">초안 저장</button><button type="button" class="load">초안 불러오기</button><button type="button" class="generate">변경 미리보기</button><button type="button" class="apply primary" disabled>편집기에 적용</button></footer></section></div>`;
         this.uiCleanup = icons?.DesignSystem?.attach(this.shadow);
         icons?.DesignSystem?.modalHeader(this.shadow.querySelector("header"), {
@@ -246,7 +263,12 @@ export function createBundleUi({
           this.session = r.session;
           this.articleId = r.articleId;
           if (!this.initialized) {
-            this.draft = new B.Draft(r.value);
+            this.draft = this.restoredDraft
+              ? B.Draft.restore(this.restoredDraft.draft)
+              : new B.Draft(r.value);
+            if (this.restoredDraft) {
+              this.q(".url").value = this.restoredDraft.url;
+            }
             this.q(".name").value = this.draft.name;
             this.initialized = true;
           }
