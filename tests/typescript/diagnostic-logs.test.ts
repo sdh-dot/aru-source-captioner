@@ -13,6 +13,8 @@ import { installFirefoxBackground } from "../../src/platform/firefox/background.
 import { installWhaleBackground } from "../../src/platform/whale/background.ts";
 import { createDownloadBackground } from "../../src/body-download/background.ts";
 import { createIconsComposerBridge } from "../../src/ruliweb-icons/composer-bridge.ts";
+import { contextEffectGate } from "../../src/runtime/context-effect-gate.ts";
+import { sessionResources } from "../../src/runtime/session-resources.ts";
 
 const secret = "SYNTHETIC_PRIVATE_R02";
 const sourceUrl = "https://www.pixiv.net/artworks/88442211";
@@ -118,8 +120,13 @@ for (const browser of ["firefox", "whale"]) {
         const w = dom.window, log = recorder(), wrapper = w.document.querySelector("div")!, input = w.document.querySelector("input")!, textarea = w.document.querySelector("textarea")!;
         textarea.value = secret + " 초안";
         let outcome: unknown = { status: "ok", url: sourceUrl };
+        const chrome = {runtime: {id: "diagnostic-log-test-extension"}};
+        const environment = {window: w, chrome, console: log.console};
+        const effectGate = contextEffectGate(environment);
+        const resources = sessionResources(environment as never, effectGate);
         const names = ["hookCommentFileInput", "buildCommentSourceText", "insertSourceIntoCommentTextarea", "buildMergedTextareaValue", "checkInsertSkipReason", "focusTextareaSafe", "logCommentInsertSkip", "applyTextareaValue"];
-        const p = functions(browser, names, ["COMMENT_FILE_INPUT_SELECTOR", "COMMENT_TEXTAREA_SELECTOR", "COMMENT_FILE_BOUND_DATASET_KEY", "COMMENT_SOURCE_PREFIX", "wrapperSourceMap"], {
+        const p = functions(browser, names, ["COMMENT_FILE_INPUT_SELECTOR", "COMMENT_TEXTAREA_SELECTOR", "COMMENT_FILE_BOUND_DATASET_KEY", "COMMENT_SOURCE_PREFIX", "wrapperSourceMap", "commentFileSelections"], {
+          chrome, environment, effectGate, resources,
           document: w.document, HTMLElement: w.HTMLElement, HTMLInputElement: w.HTMLInputElement, HTMLTextAreaElement: w.HTMLTextAreaElement, Event: w.Event, console: log.console,
           parseSourceFromFile: async () => { if (outcome instanceof Error) throw outcome; return outcome; }, sanitizeSourceUrl: (value: string) => value,
         });
@@ -204,6 +211,8 @@ for (const file of ["src", "entrypoints", "runtime", "config"].flatMap(directory
       while (owner && !ts.isFunctionLike(owner)) owner = owner.parent;
       const ownerName = owner && "name" in owner ? (owner.name as ts.Node)?.getText(sf) : "";
       const context = { console: log.console, global: { console: log.console }, kind: secret, file: { name: secret }, imageFile: { name: secret }, sourceInfo: { url: sourceUrl, reason: secret }, config: { strictAllowlist: secret, allowHttp: secret }, err: sensitiveError(), error: sensitiveError(), callbackErr: sensitiveError(), openError: sensitiveError(), response: { error: sensitiveError(), data: { message: secret } }, chrome: { runtime: { lastError: sensitiveError() } }, fields: { status: secret, message: secret, code: secret }, data: { kind: secret, icons: secret }, stage: secret, code: secret, row: { url: sourceUrl, articleId: "88442211" }, detail: { summary: { query: secret }, missing: [], images: [] }, failures: [], pack: { icons: [] }, context: { articleId: "88442211" }, reason: secret, textarea: { value: secret, maxLength: -1 }, existing: secret, newValue: secret, document: { contains: () => true, querySelector: () => null }, isRuliwebReadPage: () => true, hasRuliwebAiBlind: () => false, _findBoardMainView: () => null, isMobileAutoInsertEnvironment: () => false, exifr: {}, textareas: [], result: ownerName === "findCommentInputWrappers" ? [] : "ok", hookedFileInputs: 0, injected: 0, updates: {}, allowed: false, blocked: false, shouldOpen: false, maxLen: 0, cx: 0, cy: 0, hasAiBlind: false, imgCount: 0, textLength: 0, tableWidth: 1, tableHeight: 1, sourceUrl, root: { isConnected: true }, location: { href: sourceUrl }, navigator: { userAgent: secret } };
+      Object.assign(context.root, {console: log.console});
+      Object.assign(context, {environment: {console: log.console}});
       const js = ts.transpileModule(sink.getText(sf), { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText;
       vm.runInNewContext(js, context);
       assert.equal(log.calls.length, 1, file + ":" + (sf.getLineAndCharacterOfPosition(sink.getStart(sf)).line + 1));

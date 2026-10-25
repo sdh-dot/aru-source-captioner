@@ -44,7 +44,7 @@ async function fixture(browser: string, options: {read?: boolean; config?: objec
   const w = dom.window;
   const warnings: string[] = [];
   w.console = {log(){}, info(){}, debug(){}, warn(...args: unknown[]){warnings.push(args.map(String).join(" "));}, error(){}} as Console;
-  w.chrome = {runtime: {}, storage: {sync: {get(_keys: unknown, callback: (items: object) => void){callback({enabled: true, ...options.config});}}}};
+  w.chrome = {runtime: {id: "source-display-test-extension"}, storage: {sync: {get(_keys: unknown, callback: (items: object) => void){callback({enabled: true, ...options.config});}}}};
   w.TextDecoder = TextDecoder;
   w.TextEncoder = TextEncoder;
   w.exifr = {parse: async (file: File) => options.metadata?.(file) ?? {}};

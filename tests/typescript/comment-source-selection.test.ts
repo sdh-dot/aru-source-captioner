@@ -4,6 +4,8 @@ import fs from "node:fs";
 import vm from "node:vm";
 import ts from "typescript";
 import { JSDOM } from "jsdom";
+import { contextEffectGate } from "../../src/runtime/context-effect-gate.ts";
+import { sessionResources } from "../../src/runtime/session-resources.ts";
 
 type Source = { status: string; url?: string; reason?: string };
 const A = "https://www.pixiv.net/artworks/123456789";
@@ -37,8 +39,11 @@ function fixture(browser: string) {
   const jobs: { file: File; resolve(value: Source): void; reject(error: Error): void }[] = [];
   const noop = () => {};
   const api = { runtime: { id: "r01-test-extension" } };
+  const environment = { window: w, chrome: api, console: { log: noop, debug: noop, info: noop, warn: noop } };
+  const effectGate = contextEffectGate(environment);
+  const resources = sessionResources(environment as never, effectGate);
   const sandbox = vm.createContext({
-    document: w.document, window: w, environment: { window: w, chrome: api }, chrome: api,
+    document: w.document, window: w, environment, chrome: api, effectGate, resources,
     HTMLElement: w.HTMLElement, HTMLInputElement: w.HTMLInputElement,
     HTMLTextAreaElement: w.HTMLTextAreaElement, Event: w.Event,
     console: { log: noop, debug: noop, info: noop, warn: noop },
@@ -62,7 +67,7 @@ function fixture(browser: string) {
     return state.get(input)!.listener({ target: input });
   }
   bind();
-  return { w, jobs, state, map, wrapper, bind, fileInput, textarea, image, select, api, close: () => w.close() };
+  return { w, jobs, state, map, wrapper, bind, fileInput, textarea, image, select, api, close: () => { effectGate.dispose(); w.close(); } };
 }
 
 for (const browser of ["firefox", "whale"]) {

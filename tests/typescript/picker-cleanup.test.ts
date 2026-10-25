@@ -6,6 +6,7 @@ import { createRequire } from "node:module";
 import ts from "typescript";
 import { JSDOM } from "jsdom";
 import { PickerLifecycle } from "../../src/ruliweb-icons/picker-lifecycle.ts";
+import { contextEffectGate, createEffectSessionGate } from "../../src/runtime/context-effect-gate.ts";
 
 const source = fs.readFileSync(new URL("../../src/ruliweb-icons/picker.ts", import.meta.url), "utf8");
 function declarations(names: string[], constants: string[] = []) {
@@ -56,7 +57,13 @@ function setup(failing: string[] = [], extra: { reenter?: string; consoleThrows?
   const fold = { dispose: () => record("foldFallback") };
   const folds = new Map([["a", { dispose: () => record("foldA") }], ["b", { dispose: () => record("foldB") }]]);
   const console = { warn(...args: unknown[]) { if (extra.consoleThrows) throw Error("console failure"); logs.push(args); } };
+  const documentGate = contextEffectGate({ window: dom.window });
+  const effectGate = createEffectSessionGate(documentGate);
+  const guardEvent = (event: Event) => { if (!effectGate.allows()) { event.preventDefault(); event.stopImmediatePropagation(); } };
+  for (const type of ["click", "input", "change", "keydown", "submit", "pointerdown", "dblclick"]) root.addEventListener(type, guardEvent, true);
+  let detachGate: (() => void) | undefined;
   context = vm.createContext({ document: doc, global: { console }, root, host, opener, mediaCleanups,
+    guardEvent, detachGate: () => detachGate?.(),
     toastTimer: 1, searchTimer: 2, libraryFrame: 3, initialFocusFrame: 4, virtualFrame: 5,
     clearTimeout: (id: number) => record(id === 1 ? "toast" : "search"), cancelAnimationFrame: (id: number) => record("frame" + id),
     previewCleanup: () => record("preview"), library: { cancel: () => record("library") }, uiCleanup: () => record("ui"),
@@ -74,7 +81,8 @@ function setup(failing: string[] = [], extra: { reenter?: string; consoleThrows?
     globalThis.destroy = destroy;
     globalThis.locks = scrollLocks;
   `, Object.assign(context, { recordUnlock: () => record("unlock") }));
-  return { dom, doc, host, root, videos, images, opener, seen, logs, errors, context, destroy: () => context.destroy(), scrollCalls: () => scrollCalls, close: () => dom.window.close() };
+  detachGate = effectGate.onStop(() => context.destroy());
+  return { dom, doc, host, root, videos, images, opener, seen, logs, errors, context, destroy: () => context.destroy(), scrollCalls: () => scrollCalls, close: () => { documentGate.dispose(); dom.window.close(); } };
 }
 
 test("정상 종료는 기존 정리 순서·본문·상태 초기화를 보존한다", () => {
