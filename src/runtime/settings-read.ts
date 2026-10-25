@@ -1,4 +1,4 @@
-import { contextEffectGate } from "./context-effect-gate.ts";
+import { contextEffectGate, sessionSignalKey } from "./context-effect-gate.ts";
 // 조회 실패는 최초 설치의 키 부재와 구분한다. 저장값은 쓰지 않으며 이전 ON을 재사용하지 않는다.
 import type { CodedError } from "./contracts.ts";
 
@@ -175,7 +175,16 @@ export async function readSettings(
 ): Promise<SettingsReadResult> {
   const timer = options.clock ?? clock;
   const controller = new AbortController();
+  const scopedSignal = Reflect.get(root, sessionSignalKey) as
+    | AbortSignal
+    | undefined;
   const cancel = () => controller.abort();
+  // 호출자의 취소와 별개로 종료된 효과 세션의 조회 타이머·구독도 즉시 정리한다.
+  if (scopedSignal?.aborted) {
+    cancel();
+  } else {
+    scopedSignal?.addEventListener("abort", cancel, { once: true });
+  }
   if (options.signal?.aborted) {
     cancel();
   } else {
@@ -234,6 +243,7 @@ export async function readSettings(
       }
     }
   } finally {
+    scopedSignal?.removeEventListener("abort", cancel);
     options.signal?.removeEventListener("abort", cancel);
     unsubscribe?.();
   }

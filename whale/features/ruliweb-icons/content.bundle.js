@@ -1810,6 +1810,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
   var gates = /* @__PURE__ */ new WeakMap();
   var sharedGateKey = /* @__PURE__ */ Symbol.for("aru.context-effect-gate.v1");
   var sessionGateKey = /* @__PURE__ */ Symbol.for("aru.effect-session-gate.v1");
+  var sessionSignalKey = /* @__PURE__ */ Symbol.for("aru.effect-session-signal.v1");
   function contextEffectGate(environment) {
     const scoped = Reflect.get(environment, sessionGateKey);
     if (scoped) {
@@ -6634,7 +6635,13 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
   async function readSettings(root, keys, options = {}) {
     const timer = options.clock ?? clock;
     const controller = new AbortController();
+    const scopedSignal = Reflect.get(root, sessionSignalKey);
     const cancel = /* @__PURE__ */ __name(() => controller.abort(), "cancel");
+    if (scopedSignal?.aborted) {
+      cancel();
+    } else {
+      scopedSignal?.addEventListener("abort", cancel, { once: true });
+    }
     if (options.signal?.aborted) {
       cancel();
     } else {
@@ -6686,6 +6693,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
         }
       }
     } finally {
+      scopedSignal?.removeEventListener("abort", cancel);
       options.signal?.removeEventListener("abort", cancel);
       unsubscribe?.();
     }

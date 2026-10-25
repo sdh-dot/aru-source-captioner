@@ -1,5 +1,5 @@
 // 자동 생성: src/runtime/settings-read.ts. tools/compile-typescript.mjs로 갱신한다.
-import { contextEffectGate } from "./context-effect-gate.mjs";
+import { contextEffectGate, sessionSignalKey } from "./context-effect-gate.mjs";
 const clock = {
     setTimeout: (callback, delay) => globalThis.setTimeout(callback, delay),
     clearTimeout: (handle) => globalThis.clearTimeout(handle),
@@ -107,7 +107,15 @@ function readOnce(root, keys, timer, signal) {
 export async function readSettings(root, keys, options = {}) {
     const timer = options.clock ?? clock;
     const controller = new AbortController();
+    const scopedSignal = Reflect.get(root, sessionSignalKey);
     const cancel = () => controller.abort();
+    // 호출자의 취소와 별개로 종료된 효과 세션의 조회 타이머·구독도 즉시 정리한다.
+    if (scopedSignal?.aborted) {
+        cancel();
+    }
+    else {
+        scopedSignal?.addEventListener("abort", cancel, { once: true });
+    }
     if (options.signal?.aborted) {
         cancel();
     }
@@ -163,6 +171,7 @@ export async function readSettings(root, keys, options = {}) {
         }
     }
     finally {
+        scopedSignal?.removeEventListener("abort", cancel);
         options.signal?.removeEventListener("abort", cancel);
         unsubscribe?.();
     }

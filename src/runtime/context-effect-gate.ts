@@ -27,6 +27,7 @@ const gates = new WeakMap<object, ContextEffectGate>();
 // 별도 생성 번들도 같은 ISOLATED Window의 종료 판단을 공유한다. MAIN의 Window와 저장 데이터는 사용하지 않는다.
 const sharedGateKey = Symbol.for("aru.context-effect-gate.v1");
 export const sessionGateKey = Symbol.for("aru.effect-session-gate.v1");
+export const sessionSignalKey = Symbol.for("aru.effect-session-signal.v1");
 export function contextEffectGate(environment: object): ContextEffectGate {
   const scoped = Reflect.get(environment, sessionGateKey) as
     | ContextEffectGate

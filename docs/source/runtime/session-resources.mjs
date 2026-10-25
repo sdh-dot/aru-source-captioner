@@ -1,5 +1,5 @@
 // 자동 생성: src/runtime/session-resources.ts. tools/compile-typescript.mjs로 갱신한다.
-import { contextEffectGate, sessionGateKey, } from "./context-effect-gate.mjs";
+import { contextEffectGate, sessionGateKey, sessionSignalKey, } from "./context-effect-gate.mjs";
 const draftKey = Symbol.for("aru.effect-session-drafts.v1");
 const ownedKey = Symbol.for("aru.effect-session-resources.v1");
 export function sessionDrafts(environment, namespace = "metadata") {
@@ -90,6 +90,7 @@ export function sessionResources(environment, gate = contextEffectGate(environme
 }
 export function createSessionEnvironment(root, gate, drafts = Reflect.get(root, draftKey)) {
     const owned = Reflect.get(root, ownedKey) ?? new Map();
+    const cancellation = new root.AbortController();
     const resources = sessionResources(root, gate, owned);
     const local = new Map();
     const timers = new Map();
@@ -186,6 +187,10 @@ export function createSessionEnvironment(root, gate, drafts = Reflect.get(root, 
     };
     let scoped;
     const bound = new Set([
+        "alert",
+        "confirm",
+        "getSelection",
+        "queueMicrotask",
         "getComputedStyle",
         "matchMedia",
         "fetch",
@@ -198,6 +203,9 @@ export function createSessionEnvironment(root, gate, drafts = Reflect.get(root, 
         get(target, key) {
             if (key === sessionGateKey) {
                 return gate;
+            }
+            if (key === sessionSignalKey) {
+                return cancellation.signal;
             }
             if (key === draftKey) {
                 return drafts;
@@ -289,7 +297,7 @@ export function createSessionEnvironment(root, gate, drafts = Reflect.get(root, 
             }
             const value = Reflect.get(target, key, target);
             return bound.has(key) && typeof value === "function"
-                ? value.bind(target)
+                ? value.bind(root.window ?? root)
                 : value;
         },
         set(target, key, value) {
@@ -315,6 +323,7 @@ export function createSessionEnvironment(root, gate, drafts = Reflect.get(root, 
         listeners.clear();
         local.clear();
     });
+    resources.own(() => cancellation.abort());
     return {
         environment: scoped,
         resources,

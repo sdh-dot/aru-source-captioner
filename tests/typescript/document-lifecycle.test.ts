@@ -11,6 +11,8 @@ import { createIconReader, createMetadataUi } from "../../src/runtime/icons.ts";
 import { createAttributionUi } from "../../src/upload-attribution/ui.ts";
 import { installMetadataEditorBridge } from "../../src/icon-metadata/metadata-editor-bridge.ts";
 import { createDownloadContent } from "../../src/body-download/content.ts";
+import { createSessionEnvironment } from "../../src/runtime/session-resources.ts";
+import { readSettings } from "../../src/runtime/settings-read.ts";
 import type { RuntimeEnvironment } from "../../src/runtime/contracts.ts";
 
 const flush = async () => { for (let i = 0; i < 40; i++) await Promise.resolve(); };
@@ -109,11 +111,12 @@ test('동일 Window 공유·반복 등록과 10회 왕복은 한 listener·세�
 });
 
 test('이전 세션의 메시지 완료·cleanup은 새 세션에 영향이 없다',async()=>{
-  const h=host('promise'),sessions:EffectSession[]=[];let done:(v:unknown)=>void=()=>{};
-  h.api.runtime.sendMessage=((_data:unknown)=>new Promise(resolve=>done=resolve)) as typeof h.api.runtime.sendMessage;
+  const h=host('promise',{enabled:true,aruIconsOptions:{enabled:true}}),sessions:EffectSession[]=[];let done:(v:unknown)=>void=()=>{},sent=0;
+  h.api.runtime.sendMessage=((_data:unknown)=>{sent++;return new Promise(resolve=>done=resolve);}) as typeof h.api.runtime.sendMessage;
   try{h.owner.register('test',s=>sessions.push(s));await flush();
     const old=sessions[0],adapter=createBrowserAdapter(old.environment),pending=adapter.requestCache('info',{});
     const rejected=assert.rejects(pending,{code:'CONTEXT_INVALIDATED'});
+    await flush();assert.equal(sent,1);
     h.fire('pagehide',true);h.fire('pageshow',true);await flush();const fresh=sessions[1];
     old.gate.dispose();done({ok:true,result:{stale:true}});await rejected;assert.equal(fresh.isCurrent(),true);
     const count=h.messages;await assert.rejects(adapter.requestCache('info',{}));assert.equal(h.messages,count);
@@ -271,5 +274,34 @@ test('다운로드 수신 포트도 세션마다 교체하며 10회 복귀에 li
     for(let i=0;i<10;i++){assert.equal(listeners.size,1);const old=Array.from(listeners)[0];h.fire('pagehide',true);assert.equal(listeners.size,0);h.fire('pageshow',true);await flush();assert.equal(listeners.size,1);
       old({type:'aru-body-download:collect',url:h.w.location.href},{id:api.runtime.id},()=>{});await flush();assert.equal(extracted,0);
     }
+  }finally{h.close();}
+});
+
+test('중첩 세션 환경에서도 Window 메서드의 native 수신자를 보존한다',async()=>{
+  const h=host();let called=0;
+  h.w.alert=function(this:Window){assert.equal(this,h.w);called++;};
+  h.w.confirm=function(this:Window){assert.equal(this,h.w);called++;return true;};
+  h.w.getSelection=function(this:Window){assert.equal(this,h.w);called++;return null;};
+  try{h.owner.register('receiver',s=>{
+    const nested=createSessionEnvironment(s.environment,s.gate).environment;
+    s.environment.alert('');assert.equal(nested.confirm(''),true);assert.equal(nested.getSelection(),null);
+  });await flush();assert.equal(called,3);
+  }finally{h.close();}
+});
+
+for(const explicit of [false,true])test(`세션 종료는 ${explicit?'별도 signal이 있어도':'기본'} 설정 조회의 타이머·구독을 해제한다`,async()=>{
+  const h=host(),pending:Promise<unknown>[]=[],callbacks:((v:unknown)=>void)[]=[],timers=new Map<number,()=>void>();let sequence=0;
+  h.setReader((keys,callback)=>{if(keys===null){callbacks.push(callback!);return;}callback!({enabled:true});});
+  const clock={setTimeout(callback:()=>void){const id=++sequence;timers.set(id,callback);return id;},clearTimeout(id:unknown){timers.delete(id as number);}};
+  try{h.owner.register('config',s=>{pending.push(readSettings(s.environment,null,{clock,signal:explicit?new AbortController().signal:undefined}));});await flush();
+    assert.equal(timers.size,1);assert.equal(h.storageListeners.size,2);
+    h.fire('pagehide',true);await flush();assert.equal(timers.size,0);assert.equal(h.storageListeners.size,1);assert.equal((await pending[0] as {state:string}).state,'cancelled');
+    h.fire('pageshow',true);await flush();assert.equal(pending.length,2);callbacks[0]({enabled:true});await flush();assert.equal(timers.size,1);
+  }finally{h.close();}
+});
+
+test('취소 통지를 받는 callback보다 먼저 이전 효과 권한을 차단한다',async()=>{
+  const h=host();let denied=false;
+  try{h.owner.register('abort',s=>s.signal.addEventListener('abort',()=>{denied=!s.gate.allows();}));await flush();h.fire('pagehide',true);assert.equal(denied,true);
   }finally{h.close();}
 });

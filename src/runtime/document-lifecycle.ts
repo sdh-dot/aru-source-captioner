@@ -73,8 +73,8 @@ function createOwner(root: RuntimeEnvironment) {
     const previous = current;
     current = undefined;
     state = next;
-    previous?.abort.abort();
     previous?.session.gate.dispose();
+    previous?.abort.abort();
   };
   const startFactory = (name: string, start: StartSession) => {
     const active = current;

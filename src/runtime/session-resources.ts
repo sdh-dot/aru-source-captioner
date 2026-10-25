@@ -2,6 +2,7 @@ import type { RuntimeEnvironment } from "./contracts.ts";
 import {
   contextEffectGate,
   sessionGateKey,
+  sessionSignalKey,
   type ContextEffectGate,
 } from "./context-effect-gate.ts";
 const draftKey = Symbol.for("aru.effect-session-drafts.v1");
@@ -115,6 +116,7 @@ export function createSessionEnvironment(
   ),
 ) {
   const owned: Map<string, number> = Reflect.get(root, ownedKey) ?? new Map();
+  const cancellation = new root.AbortController();
   const resources = sessionResources(root, gate, owned);
   const local = new Map<PropertyKey, unknown>();
   const timers = new Map<number, () => void>();
@@ -227,6 +229,10 @@ export function createSessionEnvironment(
   };
   let scoped: RuntimeEnvironment;
   const bound = new Set([
+    "alert",
+    "confirm",
+    "getSelection",
+    "queueMicrotask",
     "getComputedStyle",
     "matchMedia",
     "fetch",
@@ -239,6 +245,9 @@ export function createSessionEnvironment(
     get(target, key) {
       if (key === sessionGateKey) {
         return gate;
+      }
+      if (key === sessionSignalKey) {
+        return cancellation.signal;
       }
       if (key === draftKey) {
         return drafts;
@@ -346,7 +355,7 @@ export function createSessionEnvironment(
       }
       const value = Reflect.get(target, key, target);
       return bound.has(key as string) && typeof value === "function"
-        ? value.bind(target)
+        ? value.bind(root.window ?? root)
         : value;
     },
     set(target, key, value) {
@@ -372,6 +381,7 @@ export function createSessionEnvironment(
     listeners.clear();
     local.clear();
   });
+  resources.own(() => cancellation.abort());
   return {
     environment: scoped,
     resources,

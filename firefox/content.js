@@ -52,6 +52,7 @@
   var gates = /* @__PURE__ */ new WeakMap();
   var sharedGateKey = /* @__PURE__ */ Symbol.for("aru.context-effect-gate.v1");
   var sessionGateKey = /* @__PURE__ */ Symbol.for("aru.effect-session-gate.v1");
+  var sessionSignalKey = /* @__PURE__ */ Symbol.for("aru.effect-session-signal.v1");
   function contextEffectGate(environment) {
     const scoped = Reflect.get(environment, sessionGateKey);
     if (scoped) {
@@ -244,6 +245,7 @@
   __name(sessionResources, "sessionResources");
   function createSessionEnvironment(root, gate, drafts = Reflect.get(root, draftKey)) {
     const owned = Reflect.get(root, ownedKey) ?? /* @__PURE__ */ new Map();
+    const cancellation = new root.AbortController();
     const resources = sessionResources(root, gate, owned);
     const local = /* @__PURE__ */ new Map();
     const timers = /* @__PURE__ */ new Map();
@@ -335,6 +337,10 @@
     }, "timer");
     let scoped;
     const bound = /* @__PURE__ */ new Set([
+      "alert",
+      "confirm",
+      "getSelection",
+      "queueMicrotask",
       "getComputedStyle",
       "matchMedia",
       "fetch",
@@ -347,6 +353,9 @@
       get(target, key) {
         if (key === sessionGateKey) {
           return gate;
+        }
+        if (key === sessionSignalKey) {
+          return cancellation.signal;
         }
         if (key === draftKey) {
           return drafts;
@@ -437,7 +446,7 @@
           return void 0;
         }
         const value = Reflect.get(target, key, target);
-        return bound.has(key) && typeof value === "function" ? value.bind(target) : value;
+        return bound.has(key) && typeof value === "function" ? value.bind(root.window ?? root) : value;
       },
       set(target, key, value) {
         if (typeof key === "string" && key.startsWith("__aru")) {
@@ -462,6 +471,7 @@
       listeners.clear();
       local.clear();
     });
+    resources.own(() => cancellation.abort());
     return {
       environment: scoped,
       resources,
@@ -578,7 +588,13 @@
   async function readSettings(root, keys, options = {}) {
     const timer = options.clock ?? clock;
     const controller = new AbortController();
+    const scopedSignal = Reflect.get(root, sessionSignalKey);
     const cancel = /* @__PURE__ */ __name(() => controller.abort(), "cancel");
+    if (scopedSignal?.aborted) {
+      cancel();
+    } else {
+      scopedSignal?.addEventListener("abort", cancel, { once: true });
+    }
     if (options.signal?.aborted) {
       cancel();
     } else {
@@ -630,6 +646,7 @@
         }
       }
     } finally {
+      scopedSignal?.removeEventListener("abort", cancel);
       options.signal?.removeEventListener("abort", cancel);
       unsubscribe?.();
     }
