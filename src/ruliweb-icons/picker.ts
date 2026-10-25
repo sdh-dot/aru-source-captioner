@@ -1190,8 +1190,12 @@ export function createIconsPicker({
         if (mediaFailures.size > 100) {
           mediaFailures.delete(mediaFailures.keys().next().value);
         }
+        // 내부 진단 snapshot은 유지하되 콘솔에는 URL·작품/아이콘 ID·외부 오류 코드를 전달하지 않는다.
         if (options.debug === true) {
-          global.console?.info?.("[Aru Icons] media diagnostics", row);
+          global.console?.info?.("[Aru Icons] media diagnostics", {
+            stage: ["preview", "insertion"].includes(stage) ? stage : "media",
+            code: stage === "insertion" ? "INSERT_FAILED" : "MEDIA_LOAD_FAILED",
+          });
         }
       }
       function updatePrepare() {
@@ -2721,10 +2725,11 @@ export function createIconsPicker({
         }
         lastMetadataLog = key;
         const failures = detail.images.filter((row) => row.reason !== "mapped");
+        // 검색어·태그·원본 메타데이터 대신 집계 건수만 지원 로그에 남긴다.
         global.console?.info?.("[Aru Icons] metadata diagnostics", {
-          ...detail.summary,
-          unmappedOrUntagged: failures,
-          missing: detail.missing,
+          modelIcons: (pack?.icons || []).length,
+          unmappedCount: failures.length,
+          missingCount: detail.missing.length,
         });
       }
       function resetSearch() {

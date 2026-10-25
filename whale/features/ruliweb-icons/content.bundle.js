@@ -1843,7 +1843,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
         try {
           callback();
         } catch (error) {
-          console.warn("[Aru] 컨텍스트 종료 정리 실패", error);
+          console.warn("[Aru] 컨텍스트 종료 정리 실패", "CONTEXT_CLEANUP_FAILED");
         }
       }
       stopped.clear();
@@ -2803,7 +2803,10 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
             mediaFailures.delete(mediaFailures.keys().next().value);
           }
           if (options.debug === true) {
-            global.console?.info?.("[Aru Icons] media diagnostics", row);
+            global.console?.info?.("[Aru Icons] media diagnostics", {
+              stage: ["preview", "insertion"].includes(stage) ? stage : "media",
+              code: stage === "insertion" ? "INSERT_FAILED" : "MEDIA_LOAD_FAILED"
+            });
           }
         }
         __name(mediaDiagnostic, "mediaDiagnostic");
@@ -3847,9 +3850,9 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
           lastMetadataLog = key;
           const failures = detail.images.filter((row) => row.reason !== "mapped");
           global.console?.info?.("[Aru Icons] metadata diagnostics", {
-            ...detail.summary,
-            unmappedOrUntagged: failures,
-            missing: detail.missing
+            modelIcons: (pack?.icons || []).length,
+            unmappedCount: failures.length,
+            missingCount: detail.missing.length
           });
         }
         __name(reportMetadata, "reportMetadata");
@@ -5055,9 +5058,15 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
             }
             diagnostics.set(stage, key);
             global.console?.info?.("[Aru Icons]", {
-              stage,
-              articleId: context.articleId,
-              ...data
+              stage: [
+                "picker-delivery",
+                "cache",
+                "pack-type",
+                "body-collect",
+                "cache-write"
+              ].includes(stage) ? stage : "icons",
+              kind: data.kind === "NORMAL" || data.kind === "BUNDLE" ? data.kind : "unknown",
+              icons: Number.isSafeInteger(data.icons) && data.icons >= 0 ? data.icons : null
             });
           }, "log");
           let pendingPack = null, pendingData = null, latestProgress = null;
@@ -5479,7 +5488,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
       if (global.document && API.BrowserAdapter && /^(bbs|m)\.ruliweb\.com$/.test(global.location?.hostname || "")) {
         const feature = new IconFeature();
         API.feature = feature;
-        feature.start().catch((error) => console2.warn("[Aru Icons] 초기화 실패:", error.message));
+        feature.start().catch((_error) => console2.warn("[Aru Icons] 초기화 실패:", "ICONS_INIT_FAILED"));
       }
     }, "initializeIconsFeature");
     initializeIconsFeature(typeof environment !== "undefined" ? environment : this);
@@ -8133,8 +8142,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
               global.console?.info?.("[Aru Icons Composer]", {
                 stage: "capture",
                 status: "failed",
-                code: error.code || "CAPTURE_FAILED",
-                kind,
+                code: "CAPTURE_FAILED",
                 connected: root.isConnected
               });
             }

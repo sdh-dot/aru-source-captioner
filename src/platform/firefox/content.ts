@@ -11,7 +11,6 @@ import {
   parsePngItxtChunks,
   parseItxtChunk,
 } from "../../source-caption/png-chunks.ts";
-import type { CodedError } from "../../runtime/contracts.ts";
 import {
   defaultEnvironment,
   type RuntimeEnvironment,
@@ -72,6 +71,7 @@ export function installFirefoxContent({
 
   // 파일 선택의 출처와 작성기 이미지의 대응 근거가 확인된 경우에만 캡션을 삽입한다.
   // 브라우저별 판독 우선순위와 기존 설정·저장 태그 정책은 각 판독 경계에서 유지한다.
+  // 진단은 고정 단계·오류 코드와 건수만 기록하고 파일·URL·본문·예외 원문은 전달하지 않는다.
   //
   // 절대 규칙:
   //   - innerHTML / outerHTML / insertAdjacentHTML 사용 금지.
@@ -86,9 +86,7 @@ export function installFirefoxContent({
 
     // 동기 boot 로그 — async init() 이전에 즉시 실행.
     // Console에 이 로그가 없으면 manifest content_scripts.matches/host_permissions 누락이 원인.
-    console.log("[Aru Source Captioner] content script loaded", {
-      href: location.href,
-    });
+    console.log("[Aru Source Captioner] content script loaded");
 
     const DEFAULT_OPTIONS = Object.freeze({
       enabled: true,
@@ -335,8 +333,7 @@ export function installFirefoxContent({
         if (aruResult.status === "error") {
           console.debug(
             "[Aru Source Captioner] png itxt fallback to exifr:",
-            file.name,
-            aruResult.reason,
+            "PNG_METADATA_FALLBACK",
           );
         }
       }
@@ -345,10 +342,10 @@ export function installFirefoxContent({
       {
         const filenameUrl = parsePixivFilenameUrl(file.name);
         if (filenameUrl) {
-          console.info("[Aru Source Captioner] filename parsed (priority 2)", {
-            fileName: file.name,
-            url: filenameUrl,
-          });
+          console.info(
+            "[Aru Source Captioner] filename parsed (priority 2)",
+            "FILENAME_SOURCE_FOUND",
+          );
           return { status: "ok", url: filenameUrl, reason: "filename_parsed" };
         }
       }
@@ -363,8 +360,6 @@ export function installFirefoxContent({
           : null;
         if (filenameUrl) {
           console.info("[Aru Source Captioner] filename fallback", {
-            fileName: file.name,
-            url: filenameUrl,
             reason: "exifr_unavailable",
           });
           return {
@@ -395,16 +390,13 @@ export function installFirefoxContent({
       } catch (err) {
         console.warn(
           "[Aru Source Captioner] exifr.parse failed —",
-          `name=${file.name} type=${file.type || "unknown"} size=${file.size}B isWebp=${isWebp}`,
-          (err as CodedError).message || err,
+          "METADATA_PARSE_FAILED",
         );
         const filenameUrl = allowLooseFilenameFallback
           ? parsePixivFilenameUrl(file.name)
           : null;
         if (filenameUrl) {
           console.info("[Aru Source Captioner] filename fallback", {
-            fileName: file.name,
-            url: filenameUrl,
             reason: "exifr_parse_failed",
           });
           return {
@@ -425,8 +417,6 @@ export function installFirefoxContent({
           : null;
         if (filenameUrl) {
           console.info("[Aru Source Captioner] filename fallback", {
-            fileName: file.name,
-            url: filenameUrl,
             reason: "no_metadata",
           });
           return {
@@ -445,8 +435,6 @@ export function installFirefoxContent({
           : null;
         if (filenameUrl) {
           console.info("[Aru Source Captioner] filename fallback", {
-            fileName: file.name,
-            url: filenameUrl,
             reason: "no_url_candidates",
           });
           return {
@@ -582,7 +570,7 @@ export function installFirefoxContent({
           } else if (urlVal && isPixivUserUrl(urlVal)) {
             console.debug(
               "[Aru Source Captioner] source candidate skipped (artist url):",
-              { key, urlVal },
+              "ARTIST_URL_SKIPPED",
             );
           }
         }
@@ -671,11 +659,7 @@ export function installFirefoxContent({
         // Firefox UTF-16LE 디코딩 오류도 이 경로를 탄다. filename fallback은 계속된다.
         console.warn(
           "[Aru Source Captioner] JSON parse failed; fallback continues",
-          {
-            parser: "aru_json",
-            error: String(err),
-            sample: String(text).slice(0, 160),
-          },
+          { parser: "aru_json", code: "JSON_PARSE_FAILED" },
         );
         return null;
       }
@@ -973,9 +957,7 @@ export function installFirefoxContent({
       );
     }
 
-    // 단일 wrapper를 검증하고 진단 로그를 남긴 뒤 result에 추가한다.
-    // textarea의 name/id/className을 함께 로그로 찍어 일반 댓글 / 대댓글 wrapper를
-    // 사용자가 콘솔에서 구분할 수 있도록 한다 (selector 적합성 검증 용도).
+    // 댓글 대상을 수집하되 DOM 객체와 입력 속성은 지원용 콘솔에 노출하지 않는다.
     function classifyAndPushWrapper(wrapper: HTMLElement, result: any[]) {
       const textarea = wrapper.querySelector(COMMENT_TEXTAREA_SELECTOR);
       if (!(textarea instanceof HTMLTextAreaElement)) {
@@ -983,20 +965,14 @@ export function installFirefoxContent({
       }
       const imgButton = wrapper.querySelector(COMMENT_IMG_BUTTON_SELECTOR);
       result.push(wrapper);
-      const textareaInfo = {
-        name: textarea.name,
-        id: textarea.id,
-        className: textarea.className,
-      };
+
       if (imgButton) {
         console.log(
           "[Aru Source Captioner] scan: wrapper OK (has textarea + .common_img_button)",
-          { wrapper, textarea: textareaInfo },
         );
       } else {
         console.log(
           "[Aru Source Captioner] scan: wrapper has textarea but no .common_img_button — will use textarea position",
-          { wrapper, textarea: textareaInfo },
         );
       }
     }
@@ -1036,13 +1012,18 @@ export function installFirefoxContent({
 
     function logCommentInsertSkip(
       reason: string,
-      detail?: { maxLen: any; newLen: any } | undefined,
+      _detail?: { maxLen: any; newLen: any } | undefined,
     ) {
-      // 사용자 페이지 콘솔 오염을 피하기 위해 console.debug만 사용한다.
+      // 건너뛴 이유는 고정 코드만 남긴다. 댓글 본문·출처와 DOM 객체는 콘솔에 전달하지 않는다.
       console.debug(
         "[Aru Source Captioner] comment insert skipped:",
-        reason,
-        detail || "",
+        [
+          "duplicate_source_line",
+          "other_source_present",
+          "maxlength_exceeded",
+        ].includes(reason)
+          ? reason
+          : "COMMENT_INSERT_SKIPPED",
       );
     }
 
@@ -1112,10 +1093,6 @@ export function installFirefoxContent({
 
       // 사이트가 textarea setter를 가로채는지(예: framework state 동기화) 검증한다.
       console.log("[Aru Source Captioner] insert: value set", {
-        actualValue:
-          typeof textarea.value === "string"
-            ? textarea.value.slice(0, 50)
-            : null,
         valueMatches: textarea.value === newValue,
         valueLength:
           typeof textarea.value === "string" ? textarea.value.length : -1,
@@ -1133,7 +1110,10 @@ export function installFirefoxContent({
         textarea.dispatchEvent(new Event("input", { bubbles: true }));
         textarea.dispatchEvent(new Event("change", { bubbles: true }));
       } catch (err) {
-        console.debug("[Aru Source Captioner] event dispatch failed:", err);
+        console.debug(
+          "[Aru Source Captioner] event dispatch failed:",
+          "COMMENT_EVENT_FAILED",
+        );
       }
     }
 
@@ -1155,7 +1135,6 @@ export function installFirefoxContent({
       console.log("[Aru Source Captioner] insert: called", {
         textareaExists: true,
         inDOM: document.contains(textarea),
-        currentValue: existing.slice(0, 50),
         maxLength: textarea.maxLength,
       });
 
@@ -1196,10 +1175,7 @@ export function installFirefoxContent({
 
       const fileInput = wrapper.querySelector(COMMENT_FILE_INPUT_SELECTOR);
       if (!(fileInput instanceof HTMLInputElement)) {
-        console.log(
-          "[Aru Source Captioner] file: no file input in wrapper",
-          wrapper,
-        );
+        console.log("[Aru Source Captioner] file: no file input in wrapper");
         return false;
       }
       if (fileInput.type !== "file") {
@@ -1306,10 +1282,7 @@ export function installFirefoxContent({
           return;
         }
 
-        console.log(
-          "[Aru Source Captioner] file: extracting metadata from",
-          imageFile.name,
-        );
+        console.log("[Aru Source Captioner] file: metadata parsing started");
 
         let sourceInfo;
         try {
@@ -1317,7 +1290,7 @@ export function installFirefoxContent({
         } catch (err) {
           console.warn(
             "[Aru Source Captioner] file: metadata extraction threw",
-            err,
+            "COMMENT_METADATA_FAILED",
           );
           return;
         }
@@ -1328,7 +1301,6 @@ export function installFirefoxContent({
         if (sourceInfo?.status !== "ok" || !sourceInfo.url) {
           console.log(
             "[Aru Source Captioner] file: no Aru source metadata found in image",
-            { reason: sourceInfo?.reason },
           );
           return;
         }
@@ -1340,12 +1312,11 @@ export function installFirefoxContent({
         if (!safeUrl) {
           console.log(
             "[Aru Source Captioner] file: extracted source rejected by sanitizer",
-            { rawUrl: sourceInfo.url },
           );
           return;
         }
 
-        console.log("[Aru Source Captioner] file: extracted source =", safeUrl);
+        console.log("[Aru Source Captioner] file: source validated");
         wrapperSourceMap.set(targetWrapper, safeUrl);
 
         if (textarea instanceof HTMLTextAreaElement) {
@@ -1358,7 +1329,6 @@ export function installFirefoxContent({
         } else {
           console.log(
             "[Aru Source Captioner] file: source stored, but no textarea found for auto insert",
-            targetWrapper,
           );
         }
       }
@@ -1368,10 +1338,7 @@ export function installFirefoxContent({
         fileInput.removeEventListener("change", onFileChange);
       });
 
-      console.log("[Aru Source Captioner] file: hooked file input change", {
-        wrapper,
-        fileInput,
-      });
+      console.log("[Aru Source Captioner] file: hooked file input change");
       return true;
     }
 
@@ -1429,7 +1396,10 @@ export function installFirefoxContent({
         try {
           setupCommentSourceCaptioner();
         } catch (err) {
-          console.debug("[Aru Source Captioner] comment setup failed:", err);
+          console.debug(
+            "[Aru Source Captioner] comment setup failed:",
+            "COMMENT_SETUP_FAILED",
+          );
         }
       });
     }
@@ -1480,7 +1450,10 @@ export function installFirefoxContent({
         try {
           setupCommentSourceCaptioner();
         } catch (err) {
-          console.debug("[Aru Source Captioner] poll setup failed:", err);
+          console.debug(
+            "[Aru Source Captioner] poll setup failed:",
+            "COMMENT_POLL_FAILED",
+          );
         }
         if (attempts >= maxAttempts) {
           clearInterval!(pollIntervalId);
@@ -1678,16 +1651,13 @@ export function installFirefoxContent({
       const overlayText = getRuliwebRevealOverlayText();
       const { shouldOpen, allowed, blocked } =
         shouldOpenRuliwebOverlayByKeywords(overlayText, config);
-      const allowKeywords =
+      const _allowKeywords =
         (config && config.ruliwebAiRevealAllowKeywords) ||
         DEFAULT_OPTIONS.ruliwebAiRevealAllowKeywords;
-      const blockKeywords =
+      const _blockKeywords =
         (config && config.ruliwebAiRevealBlockKeywords) ||
         DEFAULT_OPTIONS.ruliwebAiRevealBlockKeywords;
       console.info("[Aru][reveal] overlay keyword decision", {
-        overlayText: overlayText.slice(0, 200),
-        allowKeywords,
-        blockKeywords,
         allowed,
         blocked,
         shouldOpen,
@@ -1715,30 +1685,18 @@ export function installFirefoxContent({
       if (unsafe) {
         console.warn(
           "[Aru][reveal] click aborted — unsafe element at overlay center",
-          {
-            pointTag: pointEl.tagName,
-            unsafeTag: unsafe.tagName,
-            unsafeHref: (unsafe as HTMLAnchorElement).href || "(none)",
-          },
         );
         return false;
       }
-      console.log("[Aru][reveal] overlay click target", {
-        x: cx,
-        y: cy,
-        tag: pointEl.tagName,
-        id: pointEl.id || "(none)",
-        className: (pointEl.className || "").toString().slice(0, 60),
-        href: (pointEl as HTMLAnchorElement).href || "(none)",
-      });
+      console.log("[Aru][reveal] overlay click target");
       const hrefBefore = location.href;
       _dispatchPointerMouseSequence(pointEl, cx, cy);
       setTimeout!(() => {
         if (location.href !== hrefBefore) {
-          console.error("[Aru][reveal] URL changed after overlay click", {
-            beforeUrl: hrefBefore,
-            afterUrl: location.href,
-          });
+          console.error(
+            "[Aru][reveal] URL changed after overlay click",
+            "REVEAL_NAVIGATION_CHANGED",
+          );
         }
         const hasAiBlind = hasRuliwebAiBlind();
         const imgCount = document.querySelectorAll(".view_content img").length;
@@ -1822,8 +1780,6 @@ export function installFirefoxContent({
     function setupRuliwebAiReveal(config: Options) {
       const mode = config.ruliwebAiRevealMode ?? "off";
       console.log("[Aru][reveal] setup", {
-        mode,
-        href: location.href,
         isRead: isRuliwebReadPage(),
         hasBoardRead: !!document.querySelector("#board_read"),
         hasAiBlind: hasRuliwebAiBlind(),
@@ -1851,8 +1807,6 @@ export function installFirefoxContent({
       // Firefox Browser Console(Ctrl+Shift+J)에서 이 로그가 보이면 content script가 실행된 것이다.
       // Chrome/Whale: F12 Console에서 확인. 보이지 않으면 manifest의 content_scripts.matches 확인.
       console.info("[Aru Source Captioner] content loaded", {
-        href: location.href,
-        userAgent: navigator.userAgent,
         exifrAvailable: typeof exifr !== "undefined",
       });
 
@@ -1881,8 +1835,8 @@ export function installFirefoxContent({
         console.info(
           "[Aru Source Captioner] read page active — comment source button enabled",
           {
-            strictAllowlist: config.strictAllowlist,
-            allowHttp: config.allowHttp,
+            strictAllowlist: config.strictAllowlist === true,
+            allowHttp: config.allowHttp === true,
           },
         );
         return;
@@ -1902,8 +1856,8 @@ export function installFirefoxContent({
       console.info(
         "[Aru Source Captioner] auto-insert mode active — file selection triggers caption insertion",
         {
-          strictAllowlist: config.strictAllowlist,
-          allowHttp: config.allowHttp,
+          strictAllowlist: config.strictAllowlist === true,
+          allowHttp: config.allowHttp === true,
           mobile: isMobileAutoInsertEnvironment(),
         },
       );
@@ -1912,8 +1866,11 @@ export function installFirefoxContent({
     // 옵션은 초기화 때 조회하므로 변경 후 페이지 새로고침이 필요하다.
     // 즉시 반영을 추가할 때는 Controller의 설정 참조와 리스너 수명을 함께 갱신해야 한다.
 
-    init().catch((err) => {
-      console.warn("[Aru Source Captioner] init failed:", err);
+    init().catch((_err) => {
+      console.warn(
+        "[Aru Source Captioner] init failed:",
+        "CONTENT_INIT_FAILED",
+      );
     });
   };
   runBootstrap1();

@@ -86,7 +86,7 @@ function createOwner(root: RuntimeEnvironment) {
       start(active.session);
     } catch (error) {
       stop("inactive");
-      root.console.warn("[Aru] 효과 세션 초기화 실패", error);
+      root.console.warn("[Aru] 효과 세션 초기화 실패", "SESSION_START_FAILED");
     }
   };
   const verify = async () => {

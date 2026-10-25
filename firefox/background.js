@@ -41,7 +41,7 @@
     function seedMissingOptions() {
       chrome.storage.sync.get(null, (items) => {
         if (chrome.runtime.lastError) {
-          console.warn("[Aru Source Captioner] storage.get failed:", chrome.runtime.lastError.message);
+          console.warn("[Aru Source Captioner] storage.get failed:", "STORAGE_READ_FAILED");
           return;
         }
         const updates = {};
@@ -55,10 +55,12 @@
         }
         chrome.storage.sync.set(updates, () => {
           if (chrome.runtime.lastError) {
-            console.warn("[Aru Source Captioner] storage.set failed:", chrome.runtime.lastError.message);
+            console.warn("[Aru Source Captioner] storage.set failed:", "STORAGE_WRITE_FAILED");
             return;
           }
-          console.info("[Aru Source Captioner] seeded missing default options:", Object.keys(updates));
+          console.info("[Aru Source Captioner] seeded missing default options:", {
+            count: Object.keys(updates).length
+          });
         });
       });
     }
@@ -111,13 +113,13 @@
         }
       }, (response) => {
         if (chrome.runtime?.lastError) {
-          console.warn("[Aru] embed native message failed:", chrome.runtime.lastError.message);
+          console.warn("[Aru] embed native message failed:", "NATIVE_MESSAGE_FAILED");
           return;
         }
         if (response?.success) {
-          console.info("[Aru] metadata embedded:", response.data?.message);
+          console.info("[Aru] metadata embedded:", "NATIVE_EMBED_COMPLETE");
         } else {
-          console.warn("[Aru] embed failed:", response?.error);
+          console.warn("[Aru] embed failed:", "NATIVE_EMBED_FAILED");
         }
       });
     }

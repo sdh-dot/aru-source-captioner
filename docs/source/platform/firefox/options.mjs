@@ -60,7 +60,7 @@ export function installFirefoxOptions({ environment = defaultEnvironment, depend
                             reject(new Error(chrome.runtime.lastError.message));
                             return;
                         }
-                        console.warn("[Aru Source Captioner] options load failed, using defaults:", chrome.runtime.lastError.message);
+                        console.warn("[Aru Source Captioner] options load failed, using defaults:", "OPTIONS_READ_FAILED");
                         resolve({ ...DEFAULT_OPTIONS });
                         return;
                     }

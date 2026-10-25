@@ -41,7 +41,7 @@ export function contextEffectGate(environment) {
                 callback();
             }
             catch (error) {
-                console.warn("[Aru] 컨텍스트 종료 정리 실패", error);
+                console.warn("[Aru] 컨텍스트 종료 정리 실패", "CONTEXT_CLEANUP_FAILED");
             }
         }
         stopped.clear();
@@ -140,7 +140,7 @@ export function createEffectSessionGate(documentGate) {
                 callback();
             }
             catch (error) {
-                console.warn("[Aru] 효과 세션 정리 실패", error);
+                console.warn("[Aru] 효과 세션 정리 실패", "SESSION_CLEANUP_FAILED");
             }
         }
         stopped.clear();

@@ -43,7 +43,7 @@
         try {
           callback();
         } catch (error) {
-          console.warn("[Aru] 컨텍스트 종료 정리 실패", error);
+          console.warn("[Aru] 컨텍스트 종료 정리 실패", "CONTEXT_CLEANUP_FAILED");
         }
       }
       stopped.clear();
@@ -2165,8 +2165,7 @@
               global.console?.info?.("[Aru Icons Composer]", {
                 stage: "capture",
                 status: "failed",
-                code: error.code || "CAPTURE_FAILED",
-                kind,
+                code: "CAPTURE_FAILED",
                 connected: root.isConnected
               });
             }

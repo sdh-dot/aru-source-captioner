@@ -1,6 +1,5 @@
 import { contextEffectGate } from "../runtime/context-effect-gate.ts";
 import type { DynamicApi } from "../runtime/contracts.ts";
-import type { CodedError } from "../runtime/contracts.ts";
 import {
   defaultEnvironment,
   type FactoryOptions,
@@ -410,8 +409,7 @@ export function createComposerAdapter({
               global.console?.info?.("[Aru Icons Composer]", {
                 stage: "capture",
                 status: "failed",
-                code: (error as CodedError).code || "CAPTURE_FAILED",
-                kind,
+                code: "CAPTURE_FAILED",
                 connected: root.isConnected,
               });
             }

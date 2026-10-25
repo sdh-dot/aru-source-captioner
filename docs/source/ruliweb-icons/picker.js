@@ -39,7 +39,7 @@
         try {
           callback();
         } catch (error) {
-          console.warn("[Aru] 컨텍스트 종료 정리 실패", error);
+          console.warn("[Aru] 컨텍스트 종료 정리 실패", "CONTEXT_CLEANUP_FAILED");
         }
       }
       stopped.clear();
@@ -1023,7 +1023,10 @@
             mediaFailures.delete(mediaFailures.keys().next().value);
           }
           if (options.debug === true) {
-            global.console?.info?.("[Aru Icons] media diagnostics", row);
+            global.console?.info?.("[Aru Icons] media diagnostics", {
+              stage: ["preview", "insertion"].includes(stage) ? stage : "media",
+              code: stage === "insertion" ? "INSERT_FAILED" : "MEDIA_LOAD_FAILED"
+            });
           }
         }
         __name(mediaDiagnostic, "mediaDiagnostic");
@@ -2067,9 +2070,9 @@
           lastMetadataLog = key;
           const failures = detail.images.filter((row) => row.reason !== "mapped");
           global.console?.info?.("[Aru Icons] metadata diagnostics", {
-            ...detail.summary,
-            unmappedOrUntagged: failures,
-            missing: detail.missing
+            modelIcons: (pack?.icons || []).length,
+            unmappedCount: failures.length,
+            missingCount: detail.missing.length
           });
         }
         __name(reportMetadata, "reportMetadata");

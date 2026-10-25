@@ -80,7 +80,7 @@ export function installFirefoxOptions({
             }
             console.warn(
               "[Aru Source Captioner] options load failed, using defaults:",
-              chrome.runtime.lastError.message,
+              "OPTIONS_READ_FAILED",
             );
             resolve({ ...DEFAULT_OPTIONS });
             return;
