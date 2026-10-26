@@ -110,7 +110,7 @@ test('Workflow는 모든 Gate를 직렬 연결하고 read-only·always 증적 �
   const ids = [...workflow.matchAll(/run: node tools\/ci\/run-command\.mjs ([a-z0-9-]+) --/g)].map(match => match[1]);
   assert.deepEqual(ids, gates.map(gate => gate.id));
   assert.match(workflow, /contents: read/); assert.match(workflow, /persist-credentials: false/);
-  assert.match(workflow, /branches: \[main\]/); assert.match(workflow, /pull_request:/);
+  assert.match(workflow, /^    branches: \[main, integration\/aru-stabilization-verified\]$/m); assert.match(workflow, /pull_request:/);
   assert.doesNotMatch(workflow, /pull_request_target|continue-on-error|secrets\.|contents: write/);
   assert.equal([...workflow.matchAll(/if: always\(\)/g)].length, 2);
   assert.equal([...workflow.matchAll(/uses: [\w/-]+@[a-f0-9]{40}/g)].length, 3);
