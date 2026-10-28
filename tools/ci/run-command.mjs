@@ -4,6 +4,8 @@ import { spawnSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { pathToFileURL } from 'node:url';
 import { root, evidence, gates, assertExecuted, writeJson } from './model.mjs';
+import { compareHistorical } from './model.mjs';
+import { assertHistoricalEvidence } from './dependency-profile.mjs';
 
 export function invocation(command, args) {
   if (command === 'node') return [process.execPath, args];
@@ -23,6 +25,9 @@ export function execute(id, command, args, { cwd = root, output = evidence, env 
     record.npm = spawnSync(binary, parameters, { encoding: 'utf8' }).stdout?.trim();
   }
   if (['historical', 'firefox-lint'].includes(id)) fs.rmSync(path.join(output, id + '-comparison.json'), { force: true });
+  if (id === 'historical') {
+    for (const name of ['integrity.json', 'installed-tree.json', 'reference.json', 'reference.log', 'candidate.json', 'candidate.log']) fs.rmSync(path.join(output, 'historical-' + name), { force: true });
+  }
   const file = path.join(output, 'steps', id + '.json');
   writeJson(file, record);
   console.log('[CI] START ' + id);
@@ -38,6 +43,13 @@ export function execute(id, command, args, { cwd = root, output = evidence, env 
     if (['historical', 'firefox-lint'].includes(id)) {
       const comparison = JSON.parse(fs.readFileSync(path.join(output, id + '-comparison.json'), 'utf8'));
       if (comparison.status !== (id === 'historical' ? 'KNOWN_FAILURES' : 'KNOWN_WARNINGS')) throw Error('BASELINE_COMPARISON_MISSING');
+      if (id === 'historical') {
+        const profile = JSON.parse(fs.readFileSync(new URL('./dependency-profile.json', import.meta.url), 'utf8'));
+        const baseline = JSON.parse(fs.readFileSync(new URL('./baseline.json', import.meta.url), 'utf8'));
+        const runs = assertHistoricalEvidence(output, profile, baseline, context.runId);
+        const expected = compareHistorical(runs.reference, runs.candidate, baseline.historical);
+        if (JSON.stringify(comparison) !== JSON.stringify({ referenceCommit: baseline.referenceCommit, ...expected })) throw Error('HISTORICAL_COMPARISON_EVIDENCE_DRIFT');
+      }
       record.status = comparison.status;
       record.comparison = comparison;
     }

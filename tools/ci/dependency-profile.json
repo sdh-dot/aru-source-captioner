@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "id": "i03-e2-minimal-security-20261028",
+  "referenceCommit": "50a64edae5a73fe6269367545b178656fbfdf5ee",
+  "referenceTree": "37a825fbe0b8ec0ca3d2422c4658909abc989a56",
+  "referenceLockfileSHA256": "b0b629db704d55d77fc3b1dd0bacf0d861939e533eee33882c1f4c5b96001635",
+  "packageJSONSHA256": "0198ad41ea68f197e674fecca39250594e2d998966feb026f8ddff005320f2df",
+  "lockfileSHA256": "bc95eed29ffd39d481903a44fac86c05aea0fad63dc4ca6bf2719c865fdd67bf",
+  "patches": {
+    "vite": [
+      "8.1.5",
+      "8.1.6"
+    ],
+    "fast-uri": [
+      "3.1.8",
+      "3.1.9"
+    ],
+    "undici": [
+      "7.30.0",
+      "7.30.1"
+    ]
+  }
+}

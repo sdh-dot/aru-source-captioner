@@ -32,7 +32,7 @@ jobs:
       - name: 포맷 검사
         run: node tools/ci/run-command.mjs format -- npm run format:check
       - name: CI Gate 실패 정책 검사
-        run: node tools/ci/run-command.mjs ci-tests -- node --test tools/ci/quality-gates.test.mjs
+        run: node tools/ci/run-command.mjs ci-tests -- node --test tools/ci/quality-gates.test.mjs tools/ci/dependency-profile.test.mjs
       - name: TypeScript 직접 테스트
         run: node tools/ci/run-command.mjs typescript -- npm run test:typescript
       - name: ESM 동등성
