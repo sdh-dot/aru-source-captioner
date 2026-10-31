@@ -1,7 +1,7 @@
 name: Build and test
 on:
   push:
-    branches: [main, integration/aru-stabilization-verified]
+    branches: [main, integration/aru-stabilization-verified, integration/aru-i03-e4-ci]
   pull_request:
 permissions:
   contents: read
